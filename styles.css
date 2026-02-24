@@ -190,7 +190,6 @@ code {
 .segBtn.active { background: rgba(255,255,255,0.14); }
 
 .memberList { margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 8px; }
-@media (min-width: 860px) { .memberList { grid-template-columns: 1fr 1fr; } }
 @media (min-width: 860px) { .memberList { grid-template-columns: repeat(3, 1fr); } }
 
 .memberCard {
