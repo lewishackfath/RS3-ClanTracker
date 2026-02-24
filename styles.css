@@ -159,7 +159,10 @@ code {
 
 /* Clan overview */
 .statsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-@media (min-width: 860px) { .statsGrid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 860px) { .statsGrid { grid-template-columns: repeat(5, 1fr); } }
+
+.statsGridPlayer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+@media (min-width: 860px) { .statsGridPlayer { grid-template-columns: repeat(4, 1fr); } }
 
 .statCard {
   border: 1px solid var(--border);
@@ -188,6 +191,7 @@ code {
 
 .memberList { margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 8px; }
 @media (min-width: 860px) { .memberList { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 860px) { .memberList { grid-template-columns: repeat(3, 1fr); } }
 
 .memberCard {
   border: 1px solid var(--border);
@@ -409,7 +413,7 @@ code {
   grid-template-columns: 1fr;
   gap: 8px;
 }
-@media (min-width: 860px) { .skillsLeadersGrid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 860px) { .skillsLeadersGrid { grid-template-columns: repeat(3, 1fr); } }
 
 .leaderRow {
   border: 1px solid rgba(255,255,255,0.10);
