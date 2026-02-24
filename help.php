@@ -7,21 +7,12 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="container">
-      <div class="brand">
-        <a href="https://tracker.24krs.com.au" target="_blank">
-          <img class="logoImg" src="https://24krs.com.au/wp-content/uploads/2025/12/24K-Logo.gif" alt="24K" />
-        </a>
-        <div>
-          <div class="title">Tracker - Help</div>
-          <div class="subtitle">Documentation & Help Guide</div>
-        </div>
-        <a href="index.html" style="float:right"><button class="button secondary" type="button" id="Help">Home</button></a>
-        <a href="https://bingo.24krs.com.au" target="_blank" style="float:right"><button class="button secondary" type="button" id="Help">Clan Bingo</button></a>
-      </div>
-    </div>
-  </header>
+  <?php
+$menu_title = 'Tracker - Help';
+$menu_subtitle = 'Documentation & Help Guide';
+$menu_active = 'help';
+include __DIR__ . '/includes/menu.php';
+?>
   <main class="container main">
     <!-- Landing -->
     <section class="card" id="landingCard">

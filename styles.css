@@ -610,3 +610,97 @@ body::before {
 /* --- Grand Exchange home card layout --- */
 #geHomeCard{width:100%;grid-column:1 / -1;}
 #geHomeCard .grid{grid-template-columns:1fr;}
+
+/* ============================
+   Mobile hamburger menu + shared header helpers
+   Append this to the END of your existing styles.css
+   ============================ */
+
+.brandBar{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  width:100%;
+}
+
+.brandLogo{ display:flex; align-items:center; }
+.brandText{ display:flex; flex-direction:column; gap:2px; }
+
+/* Desktop links container */
+.navLinks{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.navA{ text-decoration:none; }
+
+/* Optional “active” styling */
+.button.isActive{
+  outline: 2px solid rgba(255,255,255,0.18);
+}
+
+/* Hamburger button */
+.hamburgerBtn{
+  margin-left:auto;
+  display:none; /* enabled on mobile via media query */
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.25);
+  cursor:pointer;
+  align-items:center;
+  justify-content:center;
+}
+
+.hamburgerIcon{
+  position:relative;
+  width:20px;
+  height:2px;
+  background: rgba(255,255,255,0.9);
+  display:block;
+  border-radius:999px;
+}
+.hamburgerIcon::before,
+.hamburgerIcon::after{
+  content:"";
+  position:absolute;
+  left:0;
+  width:20px;
+  height:2px;
+  background: rgba(255,255,255,0.9);
+  border-radius:999px;
+}
+.hamburgerIcon::before{ top:-6px; }
+.hamburgerIcon::after{ top:6px; }
+
+/* Mobile menu panel */
+.mobileMenu{
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.35);
+  border-radius:14px;
+  overflow:hidden;
+}
+.mobileMenuInner{
+  display:flex;
+  flex-direction:column;
+}
+.mobileMenuLink{
+  padding:14px 14px;
+  text-decoration:none;
+  color: inherit;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+.mobileMenuLink:first-child{ border-top:0; }
+.mobileMenuLink:hover{
+  background: rgba(255,255,255,0.06);
+}
+
+/* Responsive behaviour */
+@media (max-width: 760px){
+  .navLinks{ display:none; }
+  .hamburgerBtn{ display:flex; }
+}
+
