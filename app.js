@@ -448,6 +448,31 @@ function populateClanXpPeriods(periods, currentValue) {
   }).join("");
 }
 
+
+function populateRankFilter(members, keepValue = false) {
+  const sel = qs("rankFilter");
+  if (!sel) return;
+
+  const current = String(sel.value || "all");
+  const ranks = Array.from(new Set((members || [])
+    .map(m => String(m?.rank_name ?? m?.rank ?? "").trim())
+    .filter(r => r !== "")));
+
+  // Sort case-insensitive, but keep original casing
+  ranks.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+
+  sel.innerHTML = `<option value="all">All ranks</option>` + ranks.map(r => {
+    const esc = escapeHtml(r);
+    return `<option value="${esc}">${esc}</option>`;
+  }).join("");
+
+  if (keepValue && ranks.some(r => r === current)) {
+    sel.value = current;
+  } else {
+    sel.value = "all";
+  }
+}
+
 async function fetchClanTopEarnersForSkill(skillName) {
   const params = getParams();
   const clanKey = params.clan;
@@ -715,6 +740,15 @@ function renderClanXpTotals() {
 function setFilter(newFilter) {
   clanFilter = String(newFilter || "all").trim().toLowerCase();
 
+  // Keep rank dropdown in sync: if filter is not a rank filter, reset dropdown to "All ranks"
+  const rf = qs("rankFilter");
+  if (rf) {
+    const nf = String(newFilter || "all").trim();
+    if (!/^rank[:=]/i.test(nf) && nf.toLowerCase() !== "rank") {
+      rf.value = "all";
+    }
+  }
+
   document.querySelectorAll(".segBtn").forEach(btn => {
     const bf = String(btn.dataset.filter || "").trim().toLowerCase();
     btn.classList.toggle("active", bf === clanFilter);
@@ -824,6 +858,9 @@ async function loadClanOverview(clanKey, period) {
   }
 
   clanData = data;
+
+  // Populate rank filter dropdown based on returned member ranks
+  populateRankFilter(data.members, false);
 
   // Private profile count (client-side, based on member flags)
   try {
@@ -1724,6 +1761,16 @@ function wireUI() {
   qs("backFromPlayer").addEventListener("click", clearQuery);
 
   qs("memberSearch").addEventListener("input", debounce(renderMemberList, 120));
+
+  const rankSel = qs("rankFilter");
+  if (rankSel) {
+    rankSel.addEventListener("change", () => {
+      const v = String(rankSel.value || "all");
+      if (v === "all") setFilter("all");
+      else setFilter(`rank:${v}`);
+    });
+  }
+
   document.querySelectorAll(".segBtn").forEach(btn => btn.addEventListener("click", () => setFilter(btn.dataset.filter)));
 
     
