@@ -704,3 +704,9 @@ body::before {
   .hamburgerBtn{ display:flex; }
 }
 
+.questRow {
+  display: block !important;
+  align-items: center;
+  gap: 10px;
+}
+

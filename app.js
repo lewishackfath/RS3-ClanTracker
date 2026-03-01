@@ -1076,7 +1076,8 @@ function renderQuests() {
   const notStarted = Number(totals.not_started ?? 0);
   const qpDone = Number(totals.quest_points_completed ?? 0);
 
-  metaEl.textContent = `Total: ${total} • Completed: ${completed} • Started: ${started} • Not started: ${notStarted} • QP (completed): ${formatNumber(qpDone)}`;
+  metaEl.textContent =
+    `Total: ${total} • Completed: ${completed} • In progress: ${started} • Not started: ${notStarted} • QP (completed): ${formatNumber(qpDone)}`;
 
   const quests = Array.isArray(q.quests) ? q.quests : [];
   statusEl.textContent = `${quests.length} quests`;
@@ -1086,26 +1087,101 @@ function renderQuests() {
     return;
   }
 
-  const order = { "NOT_STARTED": 0, "STARTED": 1, "IN_PROGRESS": 1, "COMPLETED": 2 };
-  const sorted = quests.slice().sort((a, b) => {
-    const as = String(a?.status || "").toUpperCase();
-    const bs = String(b?.status || "").toUpperCase();
-    const ao = order[as] ?? 9;
-    const bo = order[bs] ?? 9;
+  // Map status -> icon + colour (as requested)
+  function statusInfo(statusRaw) {
+    const s = String(statusRaw || "").toUpperCase();
+    if (s === "COMPLETED") return { key: "completed", icon: "✓", color: "green" };
+    if (s === "STARTED" || s === "IN_PROGRESS") return { key: "started", icon: "⚠", color: "orange" };
+    return { key: "not_started", icon: "✗", color: "red" };
+  }
+
+  // Difficulty mapping (RuneMetrics)
+  function difficultyLabel(diffRaw) {
+    const n = Number(diffRaw);
+    if (n === 0) return "Novice";
+    if (n === 1) return "Intermediate";
+    if (n === 2) return "Experienced";
+    if (n === 3) return "Master";
+    if (n === 4) return "Grandmaster";
+    if (n === 250) return "Special";
+    if (diffRaw === "Miniquest") return "Miniquest";
+    return "Unknown";
+  }
+
+
+  // Group by difficulty (collapsible)
+  const groups = new Map();
+  for (const row of quests) {
+    const titleText = String(row?.title || "");
+    const isMiniquest = /\(miniquest\)/i.test(titleText);
+
+    const diff = isMiniquest
+      ? "Miniquest"
+      : ((row && row.difficulty !== undefined && row.difficulty !== null && String(row.difficulty).trim() !== "")
+          ? Number(row.difficulty)
+          : "Unknown");
+
+    if (!groups.has(diff)) groups.set(diff, []);
+    groups.get(diff).push(row);
+  }
+
+  // Sort groups: numeric difficulty asc, Unknown last, then alpha
+  const groupKeys = Array.from(groups.keys()).sort((a, b) => {
+    const order = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 250: 5, "Miniquest": 6, "Unknown": 99 };
+
+    const ao = (a in order) ? order[a] : (Number.isFinite(Number(a)) ? Number(a) : 50);
+    const bo = (b in order) ? order[b] : (Number.isFinite(Number(b)) ? Number(b) : 50);
+
     if (ao !== bo) return ao - bo;
-    const at = String(a?.title || "").toLowerCase();
-    const bt = String(b?.title || "").toLowerCase();
-    return at.localeCompare(bt);
+
+    return String(a).localeCompare(String(b));
   });
 
-  listEl.innerHTML = sorted.map(row => {
-    const title = row?.title || "—";
-    const status = row?.status || "—";
+  const statusOrder = { not_started: 0, started: 1, completed: 2 };
+
+  listEl.innerHTML = groupKeys.map((key) => {
+    const rows = groups.get(key) || [];
+
+    const sorted = rows.slice().sort((a, b) => {
+      const ai = statusInfo(a?.status);
+      const bi = statusInfo(b?.status);
+      const ao = statusOrder[ai.key] ?? 9;
+      const bo = statusOrder[bi.key] ?? 9;
+      if (ao !== bo) return ao - bo;
+      const at = String(a?.title || "").toLowerCase();
+      const bt = String(b?.title || "").toLowerCase();
+      return at.localeCompare(bt);
+    });
+
+    const inner = sorted.map((row) => {
+      const title = String(row?.title || "—");
+      const st = statusInfo(row?.status);
+
+      // Instead of showing "Completed/Started/Not started", show useful info on the right.
+      const qp = row?.questPoints !== undefined && row?.questPoints !== null ? `${formatNumber(Number(row.questPoints))} QP` : "";
+      const mem = row?.members === true ? "Members" : (row?.members === false ? "Free" : "");
+      const rhs = [qp, mem].filter(Boolean).join(" • ");
+
+      return `
+        <div class="questRow skillRow">
+          <div class="skillName" style="font-weight:800; color:${st.color};">
+            ${escapeHtml(st.icon)} ${escapeHtml(title)}
+          </div>
+          <div class="skillVal">${escapeHtml(rhs)}</div>
+        </div>
+      `;
+    }).join("");
+
+    const label = `Difficulty: ${escapeHtml(difficultyLabel(key))}`;
     return `
-      <div class="skillRow">
-        <div class="skillName" style="font-weight:800;">${escapeHtml(title)}</div>
-        <div class="skillVal">${escapeHtml(status)}</div>
-      </div>
+      <details class="questGroup" style="margin-top:10px;">
+        <summary style="cursor:pointer; font-weight:800;">
+          ${label} <span class="muted" style="font-weight:600;">(${sorted.length})</span>
+        </summary>
+        <div class="skillList" style="margin-top:8px;">
+          ${inner}
+        </div>
+      </details>
     `;
   }).join("");
 }
