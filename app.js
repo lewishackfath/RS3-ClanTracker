@@ -1046,6 +1046,72 @@ function renderTopXpSkills() {
   });
 }
 
+
+function renderQuests() {
+  const metaEl = qs("questMeta");
+  const statusEl = qs("questStatus");
+  const listEl = qs("questList");
+  if (!metaEl || !statusEl || !listEl) return;
+
+  const q = playerData?.quests;
+  if (!q) {
+    metaEl.textContent = "—";
+    statusEl.textContent = "";
+    listEl.innerHTML = "";
+    return;
+  }
+
+  if (!q.ok) {
+    const http = q.http_code ? ` (HTTP ${q.http_code})` : "";
+    metaEl.textContent = `Unable to load quests${http}`;
+    statusEl.textContent = q.error ? String(q.error) : "";
+    listEl.innerHTML = q.hint ? `<div class="muted">${escapeHtml(String(q.hint))}</div>` : "";
+    return;
+  }
+
+  const totals = q.totals || {};
+  const total = Number(totals.total ?? 0);
+  const completed = Number(totals.completed ?? 0);
+  const started = Number(totals.started ?? 0);
+  const notStarted = Number(totals.not_started ?? 0);
+  const qpDone = Number(totals.quest_points_completed ?? 0);
+
+  metaEl.textContent = `Total: ${total} • Completed: ${completed} • Started: ${started} • Not started: ${notStarted} • QP (completed): ${formatNumber(qpDone)}`;
+
+  const quests = Array.isArray(q.quests) ? q.quests : [];
+  statusEl.textContent = `${quests.length} quests`;
+
+  if (!quests.length) {
+    listEl.innerHTML = `<div class="muted">No quest data returned.</div>`;
+    return;
+  }
+
+  const order = { "NOT_STARTED": 0, "STARTED": 1, "IN_PROGRESS": 1, "COMPLETED": 2 };
+  const sorted = quests.slice().sort((a, b) => {
+    const as = String(a?.status || "").toUpperCase();
+    const bs = String(b?.status || "").toUpperCase();
+    const ao = order[as] ?? 9;
+    const bo = order[bs] ?? 9;
+    if (ao !== bo) return ao - bo;
+    const at = String(a?.title || "").toLowerCase();
+    const bt = String(b?.title || "").toLowerCase();
+    return at.localeCompare(bt);
+  });
+
+  listEl.innerHTML = sorted.map(row => {
+    const title = row?.title || "—";
+    const status = row?.status || "—";
+    return `
+      <div class="skillRow">
+        <div class="skillName" style="font-weight:800;">${escapeHtml(title)}</div>
+        <div class="skillVal">${escapeHtml(status)}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+
+
 function renderPlayer() {
   if (!playerData || !playerData.ok) return;
 
@@ -1084,6 +1150,8 @@ function renderPlayer() {
   qs("pXpGained").textContent = xp?.has_data ? formatNumber(xp.gained_total_xp) : "—";
 
   renderTopXpSkills();
+
+  renderQuests();
 
   // Activity log (icons + coloured rows)
   const activityList = qs("activityList");
@@ -1194,6 +1262,10 @@ async function loadPlayer(rsn, period) {
   qs("playerMeta").textContent = "—";
   qs("playerError").textContent = "";
   qs("playerLastPull").textContent = "";
+
+  if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";
+  if (qs("questStatus")) qs("questStatus").textContent = "";
+  if (qs("questList")) qs("questList").innerHTML = "";
 
   const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}`;
   const data = await fetchJson(url);

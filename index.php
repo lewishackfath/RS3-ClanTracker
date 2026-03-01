@@ -193,6 +193,15 @@ include __DIR__ . '/includes/menu.php';
         </div>
 
         <div class="panel" style="grid-column: 1 / -1;">
+          <h3 class="h2" style="margin-bottom:8px;">Quests</h3>
+          <div class="muted" id="questMeta">—</div>
+          <div class="muted" id="questStatus" style="margin-top:6px;"></div>
+          <div class="skillList" id="questList" style="margin-top:8px;"></div>
+        </div>
+
+
+
+        <div class="panel" style="grid-column: 1 / -1;">
           <h3 class="h2" style="margin-bottom:8px;">Recent activity</h3>
           <div class="muted" id="activityStatus"></div>
           <div class="activityList" id="activityList"></div>
