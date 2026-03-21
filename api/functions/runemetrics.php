@@ -318,7 +318,7 @@ function runemetrics_sync_rsn(PDO $pdo, int $clanId, string $rsn, int $activitie
 function rm_build_url(string $rsn, int $activities): string
 {
     $user = str_replace(' ', '_', trim($rsn));
-    return 'https://apps.runescape.com/runemetrics/profile?user=' . rawurlencode($user) . '&activities=' . (int)$activities;
+    return 'https://apps.runescape.com/runemetrics/profile/profile?user=' . rawurlencode($user) . '&activities=' . (int)$activities;
 }
 
 /** @return array decoded JSON */
