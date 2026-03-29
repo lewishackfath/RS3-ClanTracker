@@ -1,13 +1,28 @@
-
-
 <Files ".env">
   Order allow,deny
   Deny from all
 </Files>
 
-# php -- BEGIN cPanel-generated handler, do not edit
-# Set the “ea-php83” package as the default “PHP” programming language.
-<IfModule mime_module>
-  AddHandler application/x-httpd-ea-php83 .php .php8 .phtml
+RewriteEngine On
+
+# Only run if mod_rewrite is available
+<IfModule mod_rewrite.c>
+
+# Redirect specific pages
+RewriteRule ^index\.html$ /index.php [R=301,L]
+RewriteRule ^help\.html$ /help.php [R=301,L]
+
+# Optional: redirect any .html file to .php if matching php exists
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{DOCUMENT_ROOT}/$1.php -f
+RewriteRule ^(.+)\.html$ /$1.php [R=301,L]
+
+# Hide .php extension in URLs
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^([^\.]+)$ $1.php [L]
+
 </IfModule>
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# This domain inherits the “PHP” package.
 # php -- END cPanel-generated handler, do not edit
