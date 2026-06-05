@@ -12,7 +12,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] . ' He
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
-<body>
+<body<?= tracker_body_style_attr($brand) ?>>
   <?php
 $menu_title = $brand['name'] . ' - Help';
 $menu_subtitle = 'Documentation & Help Guide';

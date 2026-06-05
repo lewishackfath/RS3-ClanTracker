@@ -24,6 +24,10 @@ function tracker_env_bool(string $key, bool $default = false): bool {
 function tracker_brand_config(): array {
   $brandName = tracker_env_value('TRACKER_BRAND_NAME', 'Clan Tracker');
   $siteUrl = tracker_env_value('TRACKER_BRAND_HOME_URL', 'index');
+  $backgroundUrl = tracker_env_value('TRACKER_BRAND_BACKGROUND_URL', '');
+  if ($backgroundUrl === '') {
+    $backgroundUrl = tracker_env_value('TRACKER_BACKGROUND_IMAGE_URL', 'assets/bg.png');
+  }
 
   return [
     'clan_id' => tracker_env_value('TRACKER_CLAN_ID', ''),
@@ -31,6 +35,7 @@ function tracker_brand_config(): array {
     'short_name' => tracker_env_value('TRACKER_BRAND_SHORT_NAME', $brandName),
     'subtitle' => tracker_env_value('TRACKER_BRAND_SUBTITLE', 'Clan overview & member lookup'),
     'logo_url' => tracker_env_value('TRACKER_BRAND_LOGO_URL', 'assets/hit-media.png'),
+    'background_url' => $backgroundUrl,
     'home_url' => $siteUrl,
     'domain' => tracker_env_value('TRACKER_BRAND_DOMAIN', parse_url($siteUrl, PHP_URL_HOST) ?: 'tracker.local'),
     'footer_title' => tracker_env_value('TRACKER_BRAND_FOOTER_TITLE', $brandName),
@@ -39,6 +44,27 @@ function tracker_brand_config(): array {
     'bingo_url' => tracker_env_value('TRACKER_BRAND_BINGO_URL', ''),
     'show_bingo_link' => tracker_env_bool('TRACKER_SHOW_BINGO_LINK', false),
   ];
+}
+
+function tracker_css_background_style(array $brand): string {
+  $url = trim((string)($brand['background_url'] ?? ''));
+  if ($url === '') return '';
+
+  // Keep this safe for inline CSS while still supporting normal relative paths and https URLs.
+  if (preg_match('/[\x00-\x1F\x7F]/', $url)) return '';
+  $scheme = parse_url($url, PHP_URL_SCHEME);
+  if ($scheme !== null && $scheme !== '' && !in_array(strtolower($scheme), ['http', 'https'], true)) {
+    return '';
+  }
+
+  $cssUrl = str_replace(['\\', '"'], ['\\\\', '\\"'], $url);
+  return '--tracker-background-image: url("' . $cssUrl . '");';
+}
+
+function tracker_body_style_attr(array $brand): string {
+  $style = tracker_css_background_style($brand);
+  if ($style === '') return '';
+  return ' style="' . htmlspecialchars($style, ENT_QUOTES, 'UTF-8') . '"';
 }
 
 function tracker_public_js_config(): array {
