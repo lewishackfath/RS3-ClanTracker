@@ -10,6 +10,12 @@ if ($q === '') {
 
 $pdo = tracker_pdo();
 
+$clanParam = trim((string)($_GET['clan'] ?? ''));
+if ($clanParam === '') {
+    $clanParam = (string)(getenv('TRACKER_CLAN_ID') ?: '');
+}
+$clanId = (int)$clanParam;
+
 $qRaw = trim($q);
 $qNorm = tracker_normalise($qRaw);
 
@@ -32,6 +38,7 @@ JOIN clans c ON c.id = m.clan_id
 WHERE
   c.is_enabled = 1
   AND c.inactive_at IS NULL
+  /*CLAN_FILTER*/
   AND (
     m.rsn LIKE :likeRaw
     OR m.rsn_normalised LIKE :likeNorm
@@ -48,13 +55,22 @@ LIMIT 20
 ";
 
 try {
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
+    $params = [
         ':likeRaw' => $likeRaw,
         ':likeNorm' => $likeNorm,
         ':likeRawNoSpaces' => $likeRawNoSpaces,
         ':likeNormNoSpaces' => $likeNormNoSpaces,
-    ]);
+    ];
+
+    if ($clanId > 0) {
+        $sql = str_replace('/*CLAN_FILTER*/', 'AND c.id = :clanId', $sql);
+        $params[':clanId'] = $clanId;
+    } else {
+        $sql = str_replace('/*CLAN_FILTER*/', '', $sql);
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     $rows = $stmt->fetchAll();
     tracker_json($rows);
 } catch (Throwable $e) {

@@ -627,3 +627,34 @@ li { margin: 0 0 10px; }
   .statsGridPlayer,
   .skillsGrid { grid-template-columns: 1fr; }
 }
+
+/* Single-clan header character search */
+.topCharacterSearch {
+  margin-left: auto;
+  width: clamp(230px, 24vw, 360px);
+  min-width: 220px;
+}
+.topTypeahead { width: 100%; }
+.topSearchInput {
+  padding: 10px 12px;
+  border-color: rgba(201,155,63,0.36);
+  background: linear-gradient(180deg, rgba(255,246,222,0.96), rgba(229,198,141,0.94));
+}
+.topTypeahead .dropdown { min-width: 280px; }
+.navLinks { margin-left: 10px; }
+.mobileSearchWrap {
+  padding: 12px;
+  border-bottom: 1px solid rgba(201,155,63,0.18);
+}
+
+@media (max-width: 1100px) {
+  .topCharacterSearch { width: 230px; min-width: 200px; }
+  .navLinks { gap: 6px; }
+  .navLinks .button.secondary { padding: 9px 10px; }
+}
+
+@media (max-width: 940px) {
+  .topCharacterSearch,
+  .navLinks { display: none; }
+  .hamburgerBtn { display: flex; }
+}

@@ -1,14 +1,20 @@
+<?php
+require_once __DIR__ . '/includes/config.php';
+$brand = tracker_brand_config();
+$publicConfig = tracker_public_js_config();
+$pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] . ' Help' : 'Clan Tracker Help';
+?>
 <!doctype html>
 <html lang="en-AU">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>24K Tracker Help</title>
+  <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <?php
-$menu_title = 'Tracker - Help';
+$menu_title = $brand['name'] . ' - Help';
 $menu_subtitle = 'Documentation & Help Guide';
 $menu_active = 'help';
 include __DIR__ . '/includes/menu.php';
@@ -73,43 +79,12 @@ include __DIR__ . '/includes/menu.php';
       </div>
     </section>
   </main>
-  <footer class="footer">
-    <div class="footerGrid container">
-    
-      <!-- Column 1: App / Domain -->
-      <div class="footerCol footerColLeft">
-        <div class="footerTitle">Clan Tracker</div>
-        <div class="footerLink">tracker.24krs.com.au</div>
-      </div>
-    
-      <!-- Column 2: Disclaimer -->
-      <div class="footerCol footerColCenter">
-        <div class="footerDisclaimer">
-          This application is an independent RuneScape clan and experience tracking tool.
-          It is not affiliated with, endorsed by, or connected to Jagex Ltd, RuneScape,
-          or any related intellectual property. All RuneScape-related assets and names
-          are the property of their respective owners and are used for informational
-          purposes only.
-        </div>
-      </div>
-    
-      <!-- Column 3: Credits / Logo -->
-      <div class="footerCol footerColRight">
-        <div class="footerCreditTop">Application Designed &amp; Developed by:</div>
-    
-        <img
-          src="assets/hit-media.png"
-          alt="HIT Media"
-          class="footerLogo"
-        />
-    
-        <div class="footerCreditBottom">Copyright © 2026</div>
-      </div>
-    
-    </div>
-  </footer>
+  <?php include __DIR__ . '/includes/footer.php'; ?>
 
-    <script src="./config/skills.js?v=20260121003703"></script>
-  <script src="./app.js?v=20260121003703"></script>
+  <script>
+    window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+  </script>
+  <script src="./config/skills.js?v=202606050001"></script>
+  <script src="./app.js?v=202606050001"></script>
 </body>
 </html>

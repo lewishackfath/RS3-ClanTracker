@@ -8,6 +8,33 @@ const API = {
   refreshPlayerXp: "api/refresh_member_data.php",
 };
 
+const TRACKER_CONFIG = window.TRACKER_CONFIG || {};
+
+function getConfiguredClanId() {
+  return String(TRACKER_CONFIG.clanId || "").trim();
+}
+
+function isIndexViewAvailable() {
+  return !!qs("viewClan") && !!qs("viewPlayer");
+}
+
+function appIndexUrl(params = {}) {
+  const url = new URL("index", window.location.href);
+  Object.entries(params).forEach(([key, value]) => {
+    const v = String(value || "").trim();
+    if (v) url.searchParams.set(key, v);
+  });
+  return url.toString();
+}
+
+function openPlayerProfile(rsn) {
+  const value = normalise(rsn);
+  if (!value) return;
+
+  if (isIndexViewAvailable()) setQuery({ player: value });
+  else window.location.href = appIndexUrl({ player: value });
+}
+
 /* ---------------- XP refresh helper ---------------- */
 
 function parseUtcToMs(utc) {
@@ -33,6 +60,7 @@ function getParams() {
   return {
     clan: (p.get("clan") || "").trim(),
     player: (p.get("player") || "").trim(),
+    configuredClan: getConfiguredClanId(),
   };
 }
 
@@ -464,7 +492,7 @@ function populateRankFilter(members, keepValue = false) {
 
 async function fetchClanTopEarnersForSkill(skillName) {
   const params = getParams();
-  const clanKey = params.clan;
+  const clanKey = params.clan || params.configuredClan;
   if (!clanKey || !skillName) return null;
 
   const cacheKey = `${selectedClanXpPeriod}|${skillName.toLowerCase()}`;
@@ -1379,12 +1407,20 @@ async function loadPlayer(rsn, period) {
 
 /* ---------------- Render views ---------------- */
 function render() {
-  const { clan, player } = getParams();
+  const { clan, player, configuredClan } = getParams();
 
   const landing = qs("landingCard");
   const viewClan = qs("viewClan");
   const viewPlayer = qs("viewPlayer");
   const notice = qs("notice");
+
+  // Pages such as Help include the shared menu/search script but do not contain
+  // the clan/player view panels. Leave their content alone and let the top bar
+  // search redirect back to index when a character is selected.
+  if (!viewClan || !viewPlayer) {
+    if (landing) show(landing, true);
+    return;
+  }
 
   if (player) {
     show(landing, false);
@@ -1394,18 +1430,20 @@ function render() {
     return;
   }
 
-  if (clan) {
+  const clanToOpen = clan || configuredClan;
+  if (clanToOpen) {
     show(landing, false);
     show(viewPlayer, false);
     show(viewClan, true);
-    loadClanOverview(clan, selectedClanXpPeriod);
+    show(qs("backFromClan"), !!clan);
+    loadClanOverview(clanToOpen, selectedClanXpPeriod);
     return;
   }
 
   show(viewClan, false);
   show(viewPlayer, false);
   show(landing, true);
-  if (notice) notice.textContent = "Tip: start typing to search, or paste a clan key / RSN.";
+  if (notice) notice.textContent = "Set TRACKER_CLAN_ID in .env to open the clan overview automatically.";
 }
 
 /* ---------------- Typeahead component + wiring ---------------- */
@@ -1510,55 +1548,49 @@ async function searchClans(q) {
   return Array.isArray(data) ? data : [];
 }
 
-async function searchPlayers(q) {
-  const data = await fetchJson(`${API.players}?q=${encodeURIComponent(q)}`);
+async function searchPlayers(q, clanId = null) {
+  const params = new URLSearchParams({ q });
+  const configuredClan = String(clanId || getConfiguredClanId() || "").trim();
+  if (configuredClan) params.set("clan", configuredClan);
+  const data = await fetchJson(`${API.players}?${params.toString()}`);
   return Array.isArray(data) ? data : [];
 }
 
 
+function wireCharacterSearch(inputEl, listEl) {
+  if (!inputEl || !listEl) return;
+
+  createTypeahead({
+    inputEl,
+    listEl,
+    fetchItems: (q) => searchPlayers(q, getConfiguredClanId()),
+    renderItem: (p) => ({
+      primary: p.rsn,
+      secondary: p.clan ? `Clan: ${p.clan}` : "",
+      badge: p.status ? p.status : "",
+      value: p.rsn || "",
+    }),
+    onSelectValue: openPlayerProfile,
+  });
+
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.defaultPrevented) return;
+    const value = normalise(inputEl.value);
+    if (!value) return;
+    e.preventDefault();
+    openPlayerProfile(value);
+  });
+}
+
 function wireUI() {
-  const clanKey = qs("clanKey");
   const playerRsn = qs("playerRsn");
 
-  if (clanKey && qs("clanList")) {
-    createTypeahead({
-      inputEl: clanKey,
-      listEl: qs("clanList"),
-      fetchItems: searchClans,
-      renderItem: (c) => ({
-        primary: `${c.name || c.key}`,
-        secondary: c.key ? `Key: ${c.key}` : "",
-        badge: typeof c.members === "number" ? `${c.members} members` : "",
-        value: c.key || c.name || "",
-      }),
-      onSelectValue: (value) => setQuery({ clan: value }),
-    });
-  }
+  wireCharacterSearch(qs("topPlayerRsn"), qs("topPlayerList"));
+  wireCharacterSearch(qs("mobilePlayerRsn"), qs("mobilePlayerList"));
 
   if (playerRsn && qs("playerList")) {
-    createTypeahead({
-      inputEl: playerRsn,
-      listEl: qs("playerList"),
-      fetchItems: searchPlayers,
-      renderItem: (p) => ({
-        primary: p.rsn,
-        secondary: p.clan ? `Clan: ${p.clan}` : "",
-        badge: p.status ? p.status : "",
-        value: p.rsn || "",
-      }),
-      onSelectValue: (value) => setQuery({ player: value }),
-    });
+    wireCharacterSearch(playerRsn, qs("playerList"));
   }
-
-  qs("btnClan")?.addEventListener("click", () => {
-    const v = normalise(clanKey?.value);
-    if (!v) {
-      const notice = qs("notice");
-      if (notice) notice.textContent = "Please enter a clan key.";
-      return;
-    }
-    setQuery({ clan: v });
-  });
 
   qs("btnPlayer")?.addEventListener("click", () => {
     const v = normalise(playerRsn?.value);
@@ -1567,7 +1599,7 @@ function wireUI() {
       if (notice) notice.textContent = "Please enter a player RSN.";
       return;
     }
-    setQuery({ player: v });
+    openPlayerProfile(v);
   });
 
   qs("backFromClan")?.addEventListener("click", clearQuery);
@@ -1599,8 +1631,9 @@ function wireUI() {
     clanXpSel.addEventListener("change", () => {
       const v = clanXpSel.value || "7d";
       selectedClanXpPeriod = v;
-      const { clan } = getParams();
-      if (clan) loadClanOverview(clan, selectedClanXpPeriod);
+      const { clan, configuredClan } = getParams();
+      const clanToOpen = clan || configuredClan;
+      if (clanToOpen) loadClanOverview(clanToOpen, selectedClanXpPeriod);
     });
   }
 

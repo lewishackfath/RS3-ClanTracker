@@ -215,8 +215,12 @@ function tracker_to_local(?string $utcDt, string $tzName): ?string {
     }
 }
 
-$clanId = (int)tracker_get_param('clan', 16);
-if ($clanId <= 0) tracker_json(['ok' => false, 'error' => 'Missing clan'], 400);
+$clanParam = tracker_get_param('clan', 16);
+if ($clanParam === '') {
+    $clanParam = (string)(getenv('TRACKER_CLAN_ID') ?: '');
+}
+$clanId = (int)$clanParam;
+if ($clanId <= 0) tracker_json(['ok' => false, 'error' => 'Missing clan. Set TRACKER_CLAN_ID in .env or pass ?clan=.'], 400);
 
 $period = tracker_get_param('period', 16);
 

@@ -296,6 +296,8 @@ try {
 
     $period = tracker_get_param('period', 16);
 
+    $preferredClanId = (int)(tracker_get_param('clan', 16) ?: (string)(getenv('TRACKER_CLAN_ID') ?: '0'));
+
     $pdo = tracker_pdo();
 
     $playerNorm = tracker_normalise($player);
@@ -329,7 +331,10 @@ try {
             OR m.rsn = :raw
             OR REPLACE(m.rsn, ' ', '') = :rawns
           )
-        ORDER BY m.is_active DESC, m.updated_at DESC
+        ORDER BY
+          CASE WHEN m.clan_id = :preferredClanId THEN 0 ELSE 1 END,
+          m.is_active DESC,
+          m.updated_at DESC
         LIMIT 1
     ");
     $stmt->execute([
@@ -337,6 +342,7 @@ try {
         ':rnns' => $playerNormNoSpaces,
         ':raw' => $player,
         ':rawns' => $playerRawNoSpaces,
+        ':preferredClanId' => $preferredClanId,
     ]);
     $member = $stmt->fetch();
     if (!$member) tracker_json(['ok' => false, 'error' => 'Player not found'], 404);
