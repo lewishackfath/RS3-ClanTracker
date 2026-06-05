@@ -6,11 +6,6 @@ const API = {
   clanOverview: "api/clan.php",
   player: "api/player.php",
   refreshPlayerXp: "api/refresh_member_data.php",
-
-  // Grand Exchange (official RS3 ItemDB proxy)
-  geSearch: "api/ge/search.php",
-  geItem: "api/ge/item.php",
-  geHistory: "api/ge/history.php",
 };
 
 /* ---------------- XP refresh helper ---------------- */
@@ -38,8 +33,6 @@ function getParams() {
   return {
     clan: (p.get("clan") || "").trim(),
     player: (p.get("player") || "").trim(),
-    ge: (p.get("ge") || "").trim(),
-    ge_item: (p.get("ge_item") || "").trim(),
   };
 }
 
@@ -47,8 +40,6 @@ function setQuery(params) {
   const url = new URL(window.location.href);
   url.searchParams.delete("clan");
   url.searchParams.delete("player");
-  url.searchParams.delete("ge");
-  url.searchParams.delete("ge_item");
   for (const [k, v] of Object.entries(params)) {
     if (v && String(v).trim()) url.searchParams.set(k, String(v).trim());
   }
@@ -60,13 +51,11 @@ function clearQuery() {
   const url = new URL(window.location.href);
   url.searchParams.delete("clan");
   url.searchParams.delete("player");
-  url.searchParams.delete("ge");
-  url.searchParams.delete("ge_item");
   window.history.pushState({}, "", url);
   render();
 }
 
-function show(el, yes) { el.classList.toggle("hidden", !yes); }
+function show(el, yes) { if (el) el.classList.toggle("hidden", !yes); }
 function normalise(v) { return String(v || "").trim(); }
 
 function debounce(fn, delay = 250) {
@@ -1390,48 +1379,16 @@ async function loadPlayer(rsn, period) {
 
 /* ---------------- Render views ---------------- */
 function render() {
-  const { clan, player, ge, ge_item } = getParams();
+  const { clan, player } = getParams();
 
   const landing = qs("landingCard");
-    const geHomeCard = qs("geHomeCard");
-const viewClan = qs("viewClan");
+  const viewClan = qs("viewClan");
   const viewPlayer = qs("viewPlayer");
-  const viewGeSearch = qs("viewGeSearch");
-  const viewGeItem = qs("viewGeItem");
   const notice = qs("notice");
-
-  if (ge_item) {
-    show(landing, false);
-    
-    if (geHomeCard) show(geHomeCard, false);
-show(viewClan, false);
-    if (geHomeCard) show(geHomeCard, false);
-    show(viewPlayer, false);
-    show(viewGeSearch, false);
-    show(viewGeItem, true);
-    loadGeItem(ge_item);
-    return;
-  }
-
-  if (ge) {
-    show(landing, false);
-    
-    if (geHomeCard) show(geHomeCard, false);
-show(viewClan, false);
-    show(viewPlayer, false);
-    show(viewGeItem, false);
-    show(viewGeSearch, true);
-    focusGeSearch();
-    return;
-  }
 
   if (player) {
     show(landing, false);
-    
-    if (geHomeCard) show(geHomeCard, false);
-show(viewClan, false);
-    show(viewGeSearch, false);
-    show(viewGeItem, false);
+    show(viewClan, false);
     show(viewPlayer, true);
     loadPlayer(player, selectedXpPeriod);
     return;
@@ -1439,11 +1396,7 @@ show(viewClan, false);
 
   if (clan) {
     show(landing, false);
-    
-    if (geHomeCard) show(geHomeCard, false);
-show(viewPlayer, false);
-    show(viewGeSearch, false);
-    show(viewGeItem, false);
+    show(viewPlayer, false);
     show(viewClan, true);
     loadClanOverview(clan, selectedClanXpPeriod);
     return;
@@ -1451,13 +1404,8 @@ show(viewPlayer, false);
 
   show(viewClan, false);
   show(viewPlayer, false);
-  show(viewGeSearch, false);
-  show(viewGeItem, false);
   show(landing, true);
-  
-  if (geHomeCard) show(geHomeCard, true);
-notice.textContent = "Tip: start typing to search, or paste a link with ?clan=, ?player=, or ?ge_item=.";
-  notice.textContent = "Tip: start typing to search, or paste a clan key / RSN.";
+  if (notice) notice.textContent = "Tip: start typing to search, or paste a clan key / RSN.";
 }
 
 /* ---------------- Typeahead component + wiring ---------------- */
@@ -1568,347 +1516,63 @@ async function searchPlayers(q) {
 }
 
 
-async function searchGeItems(q) {
-  const data = await fetchJson(`${API.geSearch}?q=${encodeURIComponent(q)}&limit=10`);
-  // Our GE API returns: { ok:true, items:[...] }
-  if (data && data.ok && Array.isArray(data.items)) return data.items;
-  return [];
-}
-
-function formatGp(n) {
-  const x = Number(n);
-  if (!isFinite(x)) return "—";
-  if (x >= 1_000_000_000) return (x / 1_000_000_000).toFixed(2).replace(/\.00$/, "") + "b";
-  if (x >= 1_000_000) return (x / 1_000_000).toFixed(2).replace(/\.00$/, "") + "m";
-  if (x >= 1_000) return (x / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
-  return String(Math.round(x));
-}
-
-
-/* ---------------- GE chart (canvas, no deps) ---------------- */
-
-function renderGeChart(graph) {
-  const canvas = qs("geChart");
-  const meta = qs("geChartMeta");
-  if (!canvas || !graph) return;
-
-  const dailyObj = graph.daily || {};
-  const avgObj = graph.average || {};
-
-  const tsSet = new Set([].concat(Object.keys(dailyObj), Object.keys(avgObj)));
-  const ts = Array.from(tsSet).map(n => Number(n)).filter(n => Number.isFinite(n)).sort((a,b)=>a-b);
-
-  if (!ts.length) {
-    if (meta) meta.textContent = "No chart data available.";
-    const ctx0 = canvas.getContext("2d");
-    if (ctx0) ctx0.clearRect(0,0,canvas.width,canvas.height);
-    return;
-  }
-
-  const daily = ts.map(t => [t, dailyObj[String(t)] ?? null])
-    .filter(p => p[1] !== null)
-    .map(([t,y]) => [t, Number(y)])
-    .filter(([,y]) => Number.isFinite(y));
-
-  const avg = ts.map(t => [t, avgObj[String(t)] ?? null])
-    .filter(p => p[1] !== null)
-    .map(([t,y]) => [t, Number(y)])
-    .filter(([,y]) => Number.isFinite(y));
-
-  const seriesForBounds = daily.length ? daily : avg;
-  if (!seriesForBounds.length) {
-    if (meta) meta.textContent = "No chart data available.";
-    return;
-  }
-
-  const cssW = canvas.clientWidth || (canvas.parentElement ? canvas.parentElement.clientWidth : 900);
-  const cssH = Number(canvas.getAttribute("height") || 260);
-  const dpr = window.devicePixelRatio || 1;
-
-  canvas.width = Math.round(cssW * dpr);
-  canvas.height = Math.round(cssH * dpr);
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssW, cssH);
-
-  const padL = 56, padR = 14, padT = 14, padB = 26;
-  const w = cssW - padL - padR;
-  const h = cssH - padT - padB;
-
-  const minX = seriesForBounds[0][0];
-  const maxX = seriesForBounds[seriesForBounds.length - 1][0];
-
-  let minY = Infinity, maxY = -Infinity;
-  for (const [,y] of seriesForBounds) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
-  if (minY === maxY) { minY *= 0.9; maxY *= 1.1; }
-
-  const xPx = (t) => padL + ((t - minX) / (maxX - minX || 1)) * w;
-  const yPx = (y) => padT + (1 - ((y - minY) / (maxY - minY || 1))) * h;
-
-  // Grid
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-
-  const yTicks = 4;
-  for (let i=0;i<=yTicks;i++){
-    const t = i / yTicks;
-    const y = padT + t*h;
-    const yVal = minY + (1 - t) * (maxY - minY);
-    ctx.beginPath();
-    ctx.moveTo(padL, y);
-    ctx.lineTo(padL + w, y);
-    ctx.stroke();
-    ctx.fillText(formatGp(yVal) + " gp", 8, y + 4);
-  }
-
-  const fmtDate = (ms) => {
-    const d = new Date(ms);
-    return d.toLocaleDateString("en-AU", { day: "2-digit", month: "short" });
-  };
-
-  ctx.fillText(fmtDate(minX), padL, padT + h + 18);
-  const endLbl = fmtDate(maxX);
-  const endW = ctx.measureText(endLbl).width;
-  ctx.fillText(endLbl, padL + w - endW, padT + h + 18);
-
-  function drawLine(points, stroke) {
-    if (!points || !points.length) return;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    let first = true;
-    for (const [t,y] of points) {
-      const x = xPx(t);
-      const py = yPx(y);
-      if (first) { ctx.moveTo(x, py); first = false; }
-      else ctx.lineTo(x, py);
-    }
-    ctx.stroke();
-  }
-
-  // Average then daily so daily sits on top
-  drawLine(avg, "rgba(120,200,255,0.9)");
-  drawLine(daily, "rgba(255,220,120,0.9)");
-
-  const first = seriesForBounds[0][1];
-  const last = seriesForBounds[seriesForBounds.length - 1][1];
-  const change = last - first;
-  const pct = first ? (change / first) * 100 : 0;
-  if (meta) meta.textContent = `Latest: ${formatGp(last)} gp • Change: ${formatGp(change)} gp (${pct.toFixed(1)}%) • Daily (gold) / Average (blue)`;
-}
-
-function focusGeSearch() {
-  // Prefer the dedicated GE search page input if present; otherwise the landing input.
-  const el = qs("geSearchInput") || qs("geQuery");
-  if (el) setTimeout(() => el.focus(), 0);
-}
-
-async function loadGeItem(itemIdRaw) {
-  const itemId = String(itemIdRaw || "").trim();
-  const titleEl = qs("geItemTitle");
-  const subEl = qs("geItemSubtitle");
-  const iconEl = qs("geItemIcon");
-  const statsEl = qs("geItemStats");
-  const histStatus = qs("geHistoryStatus");
-  const histList = qs("geHistoryList");
-  const errEl = qs("geItemError");
-
-  if (errEl) errEl.textContent = "";
-  if (titleEl) titleEl.textContent = "Loading…";
-  if (subEl) subEl.textContent = "";
-  if (iconEl) { iconEl.removeAttribute("src"); iconEl.style.display = "none"; iconEl.alt = ""; }
-  if (statsEl) statsEl.innerHTML = "";
-  if (histStatus) histStatus.textContent = "Loading history…";
-  if (histList) histList.innerHTML = "";
-
-  const detail = await fetchJson(`${API.geItem}?item_id=${encodeURIComponent(itemId)}`);
-  if (!detail || !detail.ok) {
-    if (errEl) errEl.textContent = detail?.error ? `GE error: ${detail.error}` : "GE error: failed to load item.";
-    if (histStatus) histStatus.textContent = "";
-    return;
-  }
-
-  const item = detail.detail?.item || detail.item || detail.detail?.item; // tolerate shapes
-  const name = item?.name || `Item ${itemId}`;
-  const desc = item?.description || item?.examine || "";
-  const current = item?.current?.price ?? item?.current?.value ?? null;
-
-  if (titleEl) titleEl.textContent = name;
-  if (subEl) subEl.textContent = desc ? desc : (current ? `Guide price: ${current}` : "");
-
-  // Item icon
-  const iconUrl = item?.icon_large || item?.icon || item?.iconLarge || item?.iconLargeUrl || item?.icon_url || item?.icon_large_url || null;
-  if (iconEl && iconUrl) {
-    iconEl.src = String(iconUrl);
-    iconEl.alt = name;
-    iconEl.style.display = "";
-  }
-
-  // Trend blocks (today/30/90/180 if present)
-  const blocks = [];
-  const cur = item?.current?.price ?? item?.current ?? null;
-  if (item?.current?.price) {
-    blocks.push(["Guide price", item.current.price]);
-  } else if (typeof item?.current === "string") {
-    blocks.push(["Guide price", item.current]);
-  }
-
-  const trendKeys = ["today", "day30", "day90", "day180"];
-  for (const k of trendKeys) {
-    const t = item?.[k];
-    if (t && typeof t === "object") {
-      const price = t.price ?? "";
-      const trend = t.trend ?? "";
-      const label = k === "day30" ? "30 days" : k === "day90" ? "90 days" : k === "day180" ? "180 days" : "Today";
-      blocks.push([label, `${trend}${price ? ` (${price})` : ""}`.trim()]);
-    }
-  }
-
-  if (statsEl && blocks.length) {
-    statsEl.innerHTML = blocks.map(([label, value]) => `
-      <div class="statCard">
-        <div class="statLabel">${escapeHtml(label)}</div>
-        <div class="statValue">${escapeHtml(String(value))}</div>
-      </div>
-    `).join("");
-  }
-
-  // History
-  const hist = await fetchJson(`${API.geHistory}?item_id=${encodeURIComponent(itemId)}`);
-  if (!hist || !hist.ok) {
-    if (histStatus) histStatus.textContent = "";
-    if (errEl) errEl.textContent = hist?.error ? `GE error: ${hist.error}` : "GE error: failed to load history.";
-    return;
-  }
-
-  const daily = hist.graph?.daily || {};
-  const entries = Object.entries(daily)
-    .map(([ts, price]) => [Number(ts), Number(price)])
-    .filter(([ts, price]) => isFinite(ts) && isFinite(price))
-    .sort((a, b) => a[0] - b[0]);
-
-  // Draw chart (if present on page)
-  try { renderGeChart(hist.graph); } catch (e) { /* ignore */ }
-
-  if (!entries.length) {
-    if (histStatus) histStatus.textContent = "No history available.";
-    return;
-  }
-
-  // Render last 14 points as a simple list (keeps it lightweight)
-  const last = entries.slice(-14).reverse(); // newest -> oldest for display
-  if (histStatus) histStatus.textContent = `Showing latest ${last.length} daily points (newest first, of ${entries.length}).`;
-
-  if (histList) {
-    histList.innerHTML = last.map(([ts, price]) => {
-      const d = new Date(ts);
-      const label = isFinite(d.getTime()) ? d.toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "2-digit" }) : String(ts);
-      return `
-        <div class="skillRow">
-          <div class="skillName">${escapeHtml(label)}</div>
-          <div class="skillVal">${escapeHtml(formatGp(price))} gp</div>
-        </div>
-      `;
-    }).join("");
-  }
-}
-
 function wireUI() {
   const clanKey = qs("clanKey");
   const playerRsn = qs("playerRsn");
 
-  createTypeahead({
-    inputEl: clanKey,
-    listEl: qs("clanList"),
-    fetchItems: searchClans,
-    renderItem: (c) => ({
-      primary: `${c.name || c.key}`,
-      secondary: c.key ? `Key: ${c.key}` : "",
-      badge: typeof c.members === "number" ? `${c.members} members` : "",
-      value: c.key || c.name || "",
-    }),
-    onSelectValue: (value) => setQuery({ clan: value }),
-  });
-
-  createTypeahead({
-    inputEl: playerRsn,
-    listEl: qs("playerList"),
-    fetchItems: searchPlayers,
-    renderItem: (p) => ({
-      primary: p.rsn,
-      secondary: p.clan ? `Clan: ${p.clan}` : "",
-      badge: p.status ? p.status : "",
-      value: p.rsn || "",
-    }),
-    onSelectValue: (value) => setQuery({ player: value }),
-  });
-
-  // Grand Exchange (landing + dedicated page)
-  const geQuery = qs("geQuery");
-  if (geQuery) {
+  if (clanKey && qs("clanList")) {
     createTypeahead({
-      inputEl: geQuery,
-      listEl: qs("geList"),
-      minChars: 2,
-      maxItems: 10,
-      fetchItems: searchGeItems,
-      renderItem: (it) => ({
-        primary: it.name,
-        secondary: `Item ID: ${it.item_id}`,
-        badge: "",
-        value: it.name || "",
+      inputEl: clanKey,
+      listEl: qs("clanList"),
+      fetchItems: searchClans,
+      renderItem: (c) => ({
+        primary: `${c.name || c.key}`,
+        secondary: c.key ? `Key: ${c.key}` : "",
+        badge: typeof c.members === "number" ? `${c.members} members` : "",
+        value: c.key || c.name || "",
       }),
-      onSelectValue: () => {}, // unused
-      onSelectItem: (it) => setQuery({ ge_item: it.item_id }),
+      onSelectValue: (value) => setQuery({ clan: value }),
     });
   }
 
-  const geSearchInput = qs("geSearchInput");
-  if (geSearchInput) {
+  if (playerRsn && qs("playerList")) {
     createTypeahead({
-      inputEl: geSearchInput,
-      listEl: qs("geSearchList"),
-      minChars: 2,
-      maxItems: 12,
-      fetchItems: searchGeItems,
-      renderItem: (it) => ({
-        primary: it.name,
-        secondary: `Item ID: ${it.item_id}`,
-        badge: "",
-        value: it.name || "",
+      inputEl: playerRsn,
+      listEl: qs("playerList"),
+      fetchItems: searchPlayers,
+      renderItem: (p) => ({
+        primary: p.rsn,
+        secondary: p.clan ? `Clan: ${p.clan}` : "",
+        badge: p.status ? p.status : "",
+        value: p.rsn || "",
       }),
-      onSelectValue: () => {},
-      onSelectItem: (it) => setQuery({ ge_item: it.item_id }),
+      onSelectValue: (value) => setQuery({ player: value }),
     });
   }
 
-  qs("btnClan").addEventListener("click", () => {
-    const v = normalise(clanKey.value);
-    if (!v) return qs("notice").textContent = "Please enter a clan key.";
+  qs("btnClan")?.addEventListener("click", () => {
+    const v = normalise(clanKey?.value);
+    if (!v) {
+      const notice = qs("notice");
+      if (notice) notice.textContent = "Please enter a clan key.";
+      return;
+    }
     setQuery({ clan: v });
   });
 
-  qs("btnPlayer").addEventListener("click", () => {
-    const v = normalise(playerRsn.value);
-    if (!v) return qs("notice").textContent = "Please enter a player RSN.";
+  qs("btnPlayer")?.addEventListener("click", () => {
+    const v = normalise(playerRsn?.value);
+    if (!v) {
+      const notice = qs("notice");
+      if (notice) notice.textContent = "Please enter a player RSN.";
+      return;
+    }
     setQuery({ player: v });
-
-  const btnGe = qs("btnGe");
-  if (btnGe) {
-    btnGe.addEventListener("click", () => setQuery({ ge: "1" }));
-  }
-
   });
 
-  qs("backFromClan").addEventListener("click", clearQuery);
-  qs("backFromPlayer").addEventListener("click", clearQuery);
-
-  qs("memberSearch").addEventListener("input", debounce(renderMemberList, 120));
+  qs("backFromClan")?.addEventListener("click", clearQuery);
+  qs("backFromPlayer")?.addEventListener("click", clearQuery);
+  qs("memberSearch")?.addEventListener("input", debounce(renderMemberList, 120));
 
   const rankSel = qs("rankFilter");
   if (rankSel) {
@@ -1919,10 +1583,10 @@ function wireUI() {
     });
   }
 
-  document.querySelectorAll(".segBtn").forEach(btn => btn.addEventListener("click", () => setFilter(btn.dataset.filter)));
+  document.querySelectorAll(".segBtn[data-filter]").forEach(btn => {
+    btn.addEventListener("click", () => setFilter(btn.dataset.filter));
+  });
 
-    
-  // Clan XP tabs
   const clanXpTabs = qs("clanXpTabs");
   if (clanXpTabs) {
     clanXpTabs.querySelectorAll("button[data-xptab]").forEach(btn => {
@@ -1930,7 +1594,7 @@ function wireUI() {
     });
   }
 
-const clanXpSel = qs("clanXpPeriod");
+  const clanXpSel = qs("clanXpPeriod");
   if (clanXpSel) {
     clanXpSel.addEventListener("change", () => {
       const v = clanXpSel.value || "7d";
@@ -1938,14 +1602,10 @@ const clanXpSel = qs("clanXpPeriod");
       const { clan } = getParams();
       if (clan) loadClanOverview(clan, selectedClanXpPeriod);
     });
-
-  qs("backFromGeSearch")?.addEventListener("click", () => clearQuery());
-  qs("backFromGeItem")?.addEventListener("click", () => setQuery({ ge: "1" }));
-
   }
 
-qs("xpPeriod").addEventListener("change", () => {
-    const v = qs("xpPeriod").value || "7d";
+  qs("xpPeriod")?.addEventListener("change", () => {
+    const v = qs("xpPeriod")?.value || "7d";
     selectedXpPeriod = v;
     const { player } = getParams();
     if (player) loadPlayer(player, selectedXpPeriod);

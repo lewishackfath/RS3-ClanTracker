@@ -47,29 +47,11 @@ include __DIR__ . '/includes/menu.php';
           </div>
 
           <button id="btnPlayer" class="button" type="button">Open player</button>
-</div>
+        </div>
       </div>
 
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
     </section>
-
-    <!-- Grand Exchange (home) -->
-    <section class="card" id="geHomeCard">
-      <h2 class="h2">Grand Exchange</h2>
-      <p class="muted">Search items and view official guide price history.</p>
-      <div class="grid">
-        <div class="panel">
-          <h2 class="h2">Grand Exchange</h2>
-          <label class="label" for="geQuery">Item</label>
-
-          <div class="typeahead">
-            <input id="geQuery" class="input" type="text" autocomplete="off"
-                   placeholder="Type to search items…" aria-expanded="false" aria-controls="geList" />
-            <div id="geList" class="dropdown hidden" role="listbox" aria-label="Item results"></div>
-          </div>
-      </div>
-    </section>
-
 
     <!-- Clan view -->
     <section class="card hidden" id="viewClan">
@@ -210,60 +192,6 @@ include __DIR__ . '/includes/menu.php';
 
       <div class="muted" id="playerError" style="margin-top:10px;"></div>
       <div class="lastPull muted" id="playerLastPull"></div>
-    </section>
-
-    <!-- Grand Exchange search -->
-    <section class="card hidden" id="viewGeSearch">
-      <div class="row">
-        <div>
-          <h2 class="h2">Grand Exchange</h2>
-          <p class="muted">Search items and view official guide price history.</p>
-        </div>
-        <button class="button secondary" type="button" id="backFromGeSearch">Back</button>
-      </div>
-
-      <div class="panel" style="margin-top:14px;">
-        <label class="label" for="geSearchInput">Item search</label>
-        <div class="typeahead">
-          <input id="geSearchInput" class="input" type="text" autocomplete="off"
-                 placeholder="Start typing an item name…" aria-expanded="false" aria-controls="geSearchList" />
-          <div id="geSearchList" class="dropdown hidden" role="listbox" aria-label="Item results"></div>
-        </div>
-        <div class="muted" id="geSearchHint" style="margin-top:10px;"></div>
-      </div>
-    </section>
-
-    <!-- Grand Exchange item -->
-    <section class="card hidden" id="viewGeItem">
-      <div class="row">
-        <div>
-          <div style="display:flex; gap:12px; align-items:center;">
-            <img id="geItemIcon" alt="" style="width:48px; height:48px; image-rendering:auto;" />
-            <div>
-              <h2 class="h2" id="geItemTitle">Item</h2>
-              
-            </div>
-          </div>
-          <p class="muted" id="geItemSubtitle"></p>
-        </div>
-        <button class="button secondary" type="button" id="backFromGeItem">Back</button>
-      </div>
-
-      <div class="statsGrid" id="geItemStats" style="margin-top:14px;"></div>
-
-      <div class="panel" style="margin-top:14px;">
-        <h3 class="h2" style="margin-bottom:8px;">Price history chart</h3>
-        <canvas id="geChart" height="260" style="width:100%; display:block;"></canvas>
-        <div class="muted" id="geChartMeta" style="margin-top:8px;"></div>
-      </div>
-
-<div class="panel" style="margin-top:14px;">
-        <h3 class="h2" style="margin-bottom:8px;">Price history (last ~180 days)</h3>
-        <div class="muted" id="geHistoryStatus"></div>
-        <div class="skillList" id="geHistoryList"></div>
-      </div>
-
-      <div class="muted" id="geItemError" style="margin-top:10px;"></div>
     </section>
   </main>
 
