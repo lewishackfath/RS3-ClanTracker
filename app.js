@@ -1194,30 +1194,26 @@ function renderPlayerStatBlock() {
   const statRows = [
     { label: "Combat Level", value: calculateCombatLevelFromCurrentSkills(), icon: "combat" },
     { label: "Total Level", value: getTotalLevelForPlayer(), icon: "total_level" },
-    { label: "RuneScore", value: scoreRowValue(summary.runescore), note: scoreRowRankNote(summary.runescore), icon: "runescore" },
+    { label: "RuneScore", value: scoreRowValue(summary.runescore), icon: "runescore" },
     { label: "Quest Points", value: getQuestPointsForPlayer(), icon: "quest_points" },
-    { label: "Easy Clues", value: scoreRowValue(clues.easy), note: scoreRowRankNote(clues.easy), icon: "clue_easy" },
-    { label: "Medium Clues", value: scoreRowValue(clues.medium), note: scoreRowRankNote(clues.medium), icon: "clue_medium" },
-    { label: "Hard Clues", value: scoreRowValue(clues.hard), note: scoreRowRankNote(clues.hard), icon: "clue_hard" },
-    { label: "Elite Clues", value: scoreRowValue(clues.elite), note: scoreRowRankNote(clues.elite), icon: "clue_elite" },
-    { label: "Master Clues", value: scoreRowValue(clues.master), note: scoreRowRankNote(clues.master), icon: "clue_master" },
+    { label: "Easy Clues", value: scoreRowValue(clues.easy), icon: "clue_easy" },
+    { label: "Medium Clues", value: scoreRowValue(clues.medium), icon: "clue_medium" },
+    { label: "Hard Clues", value: scoreRowValue(clues.hard), icon: "clue_hard" },
+    { label: "Elite Clues", value: scoreRowValue(clues.elite), icon: "clue_elite" },
+    { label: "Master Clues", value: scoreRowValue(clues.master), icon: "clue_master" },
   ];
 
-  block.innerHTML = statRows.map(row => {
-    const note = row.note ? `<div class="playerStatNote">${escapeHtml(row.note)}</div>` : "";
-    return `
-      <div class="playerStatTile">
-        <div class="playerStatIconWrap">
-          <img class="playerStatIcon" src="${escapeHtml(statIconPath(row.icon))}" alt="" />
-        </div>
-        <div class="playerStatText">
-          <div class="playerStatLabel">${escapeHtml(row.label)}</div>
-          <div class="playerStatValue">${formatNumber(row.value)}</div>
-          ${note}
-        </div>
+  block.innerHTML = statRows.map(row => `
+    <div class="playerStatTile">
+      <div class="playerStatIconWrap">
+        <img class="playerStatIcon" src="${escapeHtml(statIconPath(row.icon))}" alt="" />
       </div>
-    `;
-  }).join("");
+      <div class="playerStatText">
+        <div class="playerStatLabel">${escapeHtml(row.label)}</div>
+        <div class="playerStatValue">${formatNumber(row.value)}</div>
+      </div>
+    </div>
+  `).join("");
 }
 
 function renderPlayerStatBlockLoading() {
