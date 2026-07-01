@@ -812,3 +812,26 @@ li { margin: 0 0 10px; }
   .navLinks { display: none; }
   .hamburgerBtn { display: flex; }
 }
+
+/* HiScores Lite cards */
+.hiscoreRow {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hiscoreRow .skillName {
+  flex: 1 1 160px;
+}
+.hiscoreRow .skillXp {
+  margin-left: auto;
+  font-size: 1.02rem;
+}
+.hiscoreRank {
+  min-width: 110px;
+  margin-left: 10px;
+  text-align: right;
+  color: var(--tile-text-muted) !important;
+}
+@media (max-width: 560px) {
+  .hiscoreRow .skillXp { margin-left: 0; }
+  .hiscoreRank { min-width: auto; margin-left: 0; text-align: left; }
+}

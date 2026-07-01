@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=202607010001" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -169,6 +169,12 @@ include __DIR__ . '/includes/menu.php';
           <div class="muted" id="questStatus" style="margin-top:6px;"></div>
           <div class="skillList" id="questList" style="margin-top:8px;"></div>
         </div>
+
+        <div class="panel" id="hiscoresPanel">
+          <h3 class="h2" style="margin-bottom:8px;">HiScores Lite</h3>
+          <div class="muted" id="hiscoreMeta">—</div>
+          <div class="skillList" id="hiscoreList" style="margin-top:8px;"></div>
+        </div>
       </div>
 
       <div class="muted" id="playerError" style="margin-top:10px;"></div>
@@ -182,6 +188,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202606050001"></script>
+  <script src="./app.js?v=202607010001"></script>
 </body>
 </html>

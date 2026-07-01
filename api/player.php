@@ -290,6 +290,412 @@ function tracker_to_local(?string $utcDt, string $tzName): ?string {
     }
 }
 
+
+function tracker_cache_ttl_seconds(string $envKey, int $defaultSeconds): int {
+    $raw = getenv($envKey);
+    if ($raw === false || trim((string)$raw) === '') return $defaultSeconds;
+    $n = (int)$raw;
+    return $n > 0 ? $n : $defaultSeconds;
+}
+
+function tracker_utc_now_string(): string {
+    return gmdate('Y-m-d H:i:s');
+}
+
+function tracker_is_cache_fresh(?string $updatedAtUtc, int $ttlSeconds): bool {
+    if (!$updatedAtUtc) return false;
+    $ts = strtotime($updatedAtUtc . ' UTC');
+    if ($ts === false || $ts <= 0) return false;
+    return (time() - $ts) < $ttlSeconds;
+}
+
+function tracker_cache_table_name(string $cacheName): string {
+    $allowed = [
+        'hiscores_lite' => 'member_hiscores_lite',
+        'rm_quests' => 'member_rm_quests',
+    ];
+    if (!isset($allowed[$cacheName])) {
+        throw new InvalidArgumentException('Unknown cache table');
+    }
+    return $allowed[$cacheName];
+}
+
+function tracker_read_json_cache(PDO $pdo, string $cacheName, int $memberId, int $clanId): ?array {
+    $table = tracker_cache_table_name($cacheName);
+    $stmt = $pdo->prepare("\n        SELECT json_data, updated_at\n        FROM {$table}\n        WHERE member_id = :member_id\n          AND member_clan_id = :member_clan_id\n        LIMIT 1\n    ");
+    $stmt->execute([
+        ':member_id' => $memberId,
+        ':member_clan_id' => $clanId,
+    ]);
+    $row = $stmt->fetch();
+    if (!$row) return null;
+
+    $decoded = json_decode((string)($row['json_data'] ?? ''), true);
+    if (!is_array($decoded)) return null;
+
+    return [
+        'data' => $decoded,
+        'updated_at' => $row['updated_at'] ?? null,
+    ];
+}
+
+function tracker_write_json_cache(PDO $pdo, string $cacheName, int $memberId, int $clanId, array $payload): void {
+    $table = tracker_cache_table_name($cacheName);
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        throw new RuntimeException('Failed to encode JSON cache payload');
+    }
+
+    $stmt = $pdo->prepare("\n        INSERT INTO {$table}\n            (member_id, member_clan_id, json_data, updated_at)\n        VALUES\n            (:member_id, :member_clan_id, :json_data, UTC_TIMESTAMP())\n        ON DUPLICATE KEY UPDATE\n            json_data = VALUES(json_data),\n            updated_at = VALUES(updated_at)\n    ");
+    $stmt->execute([
+        ':member_id' => $memberId,
+        ':member_clan_id' => $clanId,
+        ':json_data' => $json,
+    ]);
+}
+
+/**
+ * Fetch and cache RuneMetrics quests for the player page.
+ * The returned payload is already slimmed for the frontend, but the latest
+ * source response is still represented in the summary/error fields.
+ */
+function tracker_get_cached_quests(PDO $pdo, int $memberId, int $clanId, string $rsn): array {
+    $ttl = tracker_cache_ttl_seconds('TRACKER_RM_QUESTS_TTL_SECONDS', 6 * 60 * 60);
+    $cached = tracker_read_json_cache($pdo, 'rm_quests', $memberId, $clanId);
+
+    if ($cached && tracker_is_cache_fresh($cached['updated_at'] ?? null, $ttl)) {
+        $payload = $cached['data'];
+        $payload['cache'] = [
+            'hit' => true,
+            'stale' => false,
+            'updated_at_utc' => $cached['updated_at'] ?? null,
+            'ttl_seconds' => $ttl,
+        ];
+        return $payload;
+    }
+
+    try {
+        $q = get_quest_data($rsn);
+        $quests = ($q['ok'] && isset($q['data']['quests']) && is_array($q['data']['quests'])) ? $q['data']['quests'] : [];
+
+        $totals = [
+            'total' => 0,
+            'completed' => 0,
+            'started' => 0,
+            'not_started' => 0,
+            'quest_points_completed' => 0,
+        ];
+
+        $questsSlim = [];
+        foreach ($quests as $quest) {
+            if (!is_array($quest)) continue;
+
+            $title = (string)($quest['title'] ?? '');
+            $statusRaw = (string)($quest['status'] ?? '');
+            $status = strtoupper($statusRaw);
+            $qp = (int)($quest['questPoints'] ?? 0);
+
+            $totals['total']++;
+
+            if ($status === 'COMPLETED') {
+                $totals['completed']++;
+                $totals['quest_points_completed'] += $qp;
+            } elseif ($status === 'STARTED' || $status === 'IN_PROGRESS') {
+                $totals['started']++;
+            } else {
+                $totals['not_started']++;
+            }
+
+            $questsSlim[] = [
+                'title' => $title,
+                'status' => $statusRaw,
+                'difficulty' => $quest['difficulty'] ?? null,
+                'members' => isset($quest['members']) ? (bool)$quest['members'] : null,
+                'questPoints' => $quest['questPoints'] ?? null,
+            ];
+        }
+
+        $payload = [
+            'ok' => (bool)$q['ok'],
+            'http_code' => (int)($q['http_code'] ?? 0),
+            'error' => $q['error'] ?? null,
+            'hint' => $q['hint'] ?? null,
+            'loggedIn' => $q['data']['loggedIn'] ?? null,
+            'rsn' => $rsn,
+            'source' => 'runemetrics_quests',
+            'fetched_at_utc' => tracker_utc_now_string(),
+            'totals' => $totals,
+            'quests' => $questsSlim,
+        ];
+
+        // Store successful data, and also store structured API errors so the
+        // player page does not repeatedly hammer a failing endpoint.
+        tracker_write_json_cache($pdo, 'rm_quests', $memberId, $clanId, $payload);
+        $payload['cache'] = [
+            'hit' => false,
+            'stale' => false,
+            'updated_at_utc' => tracker_utc_now_string(),
+            'ttl_seconds' => $ttl,
+        ];
+        return $payload;
+    } catch (Throwable $e) {
+        if ($cached) {
+            $payload = $cached['data'];
+            $payload['cache'] = [
+                'hit' => true,
+                'stale' => true,
+                'updated_at_utc' => $cached['updated_at'] ?? null,
+                'ttl_seconds' => $ttl,
+                'refresh_error' => $e->getMessage(),
+            ];
+            return $payload;
+        }
+
+        return [
+            'ok' => false,
+            'http_code' => 0,
+            'error' => 'Quest fetch failed',
+            'hint' => $e->getMessage(),
+            'loggedIn' => null,
+            'rsn' => $rsn,
+            'source' => 'runemetrics_quests',
+            'fetched_at_utc' => tracker_utc_now_string(),
+            'totals' => null,
+            'quests' => [],
+            'cache' => [
+                'hit' => false,
+                'stale' => false,
+                'updated_at_utc' => null,
+                'ttl_seconds' => $ttl,
+            ],
+        ];
+    }
+}
+
+function tracker_hiscore_misc_definitions(): array {
+    return [
+        30 => ['key' => 'bounty_hunter', 'label' => 'Bounty Hunter', 'category' => 'legacy'],
+        31 => ['key' => 'bounty_hunter_rogues', 'label' => 'Bounty Hunter Rogues', 'category' => 'legacy'],
+        32 => ['key' => 'dominion_tower', 'label' => 'Dominion Tower', 'category' => 'legacy'],
+        33 => ['key' => 'the_crucible', 'label' => 'The Crucible', 'category' => 'legacy'],
+        34 => ['key' => 'castle_wars_games', 'label' => 'Castle Wars Games', 'category' => 'legacy'],
+        35 => ['key' => 'barbarian_assault_attackers', 'label' => 'Barbarian Assault Attackers', 'category' => 'legacy'],
+        36 => ['key' => 'barbarian_assault_defenders', 'label' => 'Barbarian Assault Defenders', 'category' => 'legacy'],
+        37 => ['key' => 'barbarian_assault_collectors', 'label' => 'Barbarian Assault Collectors', 'category' => 'legacy'],
+        38 => ['key' => 'barbarian_assault_healers', 'label' => 'Barbarian Assault Healers', 'category' => 'legacy'],
+        39 => ['key' => 'duel_tournament', 'label' => 'Duel Tournament', 'category' => 'legacy'],
+        40 => ['key' => 'mobilising_armies', 'label' => 'Mobilising Armies', 'category' => 'legacy'],
+        41 => ['key' => 'conquest', 'label' => 'Conquest', 'category' => 'legacy'],
+        42 => ['key' => 'fist_of_guthix', 'label' => 'Fist of Guthix', 'category' => 'legacy'],
+        43 => ['key' => 'gielinor_games_athletics', 'label' => 'Gielinor Games Athletics', 'category' => 'legacy'],
+        44 => ['key' => 'gielinor_games_resource_race', 'label' => 'Gielinor Games Resource Race', 'category' => 'legacy'],
+        45 => ['key' => 'world_event_2_armadyl_lifetime', 'label' => 'WE2 Armadyl Lifetime Contribution', 'category' => 'legacy'],
+        46 => ['key' => 'world_event_2_bandos_lifetime', 'label' => 'WE2 Bandos Lifetime Contribution', 'category' => 'legacy'],
+        47 => ['key' => 'world_event_2_armadyl_pvp', 'label' => 'WE2 Armadyl PvP Kills', 'category' => 'legacy'],
+        48 => ['key' => 'world_event_2_bandos_pvp', 'label' => 'WE2 Bandos PvP Kills', 'category' => 'legacy'],
+        49 => ['key' => 'heist_guard_level', 'label' => 'Heist Guard Level', 'category' => 'legacy'],
+        50 => ['key' => 'heist_robber_level', 'label' => 'Heist Robber Level', 'category' => 'legacy'],
+        51 => ['key' => 'cabbage_facepunch_bonanza', 'label' => 'Cabbage Facepunch Bonanza', 'category' => 'legacy'],
+        52 => ['key' => 'april_fools_2015_cow_tipping', 'label' => 'AF15 Cow Tipping', 'category' => 'legacy'],
+        53 => ['key' => 'april_fools_2015_rats', 'label' => 'AF15 Rats Killed', 'category' => 'legacy'],
+        54 => ['key' => 'runescore', 'label' => 'RuneScore', 'category' => 'runescore'],
+        55 => ['key' => 'clue_easy', 'label' => 'Easy Clues', 'category' => 'clues'],
+        56 => ['key' => 'clue_medium', 'label' => 'Medium Clues', 'category' => 'clues'],
+        57 => ['key' => 'clue_hard', 'label' => 'Hard Clues', 'category' => 'clues'],
+        58 => ['key' => 'clue_elite', 'label' => 'Elite Clues', 'category' => 'clues'],
+        59 => ['key' => 'clue_master', 'label' => 'Master Clues', 'category' => 'clues'],
+        60 => ['key' => 'clue_total', 'label' => 'Total Clues', 'category' => 'clues'],
+    ];
+}
+
+function tracker_fetch_hiscores_lite_raw(string $rsn): array {
+    $rsn = trim($rsn);
+    if ($rsn === '') {
+        return ['ok' => false, 'http_code' => 0, 'raw' => '', 'error' => 'player required', 'hint' => null];
+    }
+
+    $apiName = preg_replace('/\s+/', '_', $rsn) ?? $rsn;
+    $url = 'https://secure.runescape.com/m=hiscore/index_lite.ws?player=' . rawurlencode($apiName);
+
+    $ch = curl_init($url);
+    if ($ch === false) {
+        return ['ok' => false, 'http_code' => 0, 'raw' => '', 'error' => 'curl_init failed', 'hint' => null];
+    }
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT => 12,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HTTPHEADER => [
+            'Accept: text/plain, */*',
+            'Cache-Control: no-cache',
+            'Pragma: no-cache',
+        ],
+        CURLOPT_USERAGENT => 'RS3-ClanTracker/1.0 (HiScores Lite cache)',
+    ]);
+
+    $raw = curl_exec($ch);
+    $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($raw === false || $raw === '') {
+        return ['ok' => false, 'http_code' => $http, 'raw' => '', 'error' => 'request failed', 'hint' => ($err ?: null)];
+    }
+
+    if ($http !== 200) {
+        return ['ok' => false, 'http_code' => $http, 'raw' => (string)$raw, 'error' => 'hiscores http ' . $http, 'hint' => substr((string)$raw, 0, 240)];
+    }
+
+    return ['ok' => true, 'http_code' => $http, 'raw' => (string)$raw, 'error' => null, 'hint' => null];
+}
+
+function tracker_parse_hiscores_lite(string $raw, string $rsn): array {
+    $rows = preg_split('/\r\n|\r|\n|\s+/', trim($raw));
+    if (!is_array($rows)) $rows = [];
+
+    $parsedRows = [];
+    $misc = [];
+    $defs = tracker_hiscore_misc_definitions();
+
+    foreach ($rows as $idx => $line) {
+        $line = trim((string)$line);
+        if ($line === '') continue;
+
+        $parts = array_map('trim', explode(',', $line));
+        $rank = isset($parts[0]) && is_numeric($parts[0]) ? (int)$parts[0] : -1;
+
+        if ($idx <= 29) {
+            $level = isset($parts[1]) && is_numeric($parts[1]) ? (int)$parts[1] : 0;
+            $xp = isset($parts[2]) && is_numeric($parts[2]) ? (int)$parts[2] : 0;
+            $parsedRows[] = [
+                'index' => $idx,
+                'kind' => 'skill',
+                'rank' => $rank,
+                'level' => $level,
+                'xp' => $xp,
+            ];
+            continue;
+        }
+
+        $score = isset($parts[1]) && is_numeric($parts[1]) ? (int)$parts[1] : 0;
+        $def = $defs[$idx] ?? ['key' => 'misc_' . $idx, 'label' => 'Misc ' . $idx, 'category' => 'misc'];
+        $row = [
+            'index' => $idx,
+            'kind' => 'misc',
+            'key' => $def['key'],
+            'label' => $def['label'],
+            'category' => $def['category'],
+            'rank' => $rank,
+            'score' => $score,
+            'ranked' => $rank > 0,
+        ];
+        $parsedRows[] = $row;
+        $misc[$def['key']] = $row;
+    }
+
+    $clues = [
+        'easy' => $misc['clue_easy'] ?? null,
+        'medium' => $misc['clue_medium'] ?? null,
+        'hard' => $misc['clue_hard'] ?? null,
+        'elite' => $misc['clue_elite'] ?? null,
+        'master' => $misc['clue_master'] ?? null,
+        'total' => $misc['clue_total'] ?? null,
+    ];
+
+    $totalScore = 0;
+    foreach (['easy', 'medium', 'hard', 'elite', 'master'] as $tier) {
+        if (is_array($clues[$tier] ?? null)) $totalScore += (int)$clues[$tier]['score'];
+    }
+
+    return [
+        'ok' => true,
+        'http_code' => 200,
+        'rsn' => $rsn,
+        'source' => 'rs3_hiscores_lite',
+        'fetched_at_utc' => tracker_utc_now_string(),
+        'row_count' => count($parsedRows),
+        'skills_ignored_for_ui' => true,
+        'misc' => $misc,
+        'summary' => [
+            'dominion_tower' => $misc['dominion_tower'] ?? null,
+            'runescore' => $misc['runescore'] ?? null,
+            'clues' => $clues,
+            'clues_total_from_tiers' => $totalScore,
+        ],
+        'rows' => $parsedRows,
+    ];
+}
+
+function tracker_get_cached_hiscores_lite(PDO $pdo, int $memberId, int $clanId, string $rsn): array {
+    $ttl = tracker_cache_ttl_seconds('TRACKER_HISCORES_LITE_TTL_SECONDS', 6 * 60 * 60);
+    $cached = tracker_read_json_cache($pdo, 'hiscores_lite', $memberId, $clanId);
+
+    if ($cached && tracker_is_cache_fresh($cached['updated_at'] ?? null, $ttl)) {
+        $payload = $cached['data'];
+        $payload['cache'] = [
+            'hit' => true,
+            'stale' => false,
+            'updated_at_utc' => $cached['updated_at'] ?? null,
+            'ttl_seconds' => $ttl,
+        ];
+        return $payload;
+    }
+
+    try {
+        $resp = tracker_fetch_hiscores_lite_raw($rsn);
+        if (!$resp['ok']) {
+            throw new RuntimeException((string)($resp['error'] ?? 'HiScores fetch failed'));
+        }
+
+        $payload = tracker_parse_hiscores_lite((string)$resp['raw'], $rsn);
+        $payload['http_code'] = (int)($resp['http_code'] ?? 200);
+        tracker_write_json_cache($pdo, 'hiscores_lite', $memberId, $clanId, $payload);
+
+        $payload['cache'] = [
+            'hit' => false,
+            'stale' => false,
+            'updated_at_utc' => tracker_utc_now_string(),
+            'ttl_seconds' => $ttl,
+        ];
+        return $payload;
+    } catch (Throwable $e) {
+        if ($cached) {
+            $payload = $cached['data'];
+            $payload['cache'] = [
+                'hit' => true,
+                'stale' => true,
+                'updated_at_utc' => $cached['updated_at'] ?? null,
+                'ttl_seconds' => $ttl,
+                'refresh_error' => $e->getMessage(),
+            ];
+            return $payload;
+        }
+
+        return [
+            'ok' => false,
+            'http_code' => 0,
+            'rsn' => $rsn,
+            'source' => 'rs3_hiscores_lite',
+            'fetched_at_utc' => tracker_utc_now_string(),
+            'error' => 'HiScores Lite fetch failed',
+            'hint' => $e->getMessage(),
+            'misc' => [],
+            'summary' => null,
+            'rows' => [],
+            'cache' => [
+                'hit' => false,
+                'stale' => false,
+                'updated_at_utc' => null,
+                'ttl_seconds' => $ttl,
+            ],
+        ];
+    }
+}
+
 try {
     $player = tracker_get_param('player', 64);
     if ($player === '') tracker_json(['ok' => false, 'error' => 'Missing player'], 400);
@@ -551,69 +957,14 @@ try {
     $privateSinceUtc = $member['private_since_utc'] ?? null;
     $privateSinceLocal = $privateSinceUtc ? tracker_to_local((string)$privateSinceUtc, (string)$week['timezone']) : null;
 
-    // ---- Live quests (do not store in DB) ----
-    $questsLive = null;
-    try {
-        $q = get_quest_data((string)$member['rsn']);
-        $quests = ($q['ok'] && isset($q['data']['quests']) && is_array($q['data']['quests'])) ? $q['data']['quests'] : [];
+    // ---- Cached RuneMetrics quests + HiScores Lite misc stats ----
+    $questsLive = tracker_get_cached_quests($pdo, $memberId, $clanId, (string)$member['rsn']);
+    $hiscoresLite = tracker_get_cached_hiscores_lite($pdo, $memberId, $clanId, (string)$member['rsn']);
 
-        $totals = [
-            'total' => 0,
-            'completed' => 0,
-            'started' => 0,
-            'not_started' => 0,
-            'quest_points_completed' => 0,
-        ];
-
-        $questsSlim = [];
-        foreach ($quests as $quest) {
-            if (!is_array($quest)) continue;
-
-            $title = (string)($quest['title'] ?? '');
-            $statusRaw = (string)($quest['status'] ?? '');
-            $status = strtoupper($statusRaw);
-            $qp = (int)($quest['questPoints'] ?? 0);
-
-            $totals['total']++;
-
-            if ($status === 'COMPLETED') {
-                $totals['completed']++;
-                $totals['quest_points_completed'] += $qp;
-            } elseif ($status === 'STARTED' || $status === 'IN_PROGRESS') {
-                $totals['started']++;
-            } else {
-                $totals['not_started']++;
-            }
-
-            $questsSlim[] = [
-                'title' => $title,
-                'status' => $statusRaw,
-                'difficulty' => $quest['difficulty'] ?? null,
-                'members' => isset($quest['members']) ? (bool)$quest['members'] : null,
-                'questPoints' => $quest['questPoints'] ?? null,
-            ];
-        }
-
-        $questsLive = [
-            'ok' => (bool)$q['ok'],
-            'http_code' => (int)($q['http_code'] ?? 0),
-            'error' => $q['error'] ?? null,
-            'hint' => $q['hint'] ?? null,
-            'loggedIn' => $q['data']['loggedIn'] ?? null,
-            'totals' => $totals,
-            'quests' => $questsSlim,
-        ];
-    } catch (Throwable $qe) {
-        $questsLive = [
-            'ok' => false,
-            'http_code' => 0,
-            'error' => 'Quest fetch failed',
-            'hint' => $qe->getMessage(),
-            'loggedIn' => null,
-            'totals' => null,
-            'quests' => [],
-        ];
-    }
+    $questsCacheUtc = $questsLive['cache']['updated_at_utc'] ?? null;
+    $hiscoresCacheUtc = $hiscoresLite['cache']['updated_at_utc'] ?? null;
+    $lastPullUtc = tracker_dtmax([$lastPolledUtc, $latestSnapUtc, $latestActivityUtc, $questsCacheUtc, $hiscoresCacheUtc]);
+    $lastPullLocal = tracker_to_local($lastPullUtc, (string)$week['timezone']);
 
 
 
@@ -650,6 +1001,7 @@ try {
             'rule_id' => $visitRow['rule_id'] ?? null,
         ],
         'quests' => $questsLive,
+        'hiscores_lite' => $hiscoresLite,
 
         'recent_activity' => array_map(static function(array $r) use ($week) {
             $actUtc = $r['activity_date_utc'] ?? null;
@@ -686,6 +1038,8 @@ try {
                 'last_poll_at_utc' => $lastPolledUtc ?: null,
                 'last_xp_snapshot_utc' => $latestSnapUtc ?: null,
                 'last_activity_utc' => $latestActivityUtc ?: null,
+                'last_rm_quests_utc' => $questsCacheUtc ?: null,
+                'last_hiscores_lite_utc' => $hiscoresCacheUtc ?: null,
             ],
         ],
     ]);

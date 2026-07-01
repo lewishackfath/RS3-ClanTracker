@@ -1244,6 +1244,91 @@ function renderQuests() {
 
 
 
+
+function renderHiscoresLite() {
+  const metaEl = qs("hiscoreMeta");
+  const listEl = qs("hiscoreList");
+  if (!metaEl || !listEl) return;
+
+  const h = playerData?.hiscores_lite;
+  if (!h) {
+    metaEl.textContent = "—";
+    listEl.innerHTML = "";
+    return;
+  }
+
+  if (!h.ok) {
+    const http = h.http_code ? ` (HTTP ${h.http_code})` : "";
+    metaEl.textContent = `Unable to load HiScores Lite${http}`;
+    listEl.innerHTML = h.hint ? `<div class="muted">${escapeHtml(String(h.hint))}</div>` : "";
+    return;
+  }
+
+  const cache = h.cache || {};
+  const updated = cache.updated_at_utc || h.fetched_at_utc || "";
+  const stale = cache.stale ? " • showing cached data" : "";
+  metaEl.textContent = updated ? `Updated: ${updated} UTC${stale}` : "HiScores Lite data";
+
+  const summary = h.summary || {};
+  const runescore = summary.runescore || null;
+  const clues = summary.clues || {};
+
+  const rows = [];
+
+  if (runescore) {
+    rows.push({
+      label: "RuneScore",
+      value: runescore.score,
+      rank: runescore.rank,
+      note: "Achievement points",
+    });
+  }
+
+  const tiers = [
+    ["Easy clues", clues.easy],
+    ["Medium clues", clues.medium],
+    ["Hard clues", clues.hard],
+    ["Elite clues", clues.elite],
+    ["Master clues", clues.master],
+  ];
+
+  const tierTotal = tiers.reduce((sum, [, row]) => sum + Number(row?.score || 0), 0);
+  const totalRow = clues.total || null;
+  rows.push({
+    label: "Total clues",
+    value: totalRow && Number(totalRow.score || 0) > 0 ? totalRow.score : tierTotal,
+    rank: totalRow?.rank ?? null,
+    note: "From tracked clue tiers",
+  });
+
+  for (const [label, row] of tiers) {
+    if (!row) continue;
+    rows.push({
+      label,
+      value: row.score,
+      rank: row.rank,
+      note: row.ranked ? "Ranked" : "Unranked",
+    });
+  }
+
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="muted">No RuneScore or clue data returned.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = rows.map(row => {
+    const rank = Number(row.rank);
+    const rankText = Number.isFinite(rank) && rank > 0 ? `Rank ${formatNumber(rank)}` : "Unranked";
+    return `
+      <div class="skillRow hiscoreRow">
+        <div class="skillName">${escapeHtml(row.label)}</div>
+        <div class="skillXp">${formatNumber(row.value)}</div>
+        <div class="skillVal hiscoreRank">${escapeHtml(rankText)}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 function renderPlayer() {
   if (!playerData || !playerData.ok) return;
 
@@ -1284,6 +1369,7 @@ function renderPlayer() {
   renderTopXpSkills();
 
   renderQuests();
+  renderHiscoresLite();
 
   // Activity log (icons + coloured rows)
   const activityList = qs("activityList");
@@ -1398,6 +1484,8 @@ async function loadPlayer(rsn, period) {
   if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";
   if (qs("questStatus")) qs("questStatus").textContent = "";
   if (qs("questList")) qs("questList").innerHTML = "";
+  if (qs("hiscoreMeta")) qs("hiscoreMeta").textContent = "Loading HiScores Lite...";
+  if (qs("hiscoreList")) qs("hiscoreList").innerHTML = "";
 
   const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}`;
   const data = await fetchJson(url);
