@@ -1107,9 +1107,9 @@ function renderQuests() {
   // Map status -> icon + colour (as requested)
   function statusInfo(statusRaw) {
     const s = String(statusRaw || "").toUpperCase();
-    if (s === "COMPLETED") return { key: "completed", icon: "✓", color: "green" };
-    if (s === "STARTED" || s === "IN_PROGRESS") return { key: "started", icon: "⚠", color: "orange" };
-    return { key: "not_started", icon: "✗", color: "red" };
+    if (s === "COMPLETED") return { key: "completed", icon: "✓" };
+    if (s === "STARTED" || s === "IN_PROGRESS") return { key: "started", icon: "⚠" };
+    return { key: "not_started", icon: "✗" };
   }
 
   // Difficulty mapping (RuneMetrics)
@@ -1181,8 +1181,8 @@ function renderQuests() {
 
       return `
         <div class="questRow skillRow">
-          <div class="skillName" style="font-weight:800; color:${st.color};">
-            ${escapeHtml(st.icon)} ${escapeHtml(title)}
+          <div class="skillName questTitle" style="font-weight:800;">
+            <span class="questStatusIcon ${escapeHtml(st.key)}" aria-hidden="true">${escapeHtml(st.icon)}</span>${escapeHtml(title)}
           </div>
           <div class="skillVal">${escapeHtml(rhs)}</div>
         </div>

@@ -1,7 +1,7 @@
 :root {
-  --ink: #2f2115;
-  --ink-soft: #5b4530;
-  --muted: #654d33;
+  --ink: #24170d;
+  --ink-soft: #3f2a18;
+  --muted: #4f351d;
   --parchment: #c7a76f;
   --parchment-light: #d8bd82;
   --parchment-dark: #97683a;
@@ -16,6 +16,15 @@
   --level: #3f8f5a;
   --quest: #7e5aa6;
   --text: var(--ink);
+  --link: #5a3118;
+  --link-hover: #2a170f;
+  --button-brown-top: #8f6834;
+  --button-brown-mid: #4f2f18;
+  --button-brown-bottom: #321c10;
+  --tile-text: #fff2c5;
+  --tile-text-soft: #ead8a0;
+  --tile-text-muted: #d8bf82;
+  --tile-border: rgba(246, 222, 159, 0.34);
   --border: rgba(84, 47, 24, 0.28);
   --focus: rgba(126, 90, 166, 0.28);
   --shadow: 0 18px 42px rgba(20, 9, 4, 0.45);
@@ -210,9 +219,21 @@ body::before {
 }
 .h1 { font-size: clamp(1.55rem, 2.2vw, 2.15rem); }
 .h2 { font-size: 1.16rem; }
-.muted { color: var(--muted); }
-.help { margin: 10px 0 0; color: var(--muted); font-size: 0.95rem; }
-a { color: #7042a3; }
+.muted { color: var(--muted); font-weight: 650; }
+.help { margin: 10px 0 0; color: var(--muted); font-size: 0.95rem; font-weight: 650; }
+.card p,
+.panel p,
+.memberMeta,
+.playerMeta,
+.statLabel,
+.lastPull,
+.notice { color: var(--muted); }
+a {
+  color: var(--link);
+  font-weight: 800;
+  text-underline-offset: 2px;
+}
+a:hover { color: var(--link-hover); }
 code {
   background: rgba(80, 47, 24, 0.10);
   border: 1px solid rgba(80, 47, 24, 0.18);
@@ -262,7 +283,7 @@ code {
   border-radius: 14px;
   border: 1px solid rgba(246, 222, 159, 0.42);
   background:
-    linear-gradient(180deg, #8f6834, #4f2f18 58%, #321c10),
+    linear-gradient(180deg, var(--button-brown-top), var(--button-brown-mid) 58%, var(--button-brown-bottom)),
     radial-gradient(circle at 50% 0%, rgba(255,255,255,0.28), transparent 36%);
   color: #fff2c5;
   font-weight: 900;
@@ -481,7 +502,7 @@ code {
   font-weight: 950;
   font-size: 18px;
   color: #fff2c5;
-  background: linear-gradient(180deg, #8f6834, #4f2f18);
+  background: linear-gradient(180deg, var(--button-brown-top), var(--button-brown-mid));
   border: 1px solid rgba(246,222,159,0.38);
 }
 .skillInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -505,8 +526,8 @@ code {
 .leaderRow:hover { filter: brightness(1.035); transform: translateY(-1px); }
 .leaderSkill { font-weight: 950; color: #3d2515; }
 .leaderMeta { color: var(--muted); font-weight: 900; margin-left: auto; text-align: right; }
-.leaderLink { color: #7042a3; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; cursor: pointer; }
-.leaderLink:hover { color: #4e2d78; }
+.leaderLink { color: var(--link); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; cursor: pointer; font-weight: 950; }
+.leaderLink:hover { color: var(--link-hover); }
 .leaderExpand { border-radius: 15px; }
 
 /* Quests */
@@ -521,6 +542,125 @@ code {
   font-family: Georgia, "Times New Roman", serif;
 }
 .questRow { display: block !important; align-items: center; gap: 10px; }
+
+
+/* Dark readable tiles: match the button leather-brown treatment */
+.skillCard,
+.skillRow,
+.activityRow,
+.leaderRow,
+.leaderExpand,
+.questGroup {
+  border-color: var(--tile-border);
+  background:
+    linear-gradient(180deg, var(--button-brown-top), var(--button-brown-mid) 58%, var(--button-brown-bottom)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.18), transparent 36%);
+  color: var(--tile-text);
+  box-shadow:
+    0 10px 20px rgba(35, 17, 7, 0.30),
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    inset 0 -16px 28px rgba(18, 8, 3, 0.18);
+}
+.skillCard.total {
+  border-color: rgba(201,155,63,0.72);
+  background:
+    linear-gradient(180deg, var(--button-brown-top), var(--button-brown-mid) 58%, var(--button-brown-bottom)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.20), transparent 36%);
+}
+.skillCard.gold { border-color: rgba(229, 190, 92, 0.92); }
+.skillCard.silver { border-color: rgba(206, 202, 188, 0.82); }
+.skillCard.bronze { border-color: rgba(205, 142, 82, 0.86); }
+
+.skillCard .skillTitle,
+.skillRow .skillName,
+.skillVal,
+.leaderSkill,
+.activityText,
+.questGroup > summary {
+  color: var(--tile-text) !important;
+  text-shadow: 0 1px 0 rgba(18, 8, 3, 0.75);
+}
+.skillCard .skillLevel,
+.skillCard .skillXp,
+.skillRow .skillXp,
+.leaderMeta,
+.activityDetails,
+.activityDate,
+.leaderExpand,
+.leaderExpand .muted,
+.questGroup .muted {
+  color: var(--tile-text-muted) !important;
+  text-shadow: 0 1px 0 rgba(18, 8, 3, 0.65);
+}
+.leaderExpand {
+  padding: 12px;
+  margin-top: 8px;
+}
+.skillCard a,
+.skillRow a,
+.activityRow a,
+.leaderRow a,
+.leaderExpand a,
+.questGroup a,
+.leaderLink {
+  color: var(--tile-text) !important;
+}
+.skillCard a:hover,
+.skillRow a:hover,
+.activityRow a:hover,
+.leaderRow a:hover,
+.leaderExpand a:hover,
+.questGroup a:hover,
+.leaderLink:hover {
+  color: #fff8d8 !important;
+}
+.skillCard .pill,
+.skillRow .pill,
+.activityRow .pill,
+.leaderRow .pill,
+.questGroup .pill {
+  border-color: rgba(246,222,159,0.30);
+  background: rgba(244,223,170,0.13);
+  color: var(--tile-text);
+}
+.skillCard .skillIcon,
+.skillRow .miniIcon,
+.activityRow .miniIcon,
+.leaderRow .skillIcon,
+.questRow .miniIcon {
+  border-color: rgba(246,222,159,0.30);
+  background: rgba(244,223,170,0.16);
+}
+.activityRow::before {
+  background: rgba(255,242,197,0.24);
+}
+.activityRow.activity-drop { border-color: rgba(229,190,92,0.72); }
+.activityRow.activity-level { border-color: rgba(128,192,135,0.62); }
+.activityRow.activity-quest { border-color: rgba(181,150,213,0.68); }
+.activityRow.activity-drop::before { background: #e0b650; }
+.activityRow.activity-level::before { background: #82c987; }
+.activityRow.activity-quest::before { background: #b896de; }
+.questRow {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+}
+.questStatusIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35em;
+  height: 1.35em;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  color: #1b0d07;
+  font-size: 0.78em;
+  font-weight: 950;
+  text-shadow: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.38), 0 1px 4px rgba(0,0,0,0.22);
+}
+.questStatusIcon.completed { background: #8fd39a; }
+.questStatusIcon.started { background: #f0c46b; }
+.questStatusIcon.not_started { background: #e88d7d; }
 
 /* Footer */
 .lastPull {
