@@ -1103,6 +1103,151 @@ function renderTopXpSkills() {
 }
 
 
+function statIconPath(name) {
+  return `assets/stats/${name}.png`;
+}
+
+function getCurrentSkillLevel(skillName) {
+  const target = String(skillName || "").trim().toLowerCase();
+  const rows = playerData?.current_skills?.skills || [];
+  const found = rows.find(row => String(row?.skill || "").trim().toLowerCase() === target);
+  const level = Number(found?.level);
+  return Number.isFinite(level) && level > 0 ? level : null;
+}
+
+function getTotalLevelForPlayer() {
+  const direct = Number(playerData?.current_skills?.total?.level);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+
+  const rows = playerData?.current_skills?.skills || [];
+  let total = 0;
+  let counted = 0;
+  for (const row of rows) {
+    const level = Number(row?.level);
+    if (Number.isFinite(level) && level > 0) {
+      total += level;
+      counted += 1;
+    }
+  }
+  return counted ? total : null;
+}
+
+function calculateCombatLevelFromCurrentSkills() {
+  const direct = Number(
+    playerData?.combat_level ??
+    playerData?.member?.combat_level ??
+    playerData?.current_skills?.combat_level
+  );
+  if (Number.isFinite(direct) && direct > 0) return Math.floor(direct);
+
+  const level = (skill, fallback = 1, cap = 99) => {
+    const raw = getCurrentSkillLevel(skill);
+    const n = Number.isFinite(Number(raw)) && Number(raw) > 0 ? Number(raw) : fallback;
+    return Math.min(cap, Math.max(1, Math.floor(n)));
+  };
+
+  // RS3 combat-level formula, including Necromancy as its own combat style.
+  // Non-necromancy combat skills are capped to 99 here to avoid inflated values
+  // from virtual levels in historical RuneMetrics/HiScores snapshots.
+  const attack = level("Attack", 1, 99);
+  const strength = level("Strength", 1, 99);
+  const defence = level("Defence", 1, 99);
+  const constitution = level("Constitution", 10, 99);
+  const ranged = level("Ranged", 1, 99);
+  const prayer = level("Prayer", 1, 99);
+  const magic = level("Magic", 1, 99);
+  const summoning = level("Summoning", 1, 99);
+  const necromancy = level("Necromancy", 1, 120);
+
+  const offence = Math.max(attack + strength, magic * 2, ranged * 2, necromancy * 2);
+  const combat = (1.3 * offence + defence + constitution + Math.floor(prayer / 2) + Math.floor(summoning / 2)) / 4;
+  return Math.max(3, Math.floor(combat));
+}
+
+function scoreRowValue(row) {
+  if (!row || typeof row !== "object") return null;
+  const value = Number(row.score);
+  return Number.isFinite(value) ? value : null;
+}
+
+function scoreRowRankNote(row) {
+  if (!row || typeof row !== "object") return "";
+  const rank = Number(row.rank);
+  if (Number.isFinite(rank) && rank > 0) return `Rank ${formatNumber(rank)}`;
+  if (row.ranked === false || rank === -1) return "Unranked";
+  return "";
+}
+
+function getQuestPointsForPlayer() {
+  const q = playerData?.quests;
+  if (!q || !q.ok) return null;
+  const qp = Number(q?.totals?.quest_points_completed);
+  return Number.isFinite(qp) ? qp : null;
+}
+
+function renderPlayerStatBlock() {
+  const block = qs("playerStatBlock");
+  if (!block) return;
+
+  const summary = playerData?.hiscores_lite?.summary || {};
+  const clues = summary.clues || {};
+  const statRows = [
+    { label: "Combat Level", value: calculateCombatLevelFromCurrentSkills(), icon: "combat" },
+    { label: "Total Level", value: getTotalLevelForPlayer(), icon: "total_level" },
+    { label: "RuneScore", value: scoreRowValue(summary.runescore), note: scoreRowRankNote(summary.runescore), icon: "runescore" },
+    { label: "Quest Points", value: getQuestPointsForPlayer(), icon: "quest_points" },
+    { label: "Easy Clues", value: scoreRowValue(clues.easy), note: scoreRowRankNote(clues.easy), icon: "clue_easy" },
+    { label: "Medium Clues", value: scoreRowValue(clues.medium), note: scoreRowRankNote(clues.medium), icon: "clue_medium" },
+    { label: "Hard Clues", value: scoreRowValue(clues.hard), note: scoreRowRankNote(clues.hard), icon: "clue_hard" },
+    { label: "Elite Clues", value: scoreRowValue(clues.elite), note: scoreRowRankNote(clues.elite), icon: "clue_elite" },
+    { label: "Master Clues", value: scoreRowValue(clues.master), note: scoreRowRankNote(clues.master), icon: "clue_master" },
+  ];
+
+  block.innerHTML = statRows.map(row => {
+    const note = row.note ? `<div class="playerStatNote">${escapeHtml(row.note)}</div>` : "";
+    return `
+      <div class="playerStatTile">
+        <div class="playerStatIconWrap">
+          <img class="playerStatIcon" src="${escapeHtml(statIconPath(row.icon))}" alt="" />
+        </div>
+        <div class="playerStatText">
+          <div class="playerStatLabel">${escapeHtml(row.label)}</div>
+          <div class="playerStatValue">${formatNumber(row.value)}</div>
+          ${note}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderPlayerStatBlockLoading() {
+  const block = qs("playerStatBlock");
+  if (!block) return;
+
+  const labels = [
+    "Combat Level",
+    "Total Level",
+    "RuneScore",
+    "Quest Points",
+    "Easy Clues",
+    "Medium Clues",
+    "Hard Clues",
+    "Elite Clues",
+    "Master Clues",
+  ];
+
+  block.innerHTML = labels.map(label => `
+    <div class="playerStatTile loading">
+      <div class="playerStatIconWrap"><span class="playerStatIconPlaceholder" aria-hidden="true"></span></div>
+      <div class="playerStatText">
+        <div class="playerStatLabel">${escapeHtml(label)}</div>
+        <div class="playerStatValue">—</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+
 function renderQuests() {
   const metaEl = qs("questMeta");
   const statusEl = qs("questStatus");
@@ -1130,10 +1275,8 @@ function renderQuests() {
   const completed = Number(totals.completed ?? 0);
   const started = Number(totals.started ?? 0);
   const notStarted = Number(totals.not_started ?? 0);
-  const qpDone = Number(totals.quest_points_completed ?? 0);
-
   metaEl.textContent =
-    `Total: ${total} • Completed: ${completed} • In progress: ${started} • Not started: ${notStarted} • QP (completed): ${formatNumber(qpDone)}`;
+    `Total: ${total} • Completed: ${completed} • In progress: ${started} • Not started: ${notStarted}`;
 
   const quests = Array.isArray(q.quests) ? q.quests : [];
   statusEl.textContent = `${quests.length} quests`;
@@ -1245,90 +1388,6 @@ function renderQuests() {
 
 
 
-function renderHiscoresLite() {
-  const metaEl = qs("hiscoreMeta");
-  const listEl = qs("hiscoreList");
-  if (!metaEl || !listEl) return;
-
-  const h = playerData?.hiscores_lite;
-  if (!h) {
-    metaEl.textContent = "—";
-    listEl.innerHTML = "";
-    return;
-  }
-
-  if (!h.ok) {
-    const http = h.http_code ? ` (HTTP ${h.http_code})` : "";
-    metaEl.textContent = `Unable to load HiScores Lite${http}`;
-    listEl.innerHTML = h.hint ? `<div class="muted">${escapeHtml(String(h.hint))}</div>` : "";
-    return;
-  }
-
-  const cache = h.cache || {};
-  const updated = cache.updated_at_utc || h.fetched_at_utc || "";
-  const stale = cache.stale ? " • showing cached data" : "";
-  metaEl.textContent = updated ? `Updated: ${updated} UTC${stale}` : "HiScores Lite data";
-
-  const summary = h.summary || {};
-  const runescore = summary.runescore || null;
-  const clues = summary.clues || {};
-
-  const rows = [];
-
-  if (runescore) {
-    rows.push({
-      label: "RuneScore",
-      value: runescore.score,
-      rank: runescore.rank,
-      note: "Achievement points",
-    });
-  }
-
-  const tiers = [
-    ["Easy clues", clues.easy],
-    ["Medium clues", clues.medium],
-    ["Hard clues", clues.hard],
-    ["Elite clues", clues.elite],
-    ["Master clues", clues.master],
-  ];
-
-  const tierTotal = tiers.reduce((sum, [, row]) => sum + Number(row?.score || 0), 0);
-  const totalRow = clues.total || null;
-  rows.push({
-    label: "Total clues",
-    value: totalRow && Number(totalRow.score || 0) > 0 ? totalRow.score : tierTotal,
-    rank: totalRow?.rank ?? null,
-    note: "From tracked clue tiers",
-  });
-
-  for (const [label, row] of tiers) {
-    if (!row) continue;
-    rows.push({
-      label,
-      value: row.score,
-      rank: row.rank,
-      note: row.ranked ? "Ranked" : "Unranked",
-    });
-  }
-
-  if (!rows.length) {
-    listEl.innerHTML = `<div class="muted">No RuneScore or clue data returned.</div>`;
-    return;
-  }
-
-  listEl.innerHTML = rows.map(row => {
-    const rank = Number(row.rank);
-    const rankText = Number.isFinite(rank) && rank > 0 ? `Rank ${formatNumber(rank)}` : "Unranked";
-    return `
-      <div class="skillRow hiscoreRow">
-        <div class="skillName">${escapeHtml(row.label)}</div>
-        <div class="skillXp">${formatNumber(row.value)}</div>
-        <div class="skillVal hiscoreRank">${escapeHtml(rankText)}</div>
-      </div>
-    `;
-  }).join("");
-}
-
 function renderPlayer() {
   if (!playerData || !playerData.ok) return;
 
@@ -1366,10 +1425,10 @@ function renderPlayer() {
   const xp = playerData.xp;
   qs("pXpGained").textContent = xp?.has_data ? formatNumber(xp.gained_total_xp) : "—";
 
+  renderPlayerStatBlock();
   renderTopXpSkills();
 
   renderQuests();
-  renderHiscoresLite();
 
   // Activity log (icons + coloured rows)
   const activityList = qs("activityList");
@@ -1480,12 +1539,11 @@ async function loadPlayer(rsn, period) {
   qs("playerMeta").textContent = "—";
   qs("playerError").textContent = "";
   qs("playerLastPull").textContent = "";
+  renderPlayerStatBlockLoading();
 
   if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";
   if (qs("questStatus")) qs("questStatus").textContent = "";
   if (qs("questList")) qs("questList").innerHTML = "";
-  if (qs("hiscoreMeta")) qs("hiscoreMeta").textContent = "Loading HiScores Lite...";
-  if (qs("hiscoreList")) qs("hiscoreList").innerHTML = "";
 
   const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}`;
   const data = await fetchJson(url);
