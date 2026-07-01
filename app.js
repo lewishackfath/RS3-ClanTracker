@@ -87,6 +87,42 @@ function clanRankLineHtml(rankName, className = "rankLine") {
   return `<div class="${escapeHtml(className)}">${iconHtml}<span class="rankName">${escapeHtml(rank)}</span></div>`;
 }
 
+function trackerBrandLogoPath() {
+  return String(TRACKER_CONFIG.brandLogoUrl || "assets/hit-media.png").trim() || "assets/hit-media.png";
+}
+
+function playerRankPillHtml(rankName, clanName = "Clan") {
+  const rank = String(rankName || "").trim() || "—";
+  const rankIcon = clanRankAssetPath(rank);
+  const rankIconHtml = rankIcon
+    ? `<img class="rankIcon" src="${escapeHtml(rankIcon)}" alt="" loading="lazy" onerror="this.remove()" />`
+    : "";
+  const logo = trackerBrandLogoPath();
+  const logoHtml = logo
+    ? `<span class="rankDivider" aria-hidden="true"></span><img class="rankClanLogo" src="${escapeHtml(logo)}" alt="${escapeHtml(clanName)} logo" loading="lazy" onerror="this.remove()" />`
+    : "";
+
+  return `<div class="playerRankLine">${rankIconHtml}<span class="rankName">${escapeHtml(rank)}</span>${logoHtml}</div>`;
+}
+
+function memberTitleRankHtml(rsn, rankName) {
+  const rank = String(rankName || "").trim();
+  const icon = clanRankAssetPath(rank);
+  const iconHtml = icon
+    ? `<img class="memberRankIconLarge" src="${escapeHtml(icon)}" alt="" loading="lazy" onerror="this.remove()" />`
+    : "";
+
+  return `
+    <div class="memberTitleRow">
+      ${iconHtml}
+      <div class="memberTitleText">
+        <div class="memberName">${escapeHtml(rsn || "—")}</div>
+        ${rank ? `<div class="memberRankName">${escapeHtml(rank)}</div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
 function getConfiguredClanId() {
   return String(TRACKER_CONFIG.clanId || "").trim();
 }
@@ -205,6 +241,58 @@ function formatNumbersInText(input) {
     if (!Number.isFinite(n)) return m;
     return n.toLocaleString("en-AU");
   });
+}
+
+function setText(id, value) {
+  const el = qs(id);
+  if (el) el.textContent = value;
+}
+
+function parseUtcDateToMs(value) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  const iso = s.includes("T") ? s : s.replace(" ", "T");
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso);
+  const d = new Date(hasTimezone ? iso : `${iso}Z`);
+  const ms = d.getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function formatCountdown(msRemaining) {
+  if (!Number.isFinite(msRemaining)) return "—";
+  if (msRemaining <= 0) return "Reset due";
+
+  const totalSeconds = Math.floor(msRemaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+}
+
+let clanResetCountdownTimer = null;
+function clearClanResetCountdown() {
+  if (clanResetCountdownTimer !== null) {
+    clearInterval(clanResetCountdownTimer);
+    clanResetCountdownTimer = null;
+  }
+  setText("resetCountdownValue", "—");
+}
+
+function setClanResetCountdown(week) {
+  clearClanResetCountdown();
+  const targetMs = parseUtcDateToMs(week?.week_end_utc);
+  const valueEl = qs("resetCountdownValue");
+  if (!valueEl || targetMs === null) return;
+
+  const tick = () => {
+    valueEl.textContent = formatCountdown(targetMs - Date.now());
+  };
+  tick();
+  clanResetCountdownTimer = setInterval(tick, 1000);
 }
 
 
@@ -899,7 +987,7 @@ function renderMemberList() {
     const badge = isCapped ? "Capped" : (isVisited ? "Visited" : "Uncapped");
 
     const rank = getRank(m);
-    const rankHtml = clanRankLineHtml(rank, "memberRankLine");
+    const titleHtml = memberTitleRankHtml(m.rsn, rank);
     let privateHtml = "";
 
     const isPrivate = !!(m?.is_private ?? m?.private ?? false);
@@ -915,8 +1003,7 @@ function renderMemberList() {
           <div class="memberHeader">
             <img class="memberAvatar" src="${getCachedAvatarUrl(m.rsn)}" alt="" onerror="this.remove()" />
             <div class="memberIdentity">
-              <div class="memberName">${escapeHtml(m.rsn)}</div>
-              ${rankHtml}
+              ${titleHtml}
               ${privateHtml}
             </div>
           </div>
@@ -937,14 +1024,18 @@ function renderMemberList() {
 async function loadClanOverview(clanKey, period) {
   clanData = null;
   qs("clanSubheading").textContent = "Loading…";
-  qs("statActive").textContent = "—";
-  if (qs("statPrivate")) qs("statPrivate").textContent = "—";
-  qs("statCapped").textContent = "—";
-  qs("statUncapped").textContent = "—";
-  qs("statPercent").textContent = "—";
+  qs("clanSubheading").classList.remove("hidden");
+  setText("statMembersTotal", "—");
+  setText("statMembersPrivate", "—");
+  setText("statMembersNew", "—");
+  setText("statCappingCapped", "—");
+  setText("statCappingUncapped", "—");
+  setText("statCappingPercent", "—");
   qs("clanStatus").textContent = "";
   qs("memberList").innerHTML = "";
   qs("clanLastPull").textContent = "";
+  if (qs("clanWeekDetails")) qs("clanWeekDetails").textContent = "";
+  clearClanResetCountdown();
   if (qs("clanXpMeta")) qs("clanXpMeta").textContent = "";
   if (qs("clanSkillLeaders")) qs("clanSkillLeaders").innerHTML = "";
 
@@ -961,27 +1052,32 @@ async function loadClanOverview(clanKey, period) {
   // Populate rank filter dropdown based on returned member ranks
   populateRankFilter(data.members, false);
 
-  // Private profile count (client-side, based on member flags)
-  try {
-    const privCount = (data.members || []).filter(m => !!(m?.is_private ?? m?.private ?? false)).length;
-    if (qs("statPrivate")) qs("statPrivate").textContent = String(privCount);
-  } catch {
-    if (qs("statPrivate")) qs("statPrivate").textContent = "—";
-  }
-
   const clanName = data.clan?.name || clanKey;
   const tz = data.week?.timezone || "UTC";
   const ws = data.week?.week_start_local || "";
   const we = data.week?.week_end_local || "";
 
-  qs("clanSubheading").textContent = `${clanName} • Week: ${ws} → ${we} (${tz})`;
+  qs("clanSubheading").textContent = "";
+  qs("clanSubheading").classList.add("hidden");
 
-  qs("statActive").textContent = String(data.stats?.active_members ?? "0");
-  qs("statCapped").textContent = String(data.stats?.capped ?? "0");
-  qs("statUncapped").textContent = String(data.stats?.uncapped ?? "0");
-  qs("statPercent").textContent = `${String(data.stats?.percent_capped ?? "0")}%`;
+  const activeMembers = data.stats?.active_members ?? "0";
+  const privateMembers = (data.stats?.private_profiles ?? null) ?? ((data.members || []).filter(m => !!(m?.is_private ?? m?.private ?? false)).length);
+  const newMembers = data.stats?.new_members_this_week;
+  const cappedMembers = data.stats?.capped ?? "0";
+  const uncappedMembers = data.stats?.uncapped ?? "0";
+  const cappedPercent = data.stats?.percent_capped ?? "0";
+
+  setText("statMembersTotal", `${String(activeMembers)} active`);
+  setText("statMembersPrivate", String(privateMembers));
+  setText("statMembersNew", newMembers === null || newMembers === undefined ? "—" : String(newMembers));
+  setText("statCappingCapped", String(cappedMembers));
+  setText("statCappingUncapped", String(uncappedMembers));
+  setText("statCappingPercent", `${String(cappedPercent)}% capped`);
 
   renderLastPull(qs("clanLastPull"), data.last_pull);
+  const clanWeekDetails = qs("clanWeekDetails");
+  if (clanWeekDetails) clanWeekDetails.textContent = `${clanName} • Week: ${ws} → ${we} (${tz})`;
+  setClanResetCountdown(data.week);
   selectedClanXpPeriod = data.xp?.period || usePeriod;
   populateClanXpPeriods(data.xp_periods || [], selectedClanXpPeriod);
   setClanXpView("total");
@@ -1223,13 +1319,12 @@ function updateSkillPanelView() {
   show(topXpSkills, view === "topxp");
 
   const titleEl = qs("skillPanelTitle");
-  if (titleEl) titleEl.textContent = view === "topxp" ? "Top XP skills" : "Current skills";
+  if (titleEl) titleEl.textContent = "Skills/XP";
 
   const hintEl = qs("skillPanelHint");
   if (hintEl) {
-    hintEl.textContent = view === "topxp"
-      ? `Showing highest XP gains for ${currentXpPeriodLabel()}.`
-      : "Hover a skill for total XP and selected-period XP.";
+    hintEl.textContent = "";
+    hintEl.classList.add("hidden");
   }
 
   qs("skillViewToggle")?.querySelectorAll("button[data-skill-view]").forEach(btn => {
@@ -1548,7 +1643,7 @@ function renderPlayer() {
   const rank = m?.rank_name ? m.rank_name : "—";
   const rankDisplay = qs("playerRankDisplay");
   if (rankDisplay) {
-    rankDisplay.innerHTML = clanRankLineHtml(rank, "playerRankLine");
+    rankDisplay.innerHTML = playerRankPillHtml(rank, c?.name || TRACKER_CONFIG.brandShortName || "Clan");
   }
 
   const metaEl = qs("playerMeta");
@@ -1574,12 +1669,6 @@ function renderPlayer() {
     weekDetails.textContent = `${clanName} • Week: ${start} → ${end} (${timezone})`;
   }
 
-  qs("pCap").textContent = playerData.cap?.capped ? "Capped" : "Uncapped";
-  qs("pVisit").textContent = playerData.visit?.visited ? "Visited" : "Not visited";
-
-  const xp = playerData.xp;
-  qs("pXpGained").textContent = xp?.has_data ? formatNumber(xp.gained_total_xp) : "—";
-
   renderPlayerStatBlock();
   renderSkillPanel();
 
@@ -1590,7 +1679,7 @@ function renderPlayer() {
   const activity = playerData.recent_activity || [];
   populateActivityLimitOptions(playerData.activity_limit_options, playerData.activity_limit || selectedActivityLimit);
   const shownLimit = normaliseActivityLimit(playerData.activity_limit || selectedActivityLimit);
-  qs("activityStatus").textContent = `${activity.length} item${activity.length === 1 ? "" : "s"} shown${activity.length >= shownLimit ? ` • limit ${shownLimit}` : ""}`;
+  if (qs("activityStatus")) qs("activityStatus").textContent = "";
 
   if (activity.length) {
     activityList.innerHTML = activity.map((a, i) => {
@@ -1706,11 +1795,11 @@ async function loadPlayer(rsn, period) {
   if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";
   if (qs("questStatus")) qs("questStatus").textContent = "";
   if (qs("questList")) qs("questList").innerHTML = "";
-  if (qs("skillPanelHint")) qs("skillPanelHint").textContent = "Loading skills...";
+  if (qs("skillPanelHint")) { qs("skillPanelHint").textContent = ""; qs("skillPanelHint").classList.add("hidden"); }
   if (qs("skillsGrid")) qs("skillsGrid").innerHTML = "";
   if (qs("skillList")) qs("skillList").innerHTML = "";
   updateSkillPanelView();
-  if (qs("activityStatus")) qs("activityStatus").textContent = "Loading activities...";
+  if (qs("activityStatus")) qs("activityStatus").textContent = "";
   if (qs("activityList")) qs("activityList").innerHTML = "";
 
   const activityLimit = normaliseActivityLimit(selectedActivityLimit);
@@ -1780,6 +1869,7 @@ function render() {
   }
 
   if (player) {
+    clearClanResetCountdown();
     show(landing, false);
     show(viewClan, false);
     show(viewPlayer, true);
@@ -1797,6 +1887,7 @@ function render() {
     return;
   }
 
+  clearClanResetCountdown();
   show(viewClan, false);
   show(viewPlayer, false);
   show(landing, true);

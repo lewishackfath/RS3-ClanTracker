@@ -215,6 +215,59 @@ function tracker_to_local(?string $utcDt, string $tzName): ?string {
     }
 }
 
+
+function tracker_member_date_column(PDO $pdo): ?string {
+    static $cached = false;
+    static $column = null;
+
+    if ($cached) return $column;
+    $cached = true;
+
+    $preferred = [
+        'joined_at_utc',
+        'joined_at',
+        'first_seen_at_utc',
+        'first_seen_utc',
+        'created_at_utc',
+        'created_at',
+        'added_at_utc',
+        'added_at',
+    ];
+
+    try {
+        $cols = [];
+        $st = $pdo->query('SHOW COLUMNS FROM members');
+        foreach (($st ? $st->fetchAll(PDO::FETCH_ASSOC) : []) as $row) {
+            $name = (string)($row['Field'] ?? '');
+            if ($name !== '') $cols[strtolower($name)] = $name;
+        }
+        foreach ($preferred as $candidate) {
+            $key = strtolower($candidate);
+            if (isset($cols[$key])) return $column = $cols[$key];
+        }
+    } catch (Throwable $e) {
+        // Some restricted DB users cannot inspect columns. In that case we simply
+        // return null and the UI will show an unavailable new-member count.
+    }
+
+    return $column = null;
+}
+
+function tracker_count_new_members_this_week(PDO $pdo, int $clanId, string $weekStartUtc): ?int {
+    $col = tracker_member_date_column($pdo);
+    if ($col === null || $col === '') return null;
+
+    // Column name comes from SHOW COLUMNS, but keep the identifier safely quoted.
+    $quoted = '`' . str_replace('`', '``', $col) . '`';
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM members WHERE clan_id = :cid AND is_active = 1 AND {$quoted} >= :ws");
+        $stmt->execute([':cid' => $clanId, ':ws' => $weekStartUtc]);
+        return (int)$stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
 $clanParam = tracker_get_param('clan', 16);
 if ($clanParam === '') {
     $clanParam = (string)(getenv('TRACKER_CLAN_ID') ?: '');
@@ -280,11 +333,14 @@ sort($ranks, SORT_NATURAL | SORT_FLAG_CASE);
 
 $active = count($members);
 $capped = 0;
+$privateProfiles = 0;
 foreach ($members as $m) {
     if ((int)$m['capped'] === 1) $capped++;
+    if ((int)($m['is_private'] ?? 0) === 1) $privateProfiles++;
 }
 $uncapped = $active - $capped;
 $percent = $active > 0 ? (int)round(($capped / $active) * 100) : 0;
+$newMembersThisWeek = tracker_count_new_members_this_week($pdo, $clanId, (string)$week['week_start_utc']);
 
 // Last data pull indicators
 $stmt = $pdo->prepare("SELECT MAX(last_poll_at_utc) AS v FROM member_poll_state WHERE clan_id = :cid");
@@ -541,9 +597,11 @@ tracker_json([
     'week' => $week,
     'stats' => [
         'active_members' => $active,
+        'private_profiles' => $privateProfiles,
         'capped' => $capped,
         'uncapped' => $uncapped,
         'percent_capped' => $percent,
+        'new_members_this_week' => $newMembersThisWeek,
     ],
     'members' => array_map(function(array $m) use ($week) {
         $isPrivate = ((int)($m['is_private'] ?? 0) === 1);

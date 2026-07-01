@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607010006" />
+  <link rel="stylesheet" href="./styles.css?v=202607020001" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -36,34 +36,36 @@ include __DIR__ . '/includes/menu.php';
 
     <!-- Clan view -->
     <section class="card hidden" id="viewClan">
-      <div class="row">
+      <div class="row overviewHeaderRow">
         <div>
           <h2 class="h2">Clan overview</h2>
-          <p class="muted" id="clanSubheading"></p>
+          <p class="muted hidden" id="clanSubheading"></p>
         </div>
-        <button class="button secondary" type="button" id="backFromClan">Back</button>
+        <div class="overviewHeaderActions">
+          <div class="resetCountdownPill" id="resetCountdownPill" aria-live="polite">
+            <span class="resetCountdownLabel">Time until Cap Reset</span>
+            <span class="resetCountdownValue" id="resetCountdownValue">—</span>
+          </div>
+          <button class="button secondary" type="button" id="backFromClan">Back</button>
+        </div>
       </div>
 
-      <div class="statsGrid" id="clanStats">
-        <div class="statCard">
-          <div class="statLabel">Active members</div>
-          <div class="statValue" id="statActive">—</div>
+      <div class="statsGrid summaryStatsGrid" id="clanStats">
+        <div class="statCard summaryStatCard">
+          <div class="statLabel">Members</div>
+          <div class="statValue" id="statMembersTotal">—</div>
+          <div class="summaryStatRows">
+            <span><strong id="statMembersPrivate">—</strong> private profiles</span>
+            <span><strong id="statMembersNew">—</strong> new this week</span>
+          </div>
         </div>
-        <div class="statCard">
-          <div class="statLabel">Private profiles</div>
-          <div class="statValue" id="statPrivate">—</div>
-        </div>
-        <div class="statCard">
-          <div class="statLabel">Capped</div>
-          <div class="statValue" id="statCapped">—</div>
-        </div>
-        <div class="statCard">
-          <div class="statLabel">Uncapped</div>
-          <div class="statValue" id="statUncapped">—</div>
-        </div>
-        <div class="statCard">
-          <div class="statLabel">% capped</div>
-          <div class="statValue" id="statPercent">—</div>
+        <div class="statCard summaryStatCard">
+          <div class="statLabel">Capping</div>
+          <div class="statValue" id="statCappingPercent">—</div>
+          <div class="summaryStatRows">
+            <span><strong id="statCappingCapped">—</strong> capped</span>
+            <span><strong id="statCappingUncapped">—</strong> uncapped</span>
+          </div>
         </div>
       </div>
 
@@ -80,8 +82,8 @@ include __DIR__ . '/includes/menu.php';
             <select id="clanXpPeriod" class="select"></select>
           </div>
         </div>
-        <div class="muted" id="clanXpMeta" style="margin-top:6px;"></div>
         <div class="skillsLeadersGrid" id="clanSkillLeaders"></div>
+        <div class="muted clanXpMeta" id="clanXpMeta"></div>
       </div>
 
       <div class="toolbar">
@@ -103,16 +105,23 @@ include __DIR__ . '/includes/menu.php';
       <div class="memberList" id="memberList"></div>
 
       <div class="lastPull muted" id="clanLastPull"></div>
+      <div class="clanWeekDetails muted" id="clanWeekDetails"></div>
     </section>
 
     <!-- Player view -->
     <section class="card hidden" id="viewPlayer">
-      <div class="row">
+      <div class="row playerTopRow">
         <div>
           <h2 class="h2">Player</h2>
           <p class="muted" id="playerSubheading"></p>
         </div>
-        <button class="button secondary" type="button" id="backFromPlayer">Back</button>
+        <div class="playerTopActions">
+          <label class="compactSelectLabel xpPeriodTopLabel" for="xpPeriod">
+            XP Period
+            <select id="xpPeriod" class="select selectSmall"></select>
+          </label>
+          <button class="button secondary" type="button" id="backFromPlayer">Back</button>
+        </div>
       </div>
 
       <div class="playerHeader">
@@ -129,38 +138,17 @@ include __DIR__ . '/includes/menu.php';
         <div class="playerStatBlock" id="playerStatBlock" aria-label="Player stat summary"></div>
       </div>
 
-      <div class="statsGridPlayer">
-        <div class="statCard">
-          <div class="statLabel">Cap (this week)</div>
-          <div class="statValue" id="pCap">—</div>
-        </div>
-        <div class="statCard">
-          <div class="statLabel">Citadel visit (this week)</div>
-          <div class="statValue" id="pVisit">—</div>
-        </div>
-        <div class="statCard">
-          <div class="statLabel">XP gained</div>
-          <div class="statValue" id="pXpGained">—</div>
-        </div>
-        <div class="statCard">
-          <div class="statLabel">XP period</div>
-          <div class="statValue">
-            <select id="xpPeriod" class="select"></select>
-          </div>
-        </div>
-      </div>
-
       <div class="playerContentGrid">
         <div class="playerLeftColumn">
           <div class="panel playerSkillsPanel" id="skillsPanel">
             <div class="panelTitleRow skillPanelTitleRow">
-              <h3 class="h2" id="skillPanelTitle">Skills</h3>
+              <h3 class="h2" id="skillPanelTitle">Skills/XP</h3>
               <div class="seg skillViewToggle" id="skillViewToggle" role="tablist" aria-label="Skill view">
                 <button class="segBtn active" type="button" data-skill-view="current" role="tab" aria-selected="true">Current</button>
                 <button class="segBtn" type="button" data-skill-view="topxp" role="tab" aria-selected="false">Top XP</button>
               </div>
             </div>
-            <div class="muted skillPanelHint" id="skillPanelHint">Hover a skill for total XP and selected-period XP.</div>
+            <div class="muted skillPanelHint hidden" id="skillPanelHint"></div>
             <div class="skillsGrid" id="skillsGrid"></div>
             <div class="skillList hidden" id="skillList"></div>
           </div>
@@ -175,7 +163,7 @@ include __DIR__ . '/includes/menu.php';
 
         <div class="panel" id="activityPanel">
           <div class="panelTitleRow">
-            <h3 class="h2">Recent activity</h3>
+            <h3 class="h2">Activity Journal</h3>
             <label class="compactSelectLabel" for="activityLimit">
               Show
               <select id="activityLimit" class="select selectSmall">
@@ -203,6 +191,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607010004"></script>
+  <script src="./app.js?v=202607020001"></script>
 </body>
 </html>

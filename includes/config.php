@@ -74,5 +74,6 @@ function tracker_public_js_config(): array {
     'brandName' => $brand['name'],
     'brandShortName' => $brand['short_name'],
     'brandSubtitle' => $brand['subtitle'],
+    'brandLogoUrl' => $brand['logo_url'],
   ];
 }
