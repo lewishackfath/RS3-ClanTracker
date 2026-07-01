@@ -410,6 +410,69 @@ function getCachedAvatarUrl(rsn) {
   return `assets/avatars/${encodeURIComponent(safe)}.png`;
 }
 
+const RANK_ICON_FILES = {
+  recruit: "Recruit_Clan_Rank.png",
+  corporal: "Corporal_Clan_Rank.png",
+  sergeant: "Sergeant_Clan_Rank.png",
+  lieutenant: "Lieutenant_Clan_Rank.png",
+  captain: "Captain_Clan_Rank.png",
+  general: "General_Clan_Rank.png",
+  coordinator: "Coordinator_Clan_Rank.png",
+  organiser: "Organiser_Clan_Rank.png",
+  organizer: "Organiser_Clan_Rank.png",
+  admin: "Admin_Clan_Rank.png",
+  overseer: "Overseer_Clan_Rank.png",
+  deputyowner: "DeputyOwner_Clan_Rank.png",
+  deputy_owner: "DeputyOwner_Clan_Rank.png",
+  owner: "Owner_Clan_Rank.png",
+};
+
+function rankKey(rankName) {
+  return String(rankName || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[\s-]+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function rankIconPath(rankName) {
+  const key = rankKey(rankName);
+  const compactKey = key.replace(/_/g, "");
+  const file = RANK_ICON_FILES[key] || RANK_ICON_FILES[compactKey] || null;
+  return file ? `assets/ranks/${file}` : "";
+}
+
+function renderRankBadgeHtml(rankName, extraClass = "") {
+  const label = String(rankName || "").trim() || "—";
+  const icon = rankIconPath(label);
+  const img = icon
+    ? `<img class="rankIcon" src="${escapeHtml(icon)}" alt="" onerror="this.remove()" />`
+    : "";
+  const cls = extraClass ? ` ${escapeHtml(extraClass)}` : "";
+  return `<span class="rankBadge${cls}">${img}<span>${escapeHtml(label)}</span></span>`;
+}
+
+function renderPlayerClanWeekDetails() {
+  const el = qs("playerClanWeekDetails");
+  if (!el) return;
+  const c = playerData?.clan;
+  const week = playerData?.week;
+  if (!c && !week) {
+    el.textContent = "";
+    return;
+  }
+
+  const clan = c?.name || c?.key || "Clan";
+  const start = week?.week_start_local || "";
+  const end = week?.week_end_local || "";
+  const tz = week?.timezone || c?.timezone || "UTC";
+  const weekText = (start || end) ? `Week: ${start} → ${end} (${tz})` : `Timezone: ${tz}`;
+  el.textContent = `${clan} • ${weekText}`;
+}
+
 
 /* ---------------- Activity icon logic ---------------- */
 
@@ -860,23 +923,26 @@ function renderMemberList() {
     const isVisited = !!(m?.visited ?? m?.has_visited ?? m?.is_visited ?? m?.visited_this_week ?? false);
     const badge = isCapped ? "Capped" : (isVisited ? "Visited" : "Uncapped");
 
-    const metaVal = (m.rank_name ?? m.rank ?? "");
-    let metaHtml = metaVal ? escapeHtml(metaVal) : "—";
+    const rankName = (m.rank_name ?? m.rank ?? "");
+    const rankHtml = renderRankBadgeHtml(rankName, "memberRankBadge");
 
     const isPrivate = !!(m?.is_private ?? m?.private ?? false);
     const sinceLocal = (m?.private_since_local || "").trim();
-    if (isPrivate) {
-      const since = sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : "";
-      metaHtml += ` • <span class="pill private" title="Profile is private">Private${since}</span>`;
-    }
+    const privateHtml = isPrivate
+      ? `<div class="memberMeta"><span class="pill private" title="Profile is private">Private${sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : ""}</span></div>`
+      : "";
+
     return `
       <div class="memberCard clickable" data-rsn="${escapeHtml(m.rsn)}" title="Open player">
         <div class="memberLeft">
           <div class="memberHeader">
             <img class="memberAvatar" src="${getCachedAvatarUrl(m.rsn)}" alt="" onerror="this.remove()" />
-            <div class="memberName">${escapeHtml(m.rsn)}</div>
+            <div class="memberIdentity">
+              <div class="memberName">${escapeHtml(m.rsn)}</div>
+              ${rankHtml}
+            </div>
           </div>
-          <div class="memberMeta">${metaHtml}</div>
+          ${privateHtml}
         </div>
         <div class="badge">${badge}</div>
       </div>
@@ -1499,25 +1565,18 @@ function renderPlayer() {
 
   qs("playerName").textContent = m?.rsn || "—";
   setPlayerAvatar(m?.rsn || "");
-  qs("playerSubheading").textContent =
-    `${c?.name || c?.key || "Clan"} • Week: ${week?.week_start_local || ""} → ${week?.week_end_local || ""} (${week?.timezone || "UTC"})`;
+  qs("playerSubheading").textContent = "";
 
-  const status = (m?.is_active ? "Active" : "Inactive");
   const rank = m?.rank_name ? m.rank_name : "—";
-  {
-    const clanName = escapeHtml(c?.name || "—");
-    const rankHtml = escapeHtml(rank);
-    const statusHtml = escapeHtml(status);
-    let metaHtml = `Clan: ${clanName} • Rank: ${rankHtml} • Status: ${statusHtml}`;
+  const rankBlock = qs("playerRankBlock");
+  if (rankBlock) rankBlock.innerHTML = renderRankBadgeHtml(rank, "playerRankBadge");
 
+  {
     const isPrivate = !!(m?.is_private ?? m?.private ?? false);
     const sinceLocal = (m?.private_since_local || "").trim();
-    if (isPrivate) {
-      const since = sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : "";
-      metaHtml += ` • <span class="pill private" title="Profile is private">Private${since}</span>`;
-    }
-
-    qs("playerMeta").innerHTML = metaHtml;
+    qs("playerMeta").innerHTML = isPrivate
+      ? `<span class="pill private" title="Profile is private">Private${sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : ""}</span>`
+      : "";
   }
 
   qs("pCap").textContent = playerData.cap?.capped ? "Capped" : "Uncapped";
@@ -1630,6 +1689,7 @@ function renderPlayer() {
   }
 
   renderLastPull(qs("playerLastPull"), playerData.last_pull);
+  renderPlayerClanWeekDetails();
 }
 
 async function loadPlayer(rsn, period) {
@@ -1638,9 +1698,11 @@ async function loadPlayer(rsn, period) {
   qs("playerSubheading").textContent = "Loading…";
   qs("playerName").textContent = "—";
   setPlayerAvatar("");
-  qs("playerMeta").textContent = "—";
+  qs("playerMeta").textContent = "";
+  if (qs("playerRankBlock")) qs("playerRankBlock").innerHTML = "";
   qs("playerError").textContent = "";
   qs("playerLastPull").textContent = "";
+  if (qs("playerClanWeekDetails")) qs("playerClanWeekDetails").textContent = "";
   renderPlayerStatBlockLoading();
 
   if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";

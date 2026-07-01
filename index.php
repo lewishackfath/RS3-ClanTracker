@@ -116,11 +116,14 @@ include __DIR__ . '/includes/menu.php';
       </div>
 
       <div class="playerHeader">
-        <div class="playerNameRow">
-          <img id="playerAvatar" class="playerAvatar hidden" alt="" />
-          <div class="playerName" id="playerName">—</div>
+        <div class="playerHeaderTop">
+          <div class="playerNameRow">
+            <img id="playerAvatar" class="playerAvatar hidden" alt="" />
+            <div class="playerName" id="playerName">—</div>
+          </div>
+          <div class="playerRankBlock" id="playerRankBlock" aria-label="Player clan rank"></div>
         </div>
-        <div class="playerMeta" id="playerMeta">—</div>
+        <div class="playerMeta" id="playerMeta"></div>
         <div class="playerStatBlock" id="playerStatBlock" aria-label="Player stat summary"></div>
       </div>
 
@@ -188,6 +191,7 @@ include __DIR__ . '/includes/menu.php';
 
       <div class="muted" id="playerError" style="margin-top:10px;"></div>
       <div class="lastPull muted" id="playerLastPull"></div>
+      <div class="playerClanWeekDetails muted" id="playerClanWeekDetails"></div>
     </section>
   </main>
 
@@ -197,6 +201,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607010003"></script>
+  <script src="./app.js?v=202607010004"></script>
 </body>
 </html>

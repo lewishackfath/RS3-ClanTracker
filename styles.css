@@ -398,8 +398,9 @@ code {
 }
 .memberCard.clickable { cursor: pointer; }
 .memberCard.clickable:hover { filter: brightness(1.045); transform: translateY(-2px); }
-.memberLeft { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.memberHeader { display: flex; align-items: center; gap: 10px; }
+.memberLeft { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.memberHeader { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.memberIdentity { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .memberAvatar,
 .playerAvatar {
   object-fit: cover;
@@ -409,21 +410,74 @@ code {
   background: rgba(197, 156, 91, 0.52);
   box-shadow: inset 0 0 8px rgba(49,26,11,0.18);
 }
-.memberAvatar { width: 32px; height: 32px; }
-.memberName { font-weight: 950; color: #3d2515; overflow-wrap: anywhere; }
+.memberAvatar { width: 46px; height: 46px; }
+.memberName { font-weight: 950; color: #3d2515; overflow-wrap: anywhere; line-height: 1.08; }
 .memberMeta { color: var(--muted); font-size: 0.92rem; }
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  color: #3d2515;
+  font-weight: 900;
+  line-height: 1.15;
+}
+.rankIcon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 2px rgba(32, 15, 6, 0.34));
+}
+.memberRankBadge {
+  font-size: 0.86rem;
+  color: #513019;
+}
+.memberRankBadge .rankIcon { width: 20px; height: 20px; }
 
 /* Player view */
 .playerHeader { margin-top: 12px; padding: 14px; border-radius: 19px 14px 18px 15px; }
-.playerNameRow { display: flex; align-items: center; gap: 12px; }
-.playerAvatar { width: 48px; height: 48px; }
-.playerName { font-family: Georgia, "Times New Roman", serif; font-weight: 950; font-size: 1.42rem; color: #3d2515; }
-.playerMeta { color: var(--muted); margin-top: 4px; font-weight: 700; }
+.playerHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.playerNameRow { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.playerAvatar { width: 58px; height: 58px; }
+.playerName { font-family: Georgia, "Times New Roman", serif; font-weight: 950; font-size: 1.48rem; color: #3d2515; overflow-wrap: anywhere; }
+.playerRankBlock {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 120px;
+}
+.playerRankBadge {
+  justify-content: flex-end;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(110, 70, 36, 0.28), rgba(61, 35, 18, 0.16));
+  border: 1px solid rgba(82, 50, 24, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 3px 9px rgba(35, 17, 7, 0.14);
+}
+.playerRankBadge .rankIcon { width: 34px; height: 34px; }
+.playerMeta { color: var(--muted); margin-top: 7px; font-weight: 700; min-height: 0; }
+.playerMeta:empty { display: none; }
+.playerClanWeekDetails {
+  margin-top: 6px;
+  font-size: 0.92rem;
+}
 .playerStatBlock {
   display: grid;
   grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 7px;
   margin-top: 12px;
+}
+@media (max-width: 680px) {
+  .playerHeaderTop { align-items: flex-start; flex-direction: column; }
+  .playerRankBlock { justify-content: flex-start; min-width: 0; }
 }
 .playerStatTile {
   display: flex;
@@ -1151,3 +1205,4 @@ li { margin: 0 0 10px; }
     flex: 1 1 0;
   }
 }
+#playerSubheading:empty { display: none; }
