@@ -510,6 +510,27 @@ code {
   min-width: 0;
 }
 .playerSkillsPanel { overflow: visible; }
+
+/* Allow compact skill hover cards to escape the player page/card edge. */
+#viewPlayer,
+#viewPlayer .playerContentGrid,
+#viewPlayer .playerLeftColumn,
+#viewPlayer #skillsPanel,
+#viewPlayer .skillsGrid {
+  overflow: visible;
+}
+#viewPlayer #skillsPanel {
+  z-index: 8;
+}
+#viewPlayer #activityPanel,
+#viewPlayer #questsPanel {
+  z-index: 1;
+}
+#viewPlayer .skillCard.compact:hover,
+#viewPlayer .skillCard.compact:focus-within,
+#viewPlayer .skillCard.compact:focus-visible {
+  z-index: 20;
+}
 .skillPanelTitleRow { align-items: center; }
 .skillViewToggle {
   display: inline-flex;

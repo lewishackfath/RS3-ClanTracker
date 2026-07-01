@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607010004" />
+  <link rel="stylesheet" href="./styles.css?v=202607010005" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
