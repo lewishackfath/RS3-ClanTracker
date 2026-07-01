@@ -949,6 +949,7 @@ async function loadClanOverview(clanKey, period) {
 let playerData = null;
 let selectedXpPeriod = "7d";
 let selectedActivityLimit = 20;
+let selectedSkillView = "current";
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
 
 function normaliseActivityLimit(value) {
@@ -1139,13 +1140,14 @@ function renderTopXpSkills() {
     return;
   }
 
-  listEl.innerHTML = top.map(row => {
+  listEl.innerHTML = top.map((row, index) => {
     const name = row.skill || "—";
     const key = row.skill_key || name;
     const gained = row.gained_xp ?? null;
 
     return `
-      <div class="skillRow">
+      <div class="skillRow topXpSkillRow">
+        <div class="topXpRank">${formatNumber(index + 1)}</div>
         <img class="miniIcon" data-skill="${escapeHtml(name)}" data-skillkey="${escapeHtml(key)}" alt="" />
         <div class="skillName">${escapeHtml(name)}</div>
         <div class="skillXp">+${formatNumber(gained)}</div>
@@ -1162,6 +1164,47 @@ function renderTopXpSkills() {
     ];
     setImgWithFallback(img, candidates, "assets/skills/_default.png");
   });
+}
+
+function normaliseSkillView(view) {
+  return String(view || "").toLowerCase() === "topxp" ? "topxp" : "current";
+}
+
+function updateSkillPanelView() {
+  const view = normaliseSkillView(selectedSkillView);
+  selectedSkillView = view;
+
+  const currentSkills = qs("skillsGrid");
+  const topXpSkills = qs("skillList");
+  show(currentSkills, view === "current");
+  show(topXpSkills, view === "topxp");
+
+  const titleEl = qs("skillPanelTitle");
+  if (titleEl) titleEl.textContent = view === "topxp" ? "Top XP skills" : "Current skills";
+
+  const hintEl = qs("skillPanelHint");
+  if (hintEl) {
+    hintEl.textContent = view === "topxp"
+      ? `Showing highest XP gains for ${currentXpPeriodLabel()}.`
+      : "Hover a skill for total XP and selected-period XP.";
+  }
+
+  qs("skillViewToggle")?.querySelectorAll("button[data-skill-view]").forEach(btn => {
+    const isActive = normaliseSkillView(btn.getAttribute("data-skill-view")) === view;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+}
+
+function setSkillView(view) {
+  selectedSkillView = normaliseSkillView(view);
+  updateSkillPanelView();
+}
+
+function renderSkillPanel() {
+  renderCurrentSkills();
+  renderTopXpSkills();
+  updateSkillPanelView();
 }
 
 
@@ -1484,7 +1527,7 @@ function renderPlayer() {
   qs("pXpGained").textContent = xp?.has_data ? formatNumber(xp.gained_total_xp) : "—";
 
   renderPlayerStatBlock();
-  renderTopXpSkills();
+  renderSkillPanel();
 
   renderQuests();
 
@@ -1586,7 +1629,6 @@ function renderPlayer() {
     activityList.innerHTML = `<div class="muted">No recent activity recorded.</div>`;
   }
 
-  renderCurrentSkills();
   renderLastPull(qs("playerLastPull"), playerData.last_pull);
 }
 
@@ -1604,6 +1646,10 @@ async function loadPlayer(rsn, period) {
   if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";
   if (qs("questStatus")) qs("questStatus").textContent = "";
   if (qs("questList")) qs("questList").innerHTML = "";
+  if (qs("skillPanelHint")) qs("skillPanelHint").textContent = "Loading skills...";
+  if (qs("skillsGrid")) qs("skillsGrid").innerHTML = "";
+  if (qs("skillList")) qs("skillList").innerHTML = "";
+  updateSkillPanelView();
   if (qs("activityStatus")) qs("activityStatus").textContent = "Loading activities...";
   if (qs("activityList")) qs("activityList").innerHTML = "";
 
@@ -1898,6 +1944,10 @@ function wireUI() {
     selectedActivityLimit = normaliseActivityLimit(qs("activityLimit")?.value || 20);
     const { player } = getParams();
     if (player) loadPlayer(player, selectedXpPeriod);
+  });
+
+  qs("skillViewToggle")?.querySelectorAll("button[data-skill-view]").forEach(btn => {
+    btn.addEventListener("click", () => setSkillView(btn.getAttribute("data-skill-view") || "current"));
   });
 
   window.addEventListener("popstate", render);

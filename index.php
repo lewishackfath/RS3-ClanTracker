@@ -145,15 +145,27 @@ include __DIR__ . '/includes/menu.php';
         </div>
       </div>
 
-      <div class="twoCol">
-        <div class="panel">
-          <h3 class="h2" style="margin-bottom:8px;">Current skills</h3>
-          <div class="skillsGrid" id="skillsGrid"></div>
-        </div>
+      <div class="playerContentGrid">
+        <div class="playerLeftColumn">
+          <div class="panel playerSkillsPanel" id="skillsPanel">
+            <div class="panelTitleRow skillPanelTitleRow">
+              <h3 class="h2" id="skillPanelTitle">Skills</h3>
+              <div class="seg skillViewToggle" id="skillViewToggle" role="tablist" aria-label="Skill view">
+                <button class="segBtn active" type="button" data-skill-view="current" role="tab" aria-selected="true">Current</button>
+                <button class="segBtn" type="button" data-skill-view="topxp" role="tab" aria-selected="false">Top XP</button>
+              </div>
+            </div>
+            <div class="muted skillPanelHint" id="skillPanelHint">Hover a skill for total XP and selected-period XP.</div>
+            <div class="skillsGrid" id="skillsGrid"></div>
+            <div class="skillList hidden" id="skillList"></div>
+          </div>
 
-        <div class="panel">
-          <h3 class="h2" style="margin-bottom:8px;">Top XP skills</h3>
-          <div class="skillList" id="skillList"></div>
+          <div class="panel" id="questsPanel">
+            <h3 class="h2" style="margin-bottom:8px;">Quests</h3>
+            <div class="muted" id="questMeta">—</div>
+            <div class="muted" id="questStatus" style="margin-top:6px;"></div>
+            <div class="skillList" id="questList" style="margin-top:8px;"></div>
+          </div>
         </div>
 
         <div class="panel" id="activityPanel">
@@ -172,15 +184,6 @@ include __DIR__ . '/includes/menu.php';
           <div class="muted" id="activityStatus"></div>
           <div class="activityList" id="activityList"></div>
         </div>
-
-
-
-        <div class="panel" id="questsPanel">
-          <h3 class="h2" style="margin-bottom:8px;">Quests</h3>
-          <div class="muted" id="questMeta">—</div>
-          <div class="muted" id="questStatus" style="margin-top:6px;"></div>
-          <div class="skillList" id="questList" style="margin-top:8px;"></div>
-        </div>
       </div>
 
       <div class="muted" id="playerError" style="margin-top:10px;"></div>
@@ -194,6 +197,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607010002"></script>
+  <script src="./app.js?v=202607010003"></script>
 </body>
 </html>
