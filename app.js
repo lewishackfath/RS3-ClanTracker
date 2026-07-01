@@ -10,6 +10,45 @@ const API = {
 
 const TRACKER_CONFIG = window.TRACKER_CONFIG || {};
 
+const CLAN_RANK_ORDER_ASC = [
+  "Guest",
+  "Recruit",
+  "Corporal",
+  "Sergeant",
+  "Lieutenant",
+  "Captain",
+  "General",
+  "Admin",
+  "Organiser",
+  "Coordinator",
+  "Overseer",
+  "Deputy Owner",
+  "Owner",
+];
+
+function normaliseRankForSort(rank) {
+  return String(rank || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const CLAN_RANK_ORDER_INDEX = new Map(
+  CLAN_RANK_ORDER_ASC.map((rank, index) => [normaliseRankForSort(rank), index])
+);
+
+function compareRanksDescending(a, b) {
+  const ai = CLAN_RANK_ORDER_INDEX.get(normaliseRankForSort(a));
+  const bi = CLAN_RANK_ORDER_INDEX.get(normaliseRankForSort(b));
+  const av = Number.isInteger(ai) ? ai : -1;
+  const bv = Number.isInteger(bi) ? bi : -1;
+
+  if (av !== bv) return bv - av;
+  return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
+}
+
 function getConfiguredClanId() {
   return String(TRACKER_CONFIG.clanId || "").trim();
 }
@@ -475,8 +514,8 @@ function populateRankFilter(members, keepValue = false) {
     .map(m => String(m?.rank_name ?? m?.rank ?? "").trim())
     .filter(r => r !== "")));
 
-  // Sort case-insensitive, but keep original casing
-  ranks.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  // Sort ranks highest first so the dropdown follows the in-game clan hierarchy.
+  ranks.sort(compareRanksDescending);
 
   sel.innerHTML = `<option value="all">All ranks</option>` + ranks.map(r => {
     const esc = escapeHtml(r);
@@ -562,7 +601,7 @@ function renderClanXpLeaders() {
   <a href="?player=${encodeURIComponent(rsn)}" target="_blank" rel="noopener" class="leaderLink" onclick="event.stopPropagation()">${escapeHtml(rsn)}</a> • ${escapeHtml(gained)}
 </div>
         </div>
-        <div class="leaderExpand hidden" style="margin-top:8px; padding:10px 12px; border:1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(0,0,0,0.14);">
+        <div class="leaderExpand hidden">
           <div class="muted">Loading top earners…</div>
         </div>
       </div>
@@ -674,7 +713,7 @@ function renderClanXpTotals() {
           <div class="leaderSkill">${escapeHtml(skill)}</div>
           <div class="leaderMeta">Clan total • ${escapeHtml(gained)}</div>
         </div>
-        <div class="leaderExpand hidden" style="margin-top:8px; padding:10px 12px; border:1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(0,0,0,0.14);">
+        <div class="leaderExpand hidden">
           <div class="muted">Loading top earners…</div>
         </div>
       </div>
