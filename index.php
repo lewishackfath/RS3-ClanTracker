@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607010005" />
+  <link rel="stylesheet" href="./styles.css?v=202607010006" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -119,11 +119,13 @@ include __DIR__ . '/includes/menu.php';
         <div class="playerHeaderTop">
           <div class="playerNameRow">
             <img id="playerAvatar" class="playerAvatar hidden" alt="" />
-            <div class="playerName" id="playerName">—</div>
+            <div class="playerIdentityText">
+              <div class="playerName" id="playerName">—</div>
+              <div class="playerMeta hidden" id="playerMeta"></div>
+            </div>
           </div>
-          <div class="playerRankBlock" id="playerRankBlock" aria-label="Player clan rank"></div>
+          <div class="playerRankDisplay" id="playerRankDisplay" aria-label="Clan rank"></div>
         </div>
-        <div class="playerMeta" id="playerMeta"></div>
         <div class="playerStatBlock" id="playerStatBlock" aria-label="Player stat summary"></div>
       </div>
 
@@ -191,7 +193,7 @@ include __DIR__ . '/includes/menu.php';
 
       <div class="muted" id="playerError" style="margin-top:10px;"></div>
       <div class="lastPull muted" id="playerLastPull"></div>
-      <div class="playerClanWeekDetails muted" id="playerClanWeekDetails"></div>
+      <div class="playerWeekDetails muted" id="playerWeekDetails"></div>
     </section>
   </main>
 

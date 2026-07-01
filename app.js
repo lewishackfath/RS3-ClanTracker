@@ -49,6 +49,44 @@ function compareRanksDescending(a, b) {
   return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
 }
 
+function clanRankAssetPath(rankName) {
+  const key = String(rankName || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+  const fileMap = {
+    owner: "Owner",
+    deputyowner: "DeputyOwner",
+    overseer: "Overseer",
+    coordinator: "Coordinator",
+    organiser: "Organiser",
+    organizer: "Organiser",
+    admin: "Admin",
+    general: "General",
+    captain: "Captain",
+    lieutenant: "Lieutenant",
+    sergeant: "Sergeant",
+    corporal: "Corporal",
+    recruit: "Recruit",
+  };
+
+  const fileBase = fileMap[key];
+  return fileBase ? `assets/ranks/${fileBase}_Clan_Rank.png` : "";
+}
+
+function clanRankLineHtml(rankName, className = "rankLine") {
+  const rank = String(rankName || "").trim();
+  if (!rank) return `<div class="${escapeHtml(className)}"><span class="rankName">—</span></div>`;
+
+  const icon = clanRankAssetPath(rank);
+  const iconHtml = icon
+    ? `<img class="rankIcon" src="${escapeHtml(icon)}" alt="" loading="lazy" onerror="this.remove()" />`
+    : "";
+
+  return `<div class="${escapeHtml(className)}">${iconHtml}<span class="rankName">${escapeHtml(rank)}</span></div>`;
+}
+
 function getConfiguredClanId() {
   return String(TRACKER_CONFIG.clanId || "").trim();
 }
@@ -408,69 +446,6 @@ function avatarSafeFilename(rsn) {
 function getCachedAvatarUrl(rsn) {
   const safe = avatarSafeFilename(rsn);
   return `assets/avatars/${encodeURIComponent(safe)}.png`;
-}
-
-const RANK_ICON_FILES = {
-  recruit: "Recruit_Clan_Rank.png",
-  corporal: "Corporal_Clan_Rank.png",
-  sergeant: "Sergeant_Clan_Rank.png",
-  lieutenant: "Lieutenant_Clan_Rank.png",
-  captain: "Captain_Clan_Rank.png",
-  general: "General_Clan_Rank.png",
-  coordinator: "Coordinator_Clan_Rank.png",
-  organiser: "Organiser_Clan_Rank.png",
-  organizer: "Organiser_Clan_Rank.png",
-  admin: "Admin_Clan_Rank.png",
-  overseer: "Overseer_Clan_Rank.png",
-  deputyowner: "DeputyOwner_Clan_Rank.png",
-  deputy_owner: "DeputyOwner_Clan_Rank.png",
-  owner: "Owner_Clan_Rank.png",
-};
-
-function rankKey(rankName) {
-  return String(rankName || "")
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[\s-]+/g, "_")
-    .replace(/[^a-z0-9_]/g, "")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
-}
-
-function rankIconPath(rankName) {
-  const key = rankKey(rankName);
-  const compactKey = key.replace(/_/g, "");
-  const file = RANK_ICON_FILES[key] || RANK_ICON_FILES[compactKey] || null;
-  return file ? `assets/ranks/${file}` : "";
-}
-
-function renderRankBadgeHtml(rankName, extraClass = "") {
-  const label = String(rankName || "").trim() || "—";
-  const icon = rankIconPath(label);
-  const img = icon
-    ? `<img class="rankIcon" src="${escapeHtml(icon)}" alt="" onerror="this.remove()" />`
-    : "";
-  const cls = extraClass ? ` ${escapeHtml(extraClass)}` : "";
-  return `<span class="rankBadge${cls}">${img}<span>${escapeHtml(label)}</span></span>`;
-}
-
-function renderPlayerClanWeekDetails() {
-  const el = qs("playerClanWeekDetails");
-  if (!el) return;
-  const c = playerData?.clan;
-  const week = playerData?.week;
-  if (!c && !week) {
-    el.textContent = "";
-    return;
-  }
-
-  const clan = c?.name || c?.key || "Clan";
-  const start = week?.week_start_local || "";
-  const end = week?.week_end_local || "";
-  const tz = week?.timezone || c?.timezone || "UTC";
-  const weekText = (start || end) ? `Week: ${start} → ${end} (${tz})` : `Timezone: ${tz}`;
-  el.textContent = `${clan} • ${weekText}`;
 }
 
 
@@ -923,14 +898,16 @@ function renderMemberList() {
     const isVisited = !!(m?.visited ?? m?.has_visited ?? m?.is_visited ?? m?.visited_this_week ?? false);
     const badge = isCapped ? "Capped" : (isVisited ? "Visited" : "Uncapped");
 
-    const rankName = (m.rank_name ?? m.rank ?? "");
-    const rankHtml = renderRankBadgeHtml(rankName, "memberRankBadge");
+    const rank = getRank(m);
+    const rankHtml = clanRankLineHtml(rank, "memberRankLine");
+    let privateHtml = "";
 
     const isPrivate = !!(m?.is_private ?? m?.private ?? false);
     const sinceLocal = (m?.private_since_local || "").trim();
-    const privateHtml = isPrivate
-      ? `<div class="memberMeta"><span class="pill private" title="Profile is private">Private${sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : ""}</span></div>`
-      : "";
+    if (isPrivate) {
+      const since = sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : "";
+      privateHtml = `<div class="memberMeta"><span class="pill private" title="Profile is private">Private${since}</span></div>`;
+    }
 
     return `
       <div class="memberCard clickable" data-rsn="${escapeHtml(m.rsn)}" title="Open player">
@@ -940,9 +917,9 @@ function renderMemberList() {
             <div class="memberIdentity">
               <div class="memberName">${escapeHtml(m.rsn)}</div>
               ${rankHtml}
+              ${privateHtml}
             </div>
           </div>
-          ${privateHtml}
         </div>
         <div class="badge">${badge}</div>
       </div>
@@ -1566,17 +1543,35 @@ function renderPlayer() {
   qs("playerName").textContent = m?.rsn || "—";
   setPlayerAvatar(m?.rsn || "");
   qs("playerSubheading").textContent = "";
+  qs("playerSubheading").classList.add("hidden");
 
   const rank = m?.rank_name ? m.rank_name : "—";
-  const rankBlock = qs("playerRankBlock");
-  if (rankBlock) rankBlock.innerHTML = renderRankBadgeHtml(rank, "playerRankBadge");
+  const rankDisplay = qs("playerRankDisplay");
+  if (rankDisplay) {
+    rankDisplay.innerHTML = clanRankLineHtml(rank, "playerRankLine");
+  }
 
-  {
+  const metaEl = qs("playerMeta");
+  if (metaEl) {
     const isPrivate = !!(m?.is_private ?? m?.private ?? false);
     const sinceLocal = (m?.private_since_local || "").trim();
-    qs("playerMeta").innerHTML = isPrivate
-      ? `<span class="pill private" title="Profile is private">Private${sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : ""}</span>`
-      : "";
+    if (isPrivate) {
+      const since = sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : "";
+      metaEl.innerHTML = `<span class="pill private" title="Profile is private">Private profile${since}</span>`;
+      metaEl.classList.remove("hidden");
+    } else {
+      metaEl.innerHTML = "";
+      metaEl.classList.add("hidden");
+    }
+  }
+
+  const weekDetails = qs("playerWeekDetails");
+  if (weekDetails) {
+    const clanName = c?.name || c?.key || "Clan";
+    const start = week?.week_start_local || "";
+    const end = week?.week_end_local || "";
+    const timezone = week?.timezone || c?.timezone || "UTC";
+    weekDetails.textContent = `${clanName} • Week: ${start} → ${end} (${timezone})`;
   }
 
   qs("pCap").textContent = playerData.cap?.capped ? "Capped" : "Uncapped";
@@ -1689,20 +1684,23 @@ function renderPlayer() {
   }
 
   renderLastPull(qs("playerLastPull"), playerData.last_pull);
-  renderPlayerClanWeekDetails();
 }
 
 async function loadPlayer(rsn, period) {
   playerData = null;
 
   qs("playerSubheading").textContent = "Loading…";
+  qs("playerSubheading").classList.remove("hidden");
   qs("playerName").textContent = "—";
   setPlayerAvatar("");
-  qs("playerMeta").textContent = "";
-  if (qs("playerRankBlock")) qs("playerRankBlock").innerHTML = "";
+  if (qs("playerMeta")) {
+    qs("playerMeta").textContent = "";
+    qs("playerMeta").classList.add("hidden");
+  }
+  if (qs("playerRankDisplay")) qs("playerRankDisplay").innerHTML = "";
   qs("playerError").textContent = "";
   qs("playerLastPull").textContent = "";
-  if (qs("playerClanWeekDetails")) qs("playerClanWeekDetails").textContent = "";
+  if (qs("playerWeekDetails")) qs("playerWeekDetails").textContent = "";
   renderPlayerStatBlockLoading();
 
   if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";
@@ -1720,6 +1718,7 @@ async function loadPlayer(rsn, period) {
   const data = await fetchJson(url);
 
   if (!data || !data.ok) {
+    qs("playerSubheading").classList.remove("hidden");
     qs("playerSubheading").textContent = `Error: ${data?.error || "request failed"}`;
     qs("playerError").textContent = data?.hint ? `Hint: ${data.hint}` : "";
     return;
