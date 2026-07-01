@@ -948,6 +948,13 @@ async function loadClanOverview(clanKey, period) {
 /* ---------------- Player state ---------------- */
 let playerData = null;
 let selectedXpPeriod = "7d";
+let selectedActivityLimit = 20;
+const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
+
+function normaliseActivityLimit(value) {
+  const n = Number(value);
+  return ACTIVITY_LIMIT_OPTIONS.includes(n) ? n : 20;
+}
 
 function populateXpPeriods(periods, currentValue) {
   const sel = qs("xpPeriod");
@@ -957,6 +964,55 @@ function populateXpPeriods(periods, currentValue) {
     const selected = v === currentValue ? " selected" : "";
     return `<option value="${escapeHtml(v)}"${selected}>${escapeHtml(label)}</option>`;
   }).join("");
+}
+
+function populateActivityLimitOptions(options, currentValue) {
+  const sel = qs("activityLimit");
+  if (!sel) return;
+
+  const optionValues = (Array.isArray(options) && options.length ? options : ACTIVITY_LIMIT_OPTIONS)
+    .map(v => normaliseActivityLimit(v))
+    .filter((value, index, arr) => arr.indexOf(value) === index);
+
+  const current = normaliseActivityLimit(currentValue);
+  selectedActivityLimit = current;
+
+  sel.innerHTML = optionValues.map(value => {
+    const selected = value === current ? " selected" : "";
+    return `<option value="${value}"${selected}>${value}</option>`;
+  }).join("");
+}
+
+function currentXpPeriodLabel() {
+  const sel = qs("xpPeriod");
+  const selected = sel?.selectedOptions?.[0]?.textContent?.trim();
+  if (selected) return selected;
+  return String(playerData?.xp?.period || selectedXpPeriod || "selected period");
+}
+
+function buildSkillGainMap() {
+  const map = new Map();
+  const rows = playerData?.xp?.skill_gains || [];
+  if (!Array.isArray(rows)) return map;
+
+  rows.forEach(row => {
+    const gained = Number(row?.gained_xp);
+    const value = Number.isFinite(gained) ? gained : 0;
+    [row?.skill, row?.skill_key].forEach(key => {
+      const norm = String(key || "").trim().toLowerCase();
+      if (norm) map.set(norm, value);
+    });
+  });
+
+  return map;
+}
+
+function skillGainFor(skillName, skillKey, gainMap) {
+  const keys = [skillName, skillKey].map(v => String(v || "").trim().toLowerCase()).filter(Boolean);
+  for (const key of keys) {
+    if (gainMap.has(key)) return gainMap.get(key);
+  }
+  return playerData?.xp?.has_data ? 0 : null;
 }
 
 function renderCurrentSkills() {
@@ -969,6 +1025,8 @@ function renderCurrentSkills() {
   }
 
   const skills = (cs.skills || []).slice();
+  const gainMap = buildSkillGainMap();
+  const periodLabel = currentXpPeriodLabel();
 
   // Add Total Level tile (from API: current_skills.total)
   if (cs.total && (cs.total.level !== undefined || cs.total.xp !== undefined)) {
@@ -982,74 +1040,78 @@ function renderCurrentSkills() {
   }
 
   gridEl.innerHTML = skills.map(s => {
-    if (s && s.__is_total) {
-      const lvl = (s.level === null || s.level === undefined) ? "—" : String(s.level);
-      const xp = (s.xp === null || s.xp === undefined) ? null : Number(s.xp);
-      return `
-        <div class="skillCard total">
-          <div class="skillIconWrap">
-            <img class="skillIcon"
-               src="/assets/skills/total.png"
-               alt="Total Level" />
-          </div>
-          <div class="skillInfo">
-            <div class="skillTitle">Total Level</div>
-            <div class="skillLevel">Level ${escapeHtml(lvl)}</div>
-            <div class="skillXp">${formatNumber(xp)} XP</div>
-          </div>
-        </div>
-      `;
-    }
+    const isTotal = !!(s && s.__is_total);
+    const name = isTotal ? "Total Level" : (s.skill || "—");
+    const key = isTotal ? "total" : (s.skill_key || name);
+    const levelRaw = (s.level === null || s.level === undefined) ? null : Number(s.level);
+    const xp = (s.xp === null || s.xp === undefined) ? null : Number(s.xp);
 
-    const name = s.skill || "—";
-    const key = s.skill_key || name;
-    const level = Number(s.level ?? 0);
-    const xp = Number(s.xp ?? 0);
-
-    const vLevel = (window.TrackerSkills && typeof window.TrackerSkills.virtualLevelFromXp === 'function')
-      ? window.TrackerSkills.virtualLevelFromXp(xp, name)
-      : level;
-
-    const maxV = (window.TrackerSkills && typeof window.TrackerSkills.maxVirtualLevelForSkill === 'function')
-      ? window.TrackerSkills.maxVirtualLevelForSkill(name)
-      : 120;
-
-    const displayLevel = Math.max(level, vLevel);
-    const isVirtualShown = (displayLevel > level);
-
-    const is200m = xp >= 200_000_000;
-    const isMaxVirtual = displayLevel >= maxV;
-
-    // Border tiers (your latest rules)
-    let tierClass = "";
-    if (is200m) tierClass = "gold";
-    else if (displayLevel >= 120) tierClass = "silver";
-    else if (displayLevel >= 99) tierClass = "bronze";
-
-    // Badge precedence: 200m wins (show ONLY 200m badge)
+    let displayLevel = Number.isFinite(levelRaw) && levelRaw > 0 ? levelRaw : null;
+    let isVirtualShown = false;
+    let tierClass = isTotal ? "total" : "";
     let badgeHtml = "";
-    if (is200m) {
-      badgeHtml = `<img class="skillBadge" src="assets/badges/200m.png" alt="200m" />`;
-    } else if (isMaxVirtual) {
-      badgeHtml = `<img class="skillBadge" src="assets/badges/max_virtual.png" alt="Max virtual" />`;
+
+    if (!isTotal) {
+      const vLevel = (window.TrackerSkills && typeof window.TrackerSkills.virtualLevelFromXp === 'function')
+        ? window.TrackerSkills.virtualLevelFromXp(Number(xp || 0), name)
+        : displayLevel;
+
+      const maxV = (window.TrackerSkills && typeof window.TrackerSkills.maxVirtualLevelForSkill === 'function')
+        ? window.TrackerSkills.maxVirtualLevelForSkill(name)
+        : 120;
+
+      displayLevel = Math.max(Number(displayLevel || 0), Number(vLevel || 0)) || null;
+      isVirtualShown = !!(displayLevel && levelRaw && displayLevel > levelRaw);
+
+      const is200m = Number(xp || 0) >= 200_000_000;
+      const isMaxVirtual = displayLevel >= maxV;
+
+      if (is200m) tierClass = "gold";
+      else if (displayLevel >= 120) tierClass = "silver";
+      else if (displayLevel >= 99) tierClass = "bronze";
+
+      if (is200m) {
+        badgeHtml = `<img class="skillBadge" src="assets/badges/200m.png" alt="200m" />`;
+      } else if (isMaxVirtual) {
+        badgeHtml = `<img class="skillBadge" src="assets/badges/max_virtual.png" alt="Max virtual" />`;
+      }
     }
+
+    const gained = isTotal
+      ? (playerData?.xp?.has_data ? Number(playerData?.xp?.gained_total_xp || 0) : null)
+      : skillGainFor(name, key, gainMap);
+
+    const levelText = displayLevel ? String(displayLevel) : "—";
+    const xpText = formatNumber(xp);
+    const gainedText = gained === null || gained === undefined ? "—" : `+${formatNumber(gained)}`;
+    const virtualNote = isVirtualShown ? "Virtual level shown" : "";
+    const tooltipLines = [
+      name,
+      `Level: ${levelText}${isVirtualShown ? " (virtual)" : ""}`,
+      `Total XP: ${xpText}`,
+      `${periodLabel} XP: ${gainedText}`,
+    ].filter(Boolean);
 
     return `
-      <div class="skillCard ${tierClass}">
+      <div class="skillCard compact ${escapeHtml(tierClass)}" tabindex="0" title="${escapeHtml(tooltipLines.join("\n"))}" aria-label="${escapeHtml(tooltipLines.join(". "))}">
         <div class="skillIconWrap">
-          <img class="skillIcon" data-skill="${escapeHtml(name)}" data-skillkey="${escapeHtml(key)}" alt="" />
+          <img class="skillIcon" data-skill="${escapeHtml(name)}" data-skillkey="${escapeHtml(key)}" ${isTotal ? 'src="assets/skills/total.png"' : ''} alt="${escapeHtml(name)}" />
           ${badgeHtml}
         </div>
-        <div class="skillInfo">
-          <div class="skillTitle">${escapeHtml(name)}</div>
-          <div class="skillLevel">Level ${escapeHtml(String(displayLevel || "—"))}${isVirtualShown ? ` <span class="pill">Virtual</span>` : ""}</div>
-          <div class="skillXp">${formatNumber(xp)} XP</div>
+        <div class="skillCompactLevel">${escapeHtml(levelText)}</div>
+        <div class="skillHoverTip" role="tooltip">
+          <div class="skillHoverTitle">${escapeHtml(name)}</div>
+          <div>Level: <strong>${escapeHtml(levelText)}${isVirtualShown ? " virtual" : ""}</strong></div>
+          <div>Total XP: <strong>${escapeHtml(xpText)}</strong></div>
+          <div>${escapeHtml(periodLabel)} XP: <strong>${escapeHtml(gainedText)}</strong></div>
+          ${virtualNote ? `<div class="skillHoverMuted">${escapeHtml(virtualNote)}</div>` : ""}
         </div>
       </div>
     `;
   }).join("");
 
   gridEl.querySelectorAll("img.skillIcon").forEach(img => {
+    if (img.getAttribute("src")) return;
     const skillName = img.getAttribute("data-skill") || "";
     const skillKey = img.getAttribute("data-skillkey") || "";
     const candidates = [
@@ -1429,7 +1491,9 @@ function renderPlayer() {
   // Activity log (icons + coloured rows)
   const activityList = qs("activityList");
   const activity = playerData.recent_activity || [];
-  qs("activityStatus").textContent = `${activity.length} items`;
+  populateActivityLimitOptions(playerData.activity_limit_options, playerData.activity_limit || selectedActivityLimit);
+  const shownLimit = normaliseActivityLimit(playerData.activity_limit || selectedActivityLimit);
+  qs("activityStatus").textContent = `${activity.length} item${activity.length === 1 ? "" : "s"} shown${activity.length >= shownLimit ? ` • limit ${shownLimit}` : ""}`;
 
   if (activity.length) {
     activityList.innerHTML = activity.map((a, i) => {
@@ -1540,8 +1604,11 @@ async function loadPlayer(rsn, period) {
   if (qs("questMeta")) qs("questMeta").textContent = "Loading quests...";
   if (qs("questStatus")) qs("questStatus").textContent = "";
   if (qs("questList")) qs("questList").innerHTML = "";
+  if (qs("activityStatus")) qs("activityStatus").textContent = "Loading activities...";
+  if (qs("activityList")) qs("activityList").innerHTML = "";
 
-  const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}`;
+  const activityLimit = normaliseActivityLimit(selectedActivityLimit);
+  const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}&activity_limit=${encodeURIComponent(activityLimit)}`;
   const data = await fetchJson(url);
 
   if (!data || !data.ok) {
@@ -1552,7 +1619,9 @@ async function loadPlayer(rsn, period) {
 
   playerData = data;
   selectedXpPeriod = data.xp?.period || period || "7d";
+  selectedActivityLimit = normaliseActivityLimit(data.activity_limit || activityLimit);
   populateXpPeriods(data.xp_periods || [], selectedXpPeriod);
+  populateActivityLimitOptions(data.activity_limit_options, selectedActivityLimit);
   renderPlayer();
 
   // If we haven't collected XP recently, trigger a refresh for this player.
@@ -1821,6 +1890,12 @@ function wireUI() {
   qs("xpPeriod")?.addEventListener("change", () => {
     const v = qs("xpPeriod")?.value || "7d";
     selectedXpPeriod = v;
+    const { player } = getParams();
+    if (player) loadPlayer(player, selectedXpPeriod);
+  });
+
+  qs("activityLimit")?.addEventListener("change", () => {
+    selectedActivityLimit = normaliseActivityLimit(qs("activityLimit")?.value || 20);
     const { player } = getParams();
     if (player) loadPlayer(player, selectedXpPeriod);
   });

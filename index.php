@@ -157,7 +157,18 @@ include __DIR__ . '/includes/menu.php';
         </div>
 
         <div class="panel" id="activityPanel">
-          <h3 class="h2" style="margin-bottom:8px;">Recent activity</h3>
+          <div class="panelTitleRow">
+            <h3 class="h2">Recent activity</h3>
+            <label class="compactSelectLabel" for="activityLimit">
+              Show
+              <select id="activityLimit" class="select selectSmall">
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+          </div>
           <div class="muted" id="activityStatus"></div>
           <div class="activityList" id="activityList"></div>
         </div>

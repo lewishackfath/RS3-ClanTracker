@@ -702,6 +702,10 @@ try {
 
     $period = tracker_get_param('period', 16);
 
+    $activityLimitRaw = (int)(tracker_get_param('activity_limit', 8) ?: '20');
+    $allowedActivityLimits = [20, 50, 100, 200];
+    $activityLimit = in_array($activityLimitRaw, $allowedActivityLimits, true) ? $activityLimitRaw : 20;
+
     $preferredClanId = (int)(tracker_get_param('clan', 16) ?: (string)(getenv('TRACKER_CLAN_ID') ?: '0'));
 
     $pdo = tracker_pdo();
@@ -787,7 +791,7 @@ try {
           AND activity_text <> 'Rank-up required'
           AND activity_text <> 'Rank-up processed'
         ORDER BY COALESCE(activity_date_utc, announced_at) DESC
-        LIMIT 20;
+        LIMIT {$activityLimit};
     ");
     $stmt->execute([':mid' => $memberId]);
     $activityRows = $stmt->fetchAll() ?: [];
@@ -850,6 +854,7 @@ try {
         'start_total_xp' => null,
         'end_total_xp' => null,
         'top_skills' => [],
+        'skill_gains' => [],
     ];
 
     if ($startSnap && $endSnap) {
@@ -862,11 +867,18 @@ try {
         $endSkills   = tracker_extract_skill_stats(tracker_parse_skills_json($endSnap['skills_json']));
 
         $diffs = [];
+        $skillGains = [];
         foreach ($endSkills as $skill => $stRow) {
             $endXp = $stRow['xp'];
             $startXp = $startSkills[$skill]['xp'] ?? null;
             if ($endXp === null || $startXp === null) continue;
             $d = (int)$endXp - (int)$startXp;
+            if ($d < 0) $d = 0;
+            $skillGains[] = [
+                'skill' => $skill,
+                'skill_key' => tracker_skill_key($skill),
+                'gained_xp' => $d,
+            ];
             if ($d > 0) $diffs[$skill] = $d;
         }
 
@@ -890,6 +902,7 @@ try {
             'start_total_xp' => $startTotal,
             'end_total_xp' => $endTotal,
             'top_skills' => $top,
+            'skill_gains' => $skillGains,
         ];
     }
 
@@ -1002,6 +1015,8 @@ try {
         ],
         'quests' => $questsLive,
         'hiscores_lite' => $hiscoresLite,
+        'activity_limit' => $activityLimit,
+        'activity_limit_options' => $allowedActivityLimits,
 
         'recent_activity' => array_map(static function(array $r) use ($week) {
             $actUtc = $r['activity_date_utc'] ?? null;
