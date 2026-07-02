@@ -493,13 +493,33 @@ function rm_parse_activity_date_utc(string $dateStr): DateTimeImmutable
 {
     $dateStr = trim($dateStr);
 
-    $dt = DateTimeImmutable::createFromFormat('d-M-Y H:i', $dateStr, new DateTimeZone('UTC'));
-    if ($dt instanceof DateTimeImmutable) {
-        return $dt->setTime((int)$dt->format('H'), (int)$dt->format('i'), 0, 0);
+    // RuneMetrics activity timestamps are supplied in UK local time, not UTC.
+    // Treat the source value as Europe/London so BST/GMT daylight-saving rules
+    // are applied correctly, then store the converted instant as UTC.
+    $sourceTz = new DateTimeZone('Europe/London');
+    $utcTz = new DateTimeZone('UTC');
+
+    $formats = [
+        'd-M-Y H:i:s',
+        'd-M-Y H:i',
+        'j-M-Y H:i:s',
+        'j-M-Y H:i',
+    ];
+
+    foreach ($formats as $format) {
+        $dt = DateTimeImmutable::createFromFormat($format, $dateStr, $sourceTz);
+        if ($dt instanceof DateTimeImmutable) {
+            $errors = DateTimeImmutable::getLastErrors();
+            if ($errors === false || (((int)($errors['warning_count'] ?? 0)) === 0 && ((int)($errors['error_count'] ?? 0)) === 0)) {
+                return $dt
+                    ->setTime((int)$dt->format('H'), (int)$dt->format('i'), (int)$dt->format('s'), 0)
+                    ->setTimezone($utcTz);
+            }
+        }
     }
 
     try {
-        return new DateTimeImmutable($dateStr, new DateTimeZone('UTC'));
+        return (new DateTimeImmutable($dateStr, $sourceTz))->setTimezone($utcTz);
     } catch (Throwable) {
         throw new RuntimeException("Unable to parse activity date: {$dateStr}");
     }
