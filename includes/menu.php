@@ -19,8 +19,8 @@ function menu_btn_class(string $key, string $active): string {
 }
 
 $links = [
-  'cap_history' => ['label' => 'Cap History', 'href' => 'cap_history', 'target' => ''],
   'home' => ['label' => 'Clan Overview', 'href' => 'index', 'target' => ''],
+  'cap_history' => ['label' => 'Cap History', 'href' => 'cap_history', 'target' => ''],
   'help' => ['label' => 'Help', 'href' => 'help', 'target' => '_blank'],
 ];
 
