@@ -357,18 +357,18 @@ function iconCandidates(basePath, keyOrName) {
   const lowerNoSpaces = lower.replace(/\s+/g, "");
   const fileKey = toFileKey(raw);
   const fileKeyNoUnderscore = fileKey.replace(/_/g, "");
+  const baseNames = [raw, lower, tc, noSpaces, lowerNoSpaces, fileKey, fileKeyNoUnderscore];
+  const extensions = ["png", "webp", "jpg", "jpeg", "svg"];
 
-  const uniq = new Set([
-    `${basePath}${raw}.png`,
-    `${basePath}${lower}.png`,
-    `${basePath}${tc}.png`,
-    `${basePath}${noSpaces}.png`,
-    `${basePath}${lowerNoSpaces}.png`,
-    `${basePath}${fileKey}.png`,
-    `${basePath}${fileKeyNoUnderscore}.png`,
-  ]);
+  const uniq = new Set();
+  for (const baseName of baseNames) {
+    if (!baseName) continue;
+    for (const ext of extensions) {
+      uniq.add(`${basePath}${baseName}.${ext}`);
+    }
+  }
 
-  return Array.from(uniq).filter(p => !p.endsWith("/.png"));
+  return Array.from(uniq).filter(p => !/\/\.(png|webp|jpe?g|svg)$/i.test(p));
 }
 
 
@@ -402,9 +402,61 @@ function _stripBom(s) {
   return s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
 }
 
-// Best-effort: allow trailing commas in JSON (common mistake)
+// Best-effort: allow comments and trailing commas in JSON-style config files.
+// This keeps icon maps forgiving while still parsing them as JSON in the browser.
+function _stripJsonCommentsOutsideStrings(text) {
+  const input = String(text || "");
+  let out = "";
+  let inString = false;
+  let quote = "";
+  let escaped = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    const next = input[i + 1];
+
+    if (inString) {
+      out += ch;
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === quote) {
+        inString = false;
+        quote = "";
+      }
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      inString = true;
+      quote = ch;
+      out += ch;
+      continue;
+    }
+
+    if (ch === "/" && next === "/") {
+      while (i < input.length && input[i] !== "\n") i++;
+      out += "\n";
+      continue;
+    }
+
+    if (ch === "/" && next === "*") {
+      i += 2;
+      while (i < input.length && !(input[i] === "*" && input[i + 1] === "/")) i++;
+      i++;
+      continue;
+    }
+
+    out += ch;
+  }
+
+  return out;
+}
+
 function _relaxJson(text) {
   let t = _stripBom(String(text || ""));
+  t = _stripJsonCommentsOutsideStrings(t);
   // Remove trailing commas before } or ]
   t = t.replace(/,\s*(\}|\])/g, "$1");
   return t;
@@ -537,18 +589,37 @@ function loadBossIconMap() {
 function cleanBossNameForIcons(name) {
   return cleanItemNameForIcons(name)
     .replace(/^the\s+/i, "The ")
+    .replace(/\s+/g, " ")
     .trim();
+}
+
+function addBossNameVariant(set, value) {
+  const raw = cleanBossNameForIcons(value);
+  if (!raw) return;
+
+  set.add(raw);
+
+  // Do not singularise full comma-containing boss names such as
+  // "Zamorak, Lord of Chaos". A comma-stripped fallback is added separately.
+  if (raw.includes(",")) return;
+
+  // RuneMetrics commonly pluralises the final word when there is a count:
+  // "Araxxis" -> "Araxxi", "General Graardors" -> "General Graardor".
+  if (/ies$/i.test(raw)) set.add(raw.replace(/ies$/i, "y"));
+  if (/s$/i.test(raw) && !/(ss|us|x)$/i.test(raw)) set.add(raw.replace(/s$/i, ""));
 }
 
 function bossNameVariants(name) {
   const raw = cleanBossNameForIcons(name);
   const variants = new Set();
-  if (raw) variants.add(raw);
+  addBossNameVariant(variants, raw);
 
-  // Common RuneMetrics kill text pluralises the final word when there is a count.
-  // Keep this conservative so names such as Nex are not damaged.
-  if (/ies$/i.test(raw)) variants.add(raw.replace(/ies$/i, "y"));
-  if (/s$/i.test(raw) && !/(ss|us|x)$/i.test(raw)) variants.add(raw.replace(/s$/i, ""));
+  // Some boss activity lines add flavour text after a comma, e.g.
+  // "I killed 12 General Graardors, all huge war chiefs."
+  // Keep the full value first for comma-containing boss names, but also try the
+  // segment before the comma as a fallback.
+  const commaBase = raw.split(",")[0]?.trim() || "";
+  if (commaBase && commaBase !== raw) addBossNameVariant(variants, commaBase);
 
   return Array.from(variants).filter(Boolean);
 }
@@ -576,11 +647,18 @@ function bossMappedIconCandidates(iconPath) {
   const raw = String(iconPath).trim();
   if (!raw) return [];
 
-  if (/^(https?:)?\//i.test(raw) || raw.startsWith("assets/")) {
-    return _mappedIconCandidates(raw);
-  }
+  const direct = (/^(https?:)?\//i.test(raw) || raw.startsWith("assets/"))
+    ? _mappedIconCandidates(raw)
+    : _mappedIconCandidates(`assets/activity/monsters/${raw}`);
 
-  return _mappedIconCandidates(`assets/activity/monsters/${raw}`);
+  const fileName = raw.split(/[\\/]/).pop() || raw;
+  const stem = fileName.replace(/\.(png|webp|jpe?g|svg)$/i, "");
+  const stemCandidates = stem ? [
+    ...iconCandidates("assets/activity/monsters/", stem),
+    ...iconCandidates("assets/activity/monsters/", stem.replace(/[_-]+/g, " "))
+  ] : [];
+
+  return Array.from(new Set([...direct, ...stemCandidates]));
 }
 
 function findMappedBossIcon(bossName, bossIconMap) {
@@ -1948,7 +2026,13 @@ function renderPlayer() {
       activityList.querySelectorAll('img.miniIcon[data-kind="boss"]').forEach(img => {
         const bossName = cleanBossNameForIcons(img.getAttribute("data-boss") || "");
         const mapped = findMappedBossIcon(bossName, bossIconMap);
-        if (mapped) setImgWithFallback(img, bossMappedIconCandidates(mapped), "assets/activity/default.png");
+        if (mapped) {
+          setImgWithFallback(
+            img,
+            [...bossMappedIconCandidates(mapped), ...bossIconCandidatesFromName(bossName)],
+            "assets/activity/default.png"
+          );
+        }
       });
     });
 

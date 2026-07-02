@@ -1,78 +1,54 @@
 {
-  //Elite Dungeon 1
   "Sanctum Guardian": "Sanctum_Guardian.webp",
   "Seiryu": "Seiryu.webp",
   "Seiryu the Azure Serpent": "Seiryu.webp",
   "Masuta": "Masuta.webp",
   "Masuta the Ascended": "Masuta.webp",
-
-  //Elite Dungeon 2
   "Astellarn": "Astellarn.webp",
   "Black Stone Dragon": "Black_Stone_Dragon.webp",
   "Verak Lith": "Verak_Lith.webp",
-
-  //Elite Dungeon 3
   "Ambassador": "Ambassador.webp",
   "Crassian Leviathan": "crassian_leviathan.png",
   "Taraket": "Taraket.webp",
   "Taraket the Necromancer": "Taraket.webp",
   "The Ambassador": "Ambassador.webp",
-  
   "Araxxi": "Araxxor.png",
   "Araxxor": "Araxxor.png",
-  
   "Arch Glacor": "Arch-Glacor.webp",
   "Arch-Glacor": "Arch-Glacor.webp",
-  
   "Barrows - Rise of the Six": "ROTS.webp",
   "The Barrows: Rise of the Six": "ROTS.webp",
   "Rise of the Six": "ROTS.webp",
-  
   "Beastmaster Durzag": "beastmaster_durzag.png",
   "Durzag": "beastmaster_durzag.png",
-  
   "Chaos Elemental": "chaos_elemental.png",
-  
   "Corporeal Beast": "corporeal_beast.png",
-  
   "Croesus": "croesus.png",
-  
   "Dagannoth Kings": "dagannoth_kings.png",
   "Dagannoth Prime": "dagannoth_prime.png",
   "Dagannoth Rex": "dagannoth_rex.png",
-  "Dagannoth Supreme": "dagannoth_supreme.png", 
-
+  "Dagannoth Supreme": "dagannoth_supreme.png",
   "Giant Mole": "giant_mole.png",
-
   "Hermod": "Hermod.webp",
   "Hermod, the Spirit of War": "Hermod.webp",
-
-  "Exiled Kalphite Queen": "exiled_kalphite_queen.png",  
+  "Exiled Kalphite Queen": "exiled_kalphite_queen.png",
   "Kalphite King": "kalphite_king.png",
   "Kalphite Kings": "kalphite_king.png",
   "Kalphite Queen": "kalphite_queen.png",
-  
   "Kerapac": "Kerapac.webp",
   "Kerapac, the bound": "Kerapac.webp",
-  
   "King Black Dragon": "king_black_dragon.png",
-  
-  //God Wars Dungeon 1
   "Kree'arra": "kreearra.png",
   "Kreearra": "kreearra.png",
   "Kril Tsutsaroth": "kril_tsutsaroth.png",
   "K'ril Tsutsaroth": "kril_tsutsaroth.png",
   "General Graardor": "general_graardor.png",
   "Commander Zilyana": "commander_zilyana.png",
-
-  //God Wars Dungeon 2
   "Gorvek": "vindicta.png",
   "Vindicta": "Vindicta.webp",
   "Gregorovic": "gregorovic.png",
   "Helwyr": "helwyr.png",
   "Twin Furies": "Twin_Furies.webp",
-  
-  //Legiones
   "Legio Primus": "legio_primus.png",
   "Legio Quartus": "legio_quartus.png",
   "Legio Quintus": "legio_quintus.png",
@@ -80,44 +56,35 @@
   "Legio Sextus": "legio_sextus.png",
   "Legio Tertius": "legio_tertius.png",
   "Legiones": "legiones.png",
-  
   "Magister": "The_Magister.webp",
   "The Magister": "The_Magister.webp",
-  
   "Nakatra": "Nakatra.webp",
   "Nakatra, Devourer Eternal": "Nakatra.webp",
   "Vermyx": "Vermyx.webp",
   "Vermyx, Brood Mother": "Vermyx.webp",
   "Kezalam": "Kezalam.webp",
   "Kezalam, the Wanderer": "Kezalam.webp",
-  
   "Nex": "Nex.webp",
   "Nex AOD": "AOD.webp",
   "Nex, Angel of Death": "AOD.webp",
   "Nex: Angel of Death": "AOD.webp",
-  
   "Queen Black Dragon": "QBD.webp",
-  
   "Raksha": "Raksha.webp",
   "Raksha, the Shadow Colossus": "Raksha.webp",
-  
   "Rasial": "Rasial.webp",
   "Rasial, the First Necromancer": "Rasial.webp",
-  
   "Solak": "solak.png",
-  
   "Telos": "Telos.webp",
   "Telos, the Warden": "Telos.webp",
- 
   "TzKal Zuk": "Zuk.webp",
   "TzKal-Zuk": "Zuk.webp",
-  
   "Vorago": "vorago.png",
-  
   "Zamorak": "Zamorak.webp",
   "Zamorak, Lord of Chaos": "Zamorak.webp",
-  
   "Vorkath": "Zamorak.webp",
   "Zemouregal & Vorkath": "Vorkath.webp",
-  "Zemouregal and Vorkath": "Vorkath.webp"
+  "Zemouregal and Vorkath": "Vorkath.webp",
+  "Araxxis": "Araxxor.png",
+  "General Graardors": "general_graardor.png",
+  "Angel of Death": "AOD.webp"
 }
