@@ -49,6 +49,15 @@ function compareRanksDescending(a, b) {
   return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
 }
 
+function compareClanMembersDescending(a, b) {
+  const ar = a?.rank_name ?? a?.rank ?? "";
+  const br = b?.rank_name ?? b?.rank ?? "";
+  const rankCompare = compareRanksDescending(ar, br);
+  if (rankCompare !== 0) return rankCompare;
+
+  return String(a?.rsn || "").localeCompare(String(b?.rsn || ""), undefined, { sensitivity: "base" });
+}
+
 function clanRankAssetPath(rankName) {
   const key = String(rankName || "")
     .trim()
@@ -971,7 +980,7 @@ function renderMemberList() {
   const needle = normalise(qs("memberSearch").value).toLowerCase();
   const listEl = qs("memberList");
 
-  let members = clanData.members || [];
+  let members = Array.isArray(clanData.members) ? [...clanData.members] : [];
 
   const f = String(clanFilter || "all").trim().toLowerCase();
 
@@ -1004,6 +1013,8 @@ function renderMemberList() {
       (m.rank_name || "").toLowerCase().includes(needle)
     );
   }
+
+  members.sort(compareClanMembersDescending);
 
   qs("clanStatus").textContent = `${members.length} shown`;
 

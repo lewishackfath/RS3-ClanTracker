@@ -11,6 +11,51 @@ function tracker_get_param(string $key, int $maxLen = 64): string {
     return $v;
 }
 
+function tracker_normalise_rank_for_sort(?string $rank): string {
+    $rank = strtolower(trim((string)$rank));
+    $rank = preg_replace('/[^a-z0-9]+/', ' ', $rank) ?: '';
+    $rank = preg_replace('/\s+/', ' ', $rank) ?: '';
+    return trim($rank);
+}
+
+function tracker_rank_sort_index(?string $rank): int {
+    static $map = null;
+    if ($map === null) {
+        $order = [
+            'guest',
+            'recruit',
+            'corporal',
+            'sergeant',
+            'lieutenant',
+            'captain',
+            'general',
+            'admin',
+            'organiser',
+            'coordinator',
+            'overseer',
+            'deputy owner',
+            'owner',
+        ];
+        $map = array_flip($order);
+    }
+
+    $key = tracker_normalise_rank_for_sort($rank);
+    return array_key_exists($key, $map) ? (int)$map[$key] : -1;
+}
+
+function tracker_compare_ranks_desc(string $a, string $b): int {
+    $av = tracker_rank_sort_index($a);
+    $bv = tracker_rank_sort_index($b);
+    if ($av !== $bv) return $bv <=> $av;
+    return strcasecmp($a, $b);
+}
+
+function tracker_compare_members_by_rank_desc(array $a, array $b): int {
+    $rankCompare = tracker_compare_ranks_desc((string)($a['rank_name'] ?? ''), (string)($b['rank_name'] ?? ''));
+    if ($rankCompare !== 0) return $rankCompare;
+    return strcasecmp((string)($a['rsn'] ?? ''), (string)($b['rsn'] ?? ''));
+}
+
 function tracker_week_window(array $clan): array {
     $tzName = (string)($clan['timezone'] ?? 'UTC');
     try { $tz = new DateTimeZone($tzName); }
@@ -320,6 +365,7 @@ ORDER BY m.rsn ASC
 $stmt->execute([':cid' => $clanId, ':ws' => $ws]);
 
 $members = $stmt->fetchAll();
+usort($members, 'tracker_compare_members_by_rank_desc');
 
 // Rank list for UI filters
 $ranksSet = [];
@@ -328,7 +374,7 @@ foreach ($members as $m) {
     if ($rn !== null && $rn !== '') $ranksSet[(string)$rn] = true;
 }
 $ranks = array_keys($ranksSet);
-sort($ranks, SORT_NATURAL | SORT_FLAG_CASE);
+usort($ranks, 'tracker_compare_ranks_desc');
 
 
 $active = count($members);
