@@ -979,6 +979,12 @@ function renderMemberList() {
     );
   }
 
+  members = members.slice().sort((a, b) => {
+    const rankCompare = compareRanksDescending(getRank(a), getRank(b));
+    if (rankCompare !== 0) return rankCompare;
+    return String(a?.rsn || "").localeCompare(String(b?.rsn || ""), undefined, { sensitivity: "base" });
+  });
+
   qs("clanStatus").textContent = `${members.length} shown`;
 
   listEl.innerHTML = members.map(m => {
