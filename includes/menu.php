@@ -7,7 +7,7 @@ require_once __DIR__ . '/config.php';
 // On each page set:
 // $menu_title = 'Tracker';
 // $menu_subtitle = 'Clan & member lookup';
-// $menu_active = 'home'; // home|help|bingo
+// $menu_active = 'home'; // cap_history|home|help|bingo
 
 $brand = tracker_brand_config();
 $menu_title = $menu_title ?? $brand['name'];
@@ -19,6 +19,7 @@ function menu_btn_class(string $key, string $active): string {
 }
 
 $links = [
+  'cap_history' => ['label' => 'Cap History', 'href' => 'cap_history', 'target' => ''],
   'home' => ['label' => 'Clan Overview', 'href' => 'index', 'target' => ''],
   'help' => ['label' => 'Help', 'href' => 'help', 'target' => '_blank'],
 ];

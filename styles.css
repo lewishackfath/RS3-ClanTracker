@@ -1509,3 +1509,153 @@ li { margin: 0 0 10px; }
     flex-wrap: wrap;
   }
 }
+
+/* Cap history page */
+.capHistoryPage {
+  overflow: hidden;
+}
+.capHistoryHeaderRow {
+  align-items: center;
+}
+.capHistoryStatsGrid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 760px) {
+  .capHistoryStatsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.capHistoryToolbar {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 760px) {
+  .capHistoryToolbar {
+    grid-template-columns: minmax(260px, 1fr) 240px;
+    align-items: center;
+  }
+}
+.capHistoryGroups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+.capHistoryGroup {
+  overflow: hidden;
+}
+.capHistoryGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(84, 47, 24, 0.22);
+}
+.capHistoryRankTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.capHistoryRankTitle .h2 {
+  margin: 0;
+}
+.capHistoryRankIcon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 5px rgba(26,12,4,0.34));
+}
+.capHistoryGroupStats {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+.capHistoryGroupStats span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(75,45,22,0.22);
+  background: rgba(197,156,91,0.46);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.32);
+}
+.capHistoryGroupStats strong {
+  color: #3c2412;
+  font-size: 1.02rem;
+  font-weight: 950;
+}
+.capHistoryTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 15px;
+  border: 1px solid rgba(84,47,24,0.20);
+  background: rgba(213,183,119,0.32);
+}
+.capHistoryTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+.capHistoryTable th,
+.capHistoryTable td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(84,47,24,0.16);
+  color: #3d2515;
+  font-weight: 750;
+  vertical-align: middle;
+}
+.capHistoryTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #fff2c5;
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, var(--button-brown-top), var(--button-brown-mid) 52%, var(--button-brown-bottom));
+  border-bottom-color: rgba(246,222,159,0.32);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.45);
+}
+.capHistoryTable tbody tr {
+  background: rgba(255,242,206,0.12);
+}
+.capHistoryTable tbody tr:nth-child(even) {
+  background: rgba(83,49,22,0.055);
+}
+.capHistoryTable tbody tr:hover {
+  background: rgba(255,242,206,0.24);
+}
+.capHistoryNameCell {
+  min-width: 180px;
+  white-space: nowrap;
+}
+.capHistoryCountCell {
+  width: 92px;
+  font-size: 1rem;
+  font-weight: 950 !important;
+  color: #2f1c0f !important;
+}
+@media (max-width: 760px) {
+  .capHistoryHeaderRow,
+  .capHistoryGroupHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .capHistoryHeaderRow .button {
+    width: 100%;
+  }
+  .capHistoryGroupStats {
+    justify-content: flex-start;
+  }
+}
