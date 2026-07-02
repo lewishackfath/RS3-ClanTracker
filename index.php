@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607020002" />
+  <link rel="stylesheet" href="./styles.css?v=202607020003" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -42,10 +42,12 @@ include __DIR__ . '/includes/menu.php';
           <p class="muted hidden" id="clanSubheading"></p>
         </div>
         <div class="overviewHeaderActions">
-          <div class="resetCountdownPill" id="resetCountdownPill" aria-live="polite">
-            <span class="resetCountdownLabel">Time until Cap Reset</span>
-            <span class="resetCountdownValue" id="resetCountdownValue">—</span>
-            <span class="resetCountdownLocalTime" id="resetCountdownLocalTime">Local reset: —</span>
+          <div class="resetCountdownBlock" aria-live="polite">
+            <div class="resetCountdownPill" id="resetCountdownPill">
+              <span class="resetCountdownLabel">Time until Cap Reset</span>
+              <span class="resetCountdownValue" id="resetCountdownValue">—</span>
+            </div>
+            <div class="resetCountdownLocalTime" id="resetCountdownLocalTime">Local reset: —</div>
           </div>
           <button class="button secondary" type="button" id="backFromClan">Back</button>
         </div>
@@ -192,6 +194,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607020002"></script>
+  <script src="./app.js?v=202607020003"></script>
 </body>
 </html>
