@@ -194,6 +194,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607020004"></script>
+  <script src="./app.js?v=202607020101"></script>
 </body>
 </html>

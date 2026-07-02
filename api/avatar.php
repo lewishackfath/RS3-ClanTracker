@@ -43,6 +43,35 @@ $cacheFile = $cacheDir . '/' . $safe . '.png';
 $etagFile  = $cacheFile . '.etag';
 $lockFile  = $cacheFile . '.lock';
 
+$defaultAvatar = __DIR__ . '/../assets/avatars/default.png';
+
+function serve_png_file(string $file, $lockHandle = null): void {
+    if (!is_file($file) || filesize($file) <= 0) {
+        if ($lockHandle) { @flock($lockHandle, LOCK_UN); @fclose($lockHandle); }
+        http_response_code(404);
+        exit;
+    }
+
+    $mtime = (int)@filemtime($file);
+    $lastModified = $mtime > 0 ? gmdate('D, d M Y H:i:s', $mtime) . ' GMT' : null;
+
+    if ($lastModified && isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])) {
+        $ims = strtotime((string)$_SERVER['HTTP_IF_MODIFIED_SINCE']);
+        if ($ims !== false && $mtime > 0 && $ims >= $mtime) {
+            header('HTTP/1.1 304 Not Modified');
+            if ($lockHandle) { @flock($lockHandle, LOCK_UN); @fclose($lockHandle); }
+            exit;
+        }
+    }
+
+    header('Content-Type: image/png');
+    header('Cache-Control: public, max-age=300, must-revalidate');
+    if ($lastModified) header('Last-Modified: ' . $lastModified);
+    readfile($file);
+    if ($lockHandle) { @flock($lockHandle, LOCK_UN); @fclose($lockHandle); }
+    exit;
+}
+
 // Refresh rules
 $force = isset($_GET['force']) && (string)$_GET['force'] === '1';
 $ttlSeconds = 6 * 60 * 60; // 6 hours
@@ -189,35 +218,16 @@ if ($needsRefresh) {
 
 // Serve (even if refresh failed, serve stale cache if we have it)
 if (is_file($cacheFile) && filesize($cacheFile) > 0) {
-    $mtime = (int)@filemtime($cacheFile);
-    $lastModified = $mtime > 0 ? gmdate('D, d M Y H:i:s', $mtime) . ' GMT' : null;
-
-    // Client cache validation
-    if ($lastModified && isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])) {
-        $ims = strtotime((string)$_SERVER['HTTP_IF_MODIFIED_SINCE']);
-        if ($ims !== false && $mtime > 0 && $ims >= $mtime) {
-            header('HTTP/1.1 304 Not Modified');
-            if ($lockHandle) { @flock($lockHandle, LOCK_UN); @fclose($lockHandle); }
-            exit;
-        }
-    }
-
-    header('Content-Type: image/png');
-
-    // Allow short browser caching, but revalidate frequently
-    header('Cache-Control: public, max-age=300, must-revalidate');
-    if ($lastModified) header('Last-Modified: ' . $lastModified);
-
     // If we have an ETag saved, return it to the browser too
     if (is_file($etagFile)) {
         $etag = trim((string)@file_get_contents($etagFile));
         if ($etag !== '') header('ETag: ' . $etag);
     }
+    serve_png_file($cacheFile, $lockHandle);
+}
 
-    readfile($cacheFile);
-
-    if ($lockHandle) { @flock($lockHandle, LOCK_UN); @fclose($lockHandle); }
-    exit;
+if (is_file($defaultAvatar) && filesize($defaultAvatar) > 0) {
+    serve_png_file($defaultAvatar, $lockHandle);
 }
 
 if ($lockHandle) { @flock($lockHandle, LOCK_UN); @fclose($lockHandle); }

@@ -526,6 +526,8 @@ function renderLastPull(el, lastPull) {
 
 /* ---------------- Player avatar (cached server-side) ---------------- */
 
+const DEFAULT_AVATAR_URL = "assets/avatars/default.png";
+
 function setPlayerAvatar(rsn) {
   const img = qs("playerAvatar");
   if (!img) return;
@@ -548,9 +550,15 @@ function setPlayerAvatar(rsn) {
   };
 
   img.onerror = () => {
-    img.classList.add("hidden");
+    if (img.dataset.fallbackApplied === "1") {
+      img.classList.remove("hidden");
+      return;
+    }
+    img.dataset.fallbackApplied = "1";
+    img.src = DEFAULT_AVATAR_URL;
   };
 
+  img.dataset.fallbackApplied = "0";
   img.src = url;
 }
 
@@ -569,6 +577,10 @@ function avatarSafeFilename(rsn) {
 function getCachedAvatarUrl(rsn) {
   const safe = avatarSafeFilename(rsn);
   return `assets/avatars/${encodeURIComponent(safe)}.png`;
+}
+
+function getDefaultAvatarUrl() {
+  return DEFAULT_AVATAR_URL;
 }
 
 
@@ -1038,7 +1050,7 @@ function renderMemberList() {
       <div class="memberCard clickable" data-rsn="${escapeHtml(m.rsn)}" title="Open player">
         <div class="memberLeft">
           <div class="memberHeader">
-            <img class="memberAvatar" src="${getCachedAvatarUrl(m.rsn)}" alt="" onerror="this.remove()" />
+            <img class="memberAvatar" src="${getCachedAvatarUrl(m.rsn)}" alt="" onerror="if(this.dataset.fallbackApplied==='1'){return;} this.dataset.fallbackApplied='1'; this.src='${getDefaultAvatarUrl()}';" />
             <div class="memberIdentity">
               ${titleHtml}
               ${privateHtml}
