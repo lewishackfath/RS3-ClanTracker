@@ -488,6 +488,118 @@ function findMappedActivityIcon(activity, iconMap) {
 // Start fetching early (non-blocking)
 loadActivityIconMap();
 
+/* ---------------- Boss kill icon map ----------------
+   Boss kill activities are expected in one of these formats:
+   - I killed 12 Kalphite Kings.
+   - I killed Kalphite King
+
+   Add mappings in:
+   - assets/activity/monsters/icon_map.json
+
+   Example:
+   {
+     "Kalphite King": "kalphite_king.png"
+   }
+-------------------------------------------------------------------------- */
+
+const BOSS_ICON_MAP_URLS = [
+  "assets/activity/monsters/icon_map.json",
+  "assets/activity/monsters/boss_icon_map.json",
+];
+
+let _bossIconMapPromise = null;
+
+function loadBossIconMap() {
+  if (_bossIconMapPromise) return _bossIconMapPromise;
+
+  _bossIconMapPromise = (async () => {
+    for (const url of BOSS_ICON_MAP_URLS) {
+      try {
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) continue;
+        const txt = await r.text();
+        try {
+          const obj = JSON.parse(_relaxJson(txt));
+          if (obj && typeof obj === "object") return obj;
+        } catch {
+          // invalid json, try next path
+        }
+      } catch {
+        // ignore and try next path
+      }
+    }
+    return {};
+  })();
+
+  return _bossIconMapPromise;
+}
+
+function cleanBossNameForIcons(name) {
+  return cleanItemNameForIcons(name)
+    .replace(/^the\s+/i, "The ")
+    .trim();
+}
+
+function bossNameVariants(name) {
+  const raw = cleanBossNameForIcons(name);
+  const variants = new Set();
+  if (raw) variants.add(raw);
+
+  // Common RuneMetrics kill text pluralises the final word when there is a count.
+  // Keep this conservative so names such as Nex are not damaged.
+  if (/ies$/i.test(raw)) variants.add(raw.replace(/ies$/i, "y"));
+  if (/s$/i.test(raw) && !/(ss|us|x)$/i.test(raw)) variants.add(raw.replace(/s$/i, ""));
+
+  return Array.from(variants).filter(Boolean);
+}
+
+function normaliseBossMapKey(name) {
+  return _norm(String(name || "")
+    .replace(/[’']/g, "")
+    .replace(/\.$/, ""));
+}
+
+function bossIconCandidatesFromName(bossName) {
+  const out = [];
+  for (const variant of bossNameVariants(bossName)) {
+    out.push(
+      ...iconCandidates("assets/activity/monsters/", variant),
+      ...iconCandidates("assets/activity/monsters/", toFileKey(variant)),
+      ...iconCandidates("assets/activity/monsters/", toFileKey(variant).replace(/_/g, ""))
+    );
+  }
+  return Array.from(new Set(out));
+}
+
+function bossMappedIconCandidates(iconPath) {
+  if (!iconPath) return [];
+  const raw = String(iconPath).trim();
+  if (!raw) return [];
+
+  if (/^(https?:)?\//i.test(raw) || raw.startsWith("assets/")) {
+    return _mappedIconCandidates(raw);
+  }
+
+  return _mappedIconCandidates(`assets/activity/monsters/${raw}`);
+}
+
+function findMappedBossIcon(bossName, bossIconMap) {
+  if (!bossIconMap || typeof bossIconMap !== "object") return null;
+
+  const wanted = bossNameVariants(bossName).map(normaliseBossMapKey);
+  for (const [key, entry] of Object.entries(bossIconMap)) {
+    if (!wanted.includes(normaliseBossMapKey(key))) continue;
+
+    if (typeof entry === "string") return entry;
+    if (entry && typeof entry === "object" && entry.icon) return entry.icon;
+  }
+
+  return null;
+}
+
+// Start fetching early (non-blocking)
+loadBossIconMap();
+
 function setImgWithFallback(imgEl, candidates, finalFallback) {
   if (!imgEl) return;
 
@@ -624,8 +736,23 @@ function extractDropItemNameFromDetails(details) {
   return (m && m[1]) ? cleanItemNameForIcons(m[1]) : null;
 }
 
+function extractBossKillFromText(activityText) {
+  const t = String(activityText || "").replace(/\s+/g, " ").trim();
+  const m = t.match(/^I killed\s+(?:(\d[\d,]*)\s+)?(.+?)(?:\.\s*)?$/i);
+  if (!m || !m[2]) return null;
+
+  const bossName = cleanBossNameForIcons(m[2]);
+  if (!bossName) return null;
+
+  const bossCount = m[1] ? Number(String(m[1]).replace(/,/g, "")) : null;
+  return { bossName, bossCount: Number.isFinite(bossCount) ? bossCount : null };
+}
+
 function classifyActivity(text, details) {
   const combined = `${text || ""} ${details || ""}`.toLowerCase();
+
+  const bossKill = extractBossKillFromText(text);
+  if (bossKill) return { kind: "boss", ...bossKill };
 
   if (combined.includes("has completed") || combined.includes("completed:") || combined.includes("quest")) {
     return { kind: "quest" };
@@ -1742,6 +1869,7 @@ function renderPlayer() {
         info.kind === "drop"  ? "activityRow activity-drop"  :
         info.kind === "level" ? "activityRow activity-level" :
         info.kind === "quest" ? "activityRow activity-quest" :
+        info.kind === "boss"  ? "activityRow activity-boss"  :
                                 "activityRow";
 
       return `
@@ -1751,6 +1879,7 @@ function renderPlayer() {
                data-kind="${escapeHtml(info.kind)}"
                data-skill="${escapeHtml(info.skillName || "")}"
                data-item="${escapeHtml(info.itemName || "")}"
+               data-boss="${escapeHtml(info.bossName || "")}"
                alt="" />
           <div class="activityMain">
             <div class="activityText">${escapeHtml(text)}</div>
@@ -1765,6 +1894,7 @@ function renderPlayer() {
       const kind = img.getAttribute("data-kind") || "default";
       const skillName = img.getAttribute("data-skill") || "";
       const itemName = cleanItemNameForIcons(img.getAttribute("data-item") || "");
+      const bossName = cleanBossNameForIcons(img.getAttribute("data-boss") || "");
 
       if (kind === "level") {
         const candidates = skillName ? [...iconCandidates("assets/skills/", skillName)] : [];
@@ -1775,6 +1905,13 @@ function renderPlayer() {
 
       if (kind === "skill_xp" || kind === "skill") {
         const candidates = skillName ? [...iconCandidates("assets/skills/", skillName)] : [];
+        candidates.push("assets/activity/default.png");
+        setImgWithFallback(img, candidates, "assets/activity/default.png");
+        return;
+      }
+
+      if (kind === "boss") {
+        const candidates = bossName ? bossIconCandidatesFromName(bossName) : [];
         candidates.push("assets/activity/default.png");
         setImgWithFallback(img, candidates, "assets/activity/default.png");
         return;
@@ -1803,6 +1940,16 @@ function renderPlayer() {
       }
 
       setImgWithFallback(img, ["assets/activity/default.png"], "assets/activity/default.png");
+    });
+
+    // Apply boss icon mappings from assets/activity/monsters/icon_map.json.
+    loadBossIconMap().then(bossIconMap => {
+      if (!bossIconMap) return;
+      activityList.querySelectorAll('img.miniIcon[data-kind="boss"]').forEach(img => {
+        const bossName = cleanBossNameForIcons(img.getAttribute("data-boss") || "");
+        const mapped = findMappedBossIcon(bossName, bossIconMap);
+        if (mapped) setImgWithFallback(img, bossMappedIconCandidates(mapped), "assets/activity/default.png");
+      });
     });
 
     // Apply JSON icon overrides (if any mappings match)

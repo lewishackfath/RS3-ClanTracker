@@ -627,6 +627,8 @@ code {
 .activityRow.activity-level::before { background: var(--level); }
 .activityRow.activity-quest { border-color: rgba(126,90,166,0.52); }
 .activityRow.activity-quest::before { background: var(--quest); }
+.activityRow.activity-boss { border-color: rgba(188,81,48,0.58); }
+.activityRow.activity-boss::before { background: #c66035; }
 .activityMain { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .activityText { font-weight: 950; color: #3d2515; }
 .activityDetails { color: var(--muted); font-size: 0.95rem; }
@@ -644,6 +646,7 @@ code {
 .activityRow.activity-drop .miniIcon { border-color: rgba(200,155,63,0.70); }
 .activityRow.activity-level .miniIcon { border-color: rgba(63,143,90,0.65); }
 .activityRow.activity-quest .miniIcon { border-color: rgba(126,90,166,0.68); }
+.activityRow.activity-boss .miniIcon { border-color: rgba(210,105,66,0.72); }
 
 /* Skills */
 .skillsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
@@ -825,9 +828,11 @@ code {
 .activityRow.activity-drop { border-color: rgba(229,190,92,0.72); }
 .activityRow.activity-level { border-color: rgba(128,192,135,0.62); }
 .activityRow.activity-quest { border-color: rgba(181,150,213,0.68); }
+.activityRow.activity-boss { border-color: rgba(218,118,72,0.72); }
 .activityRow.activity-drop::before { background: #e0b650; }
 .activityRow.activity-level::before { background: #82c987; }
 .activityRow.activity-quest::before { background: #b896de; }
+.activityRow.activity-boss::before { background: #d26f45; }
 .questRow {
   display: flex !important;
   align-items: center;
