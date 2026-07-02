@@ -45,6 +45,7 @@ include __DIR__ . '/includes/menu.php';
           <div class="resetCountdownPill" id="resetCountdownPill" aria-live="polite">
             <span class="resetCountdownLabel">Time until Cap Reset</span>
             <span class="resetCountdownValue" id="resetCountdownValue">—</span>
+            <span class="resetCountdownLocalTime" id="resetCountdownLocalTime">Local reset: —</span>
           </div>
           <button class="button secondary" type="button" id="backFromClan">Back</button>
         </div>

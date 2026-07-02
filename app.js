@@ -273,6 +273,29 @@ function formatCountdown(msRemaining) {
   return `${minutes}m ${seconds}s`;
 }
 
+function formatLocalResetTime(targetMs) {
+  if (!Number.isFinite(targetMs)) return "Local reset: —";
+
+  const date = new Date(targetMs);
+  const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
+
+  try {
+    const formatted = new Intl.DateTimeFormat("en-AU", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(date);
+
+    return `Local reset: ${formatted} (${localTimezone})`;
+  } catch {
+    return `Local reset: ${date.toLocaleString()}`;
+  }
+}
+
 let clanResetCountdownTimer = null;
 function clearClanResetCountdown() {
   if (clanResetCountdownTimer !== null) {
@@ -280,6 +303,7 @@ function clearClanResetCountdown() {
     clanResetCountdownTimer = null;
   }
   setText("resetCountdownValue", "—");
+  setText("resetCountdownLocalTime", "Local reset: —");
 }
 
 function setClanResetCountdown(week) {
@@ -287,6 +311,8 @@ function setClanResetCountdown(week) {
   const targetMs = parseUtcDateToMs(week?.week_end_utc);
   const valueEl = qs("resetCountdownValue");
   if (!valueEl || targetMs === null) return;
+
+  setText("resetCountdownLocalTime", formatLocalResetTime(targetMs));
 
   const tick = () => {
     valueEl.textContent = formatCountdown(targetMs - Date.now());
@@ -978,12 +1004,6 @@ function renderMemberList() {
       (m.rank_name || "").toLowerCase().includes(needle)
     );
   }
-
-  members = members.slice().sort((a, b) => {
-    const rankCompare = compareRanksDescending(getRank(a), getRank(b));
-    if (rankCompare !== 0) return rankCompare;
-    return String(a?.rsn || "").localeCompare(String(b?.rsn || ""), undefined, { sensitivity: "base" });
-  });
 
   qs("clanStatus").textContent = `${members.length} shown`;
 
