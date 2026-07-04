@@ -302,21 +302,153 @@ function tracker_short_local_label(?string $utcValue, string $timezone): string 
     }
 }
 
-function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string $timezone): array {
-    $startUtc = (string)($xpWindow['start_utc'] ?? '1970-01-01 00:00:00');
-    $endUtc = (string)($xpWindow['end_utc'] ?? gmdate('Y-m-d H:i:s'));
+function tracker_snapshot_skill_xp_map(array $row): array {
+    $rawSkills = tracker_parse_skills_json($row['skills_json'] ?? null);
+    $stats = tracker_extract_skill_stats($rawSkills);
+    $out = [];
 
+    foreach (tracker_skill_order() as $skillName) {
+        $xp = $stats[$skillName]['xp'] ?? null;
+        if (is_numeric($xp)) $out[$skillName] = (int)$xp;
+    }
+
+    return $out;
+}
+
+function tracker_skill_gain_rows_between(?array $startSnap, ?array $endSnap): array {
+    if (!$startSnap || !$endSnap) return [];
+
+    $startSkills = tracker_snapshot_skill_xp_map($startSnap);
+    $endSkills = tracker_snapshot_skill_xp_map($endSnap);
+    $rows = [];
+
+    foreach (tracker_skill_order() as $skillName) {
+        $startXp = $startSkills[$skillName] ?? null;
+        $endXp = $endSkills[$skillName] ?? null;
+        if ($startXp === null || $endXp === null) continue;
+        $gain = max(0, (int)$endXp - (int)$startXp);
+        $rows[] = [
+            'skill' => $skillName,
+            'skill_key' => tracker_skill_key($skillName),
+            'gained_xp' => $gain,
+        ];
+    }
+
+    usort($rows, static function(array $a, array $b): int {
+        $cmp = ((int)($b['gained_xp'] ?? 0)) <=> ((int)($a['gained_xp'] ?? 0));
+        if ($cmp !== 0) return $cmp;
+        return strcmp((string)($a['skill'] ?? ''), (string)($b['skill'] ?? ''));
+    });
+
+    return $rows;
+}
+
+function tracker_fetch_window_snapshots(PDO $pdo, int $memberId, string $startUtc, string $endUtc, int $limit = 2000): array {
     $stmt = $pdo->prepare("\n        SELECT captured_at_utc, total_xp, skills_json\n        FROM member_xp_snapshots\n        WHERE member_id = :mid AND captured_at_utc <= :startUtc\n        ORDER BY captured_at_utc DESC\n        LIMIT 1\n    ");
     $stmt->execute([':mid' => $memberId, ':startUtc' => $startUtc]);
     $baseline = $stmt->fetch() ?: null;
 
-    $stmt = $pdo->prepare("\n        SELECT captured_at_utc, total_xp, skills_json\n        FROM member_xp_snapshots\n        WHERE member_id = :mid\n          AND captured_at_utc > :startUtc\n          AND captured_at_utc <= :endUtc\n        ORDER BY captured_at_utc ASC\n        LIMIT 500\n    ");
+    $stmt = $pdo->prepare("\n        SELECT captured_at_utc, total_xp, skills_json\n        FROM member_xp_snapshots\n        WHERE member_id = :mid\n          AND captured_at_utc > :startUtc\n          AND captured_at_utc <= :endUtc\n        ORDER BY captured_at_utc ASC\n        LIMIT " . max(1, min(5000, $limit)) . "\n    ");
     $stmt->execute([':mid' => $memberId, ':startUtc' => $startUtc, ':endUtc' => $endUtc]);
     $rows = $stmt->fetchAll() ?: [];
 
-    if (!$baseline && $rows) {
-        $baseline = $rows[0];
+    if (!$baseline && $rows) $baseline = $rows[0];
+
+    return [$baseline, $rows];
+}
+
+function tracker_build_skill_gains_for_window(PDO $pdo, int $memberId, string $startUtc, string $endUtc): array {
+    [$baseline, $rows] = tracker_fetch_window_snapshots($pdo, $memberId, $startUtc, $endUtc, 2000);
+    if (!$baseline || !$rows) return [];
+    $endSnap = $rows[count($rows) - 1];
+    return tracker_skill_gain_rows_between($baseline, $endSnap);
+}
+
+function tracker_local_date_key(string $utcValue, DateTimeZone $tz): string {
+    try {
+        $dt = new DateTime($utcValue, new DateTimeZone('UTC'));
+        $dt->setTimezone($tz);
+        return $dt->format('Y-m-d');
+    } catch (Throwable $e) {
+        return substr($utcValue, 0, 10);
     }
+}
+
+function tracker_local_short_day_label(string $dateKey, DateTimeZone $tz): string {
+    try {
+        $dt = new DateTime($dateKey . ' 12:00:00', $tz);
+        return $dt->format('j M');
+    } catch (Throwable $e) {
+        return $dateKey;
+    }
+}
+
+function tracker_build_daily_skill_xp_30d(PDO $pdo, int $memberId, string $timezone): array {
+    try { $tz = new DateTimeZone($timezone); }
+    catch (Throwable $e) { $tz = new DateTimeZone('UTC'); }
+
+    $endLocal = new DateTime('now', $tz);
+    $endLocal->setTime(23, 59, 59);
+    $startLocal = clone $endLocal;
+    $startLocal->modify('-29 days')->setTime(0, 0, 0);
+
+    $startUtcDt = clone $startLocal;
+    $startUtcDt->setTimezone(new DateTimeZone('UTC'));
+    $endUtcDt = clone $endLocal;
+    $endUtcDt->setTimezone(new DateTimeZone('UTC'));
+
+    $startUtc = $startUtcDt->format('Y-m-d H:i:s');
+    $endUtc = $endUtcDt->format('Y-m-d H:i:s');
+
+    [$baseline, $rows] = tracker_fetch_window_snapshots($pdo, $memberId, $startUtc, $endUtc, 3000);
+
+    $days = [];
+    $cursor = clone $startLocal;
+    for ($i = 0; $i < 30; $i++) {
+        $key = $cursor->format('Y-m-d');
+        $skills = [];
+        foreach (tracker_skill_order() as $skillName) $skills[$skillName] = 0;
+        $days[$key] = [
+            'date' => $key,
+            'label' => tracker_local_short_day_label($key, $tz),
+            'total_xp' => 0,
+            'skills' => $skills,
+        ];
+        $cursor->modify('+1 day');
+    }
+
+    if (!$baseline || !$rows) return array_values($days);
+
+    $prev = $baseline;
+    foreach ($rows as $row) {
+        $captured = (string)($row['captured_at_utc'] ?? '');
+        if ($captured === '') continue;
+        $key = tracker_local_date_key($captured, $tz);
+        if (!isset($days[$key])) {
+            $prev = $row;
+            continue;
+        }
+
+        $gains = tracker_skill_gain_rows_between($prev, $row);
+        foreach ($gains as $gainRow) {
+            $skill = (string)($gainRow['skill'] ?? '');
+            $gain = max(0, (int)($gainRow['gained_xp'] ?? 0));
+            if ($skill === '' || $gain <= 0) continue;
+            $days[$key]['skills'][$skill] = (int)($days[$key]['skills'][$skill] ?? 0) + $gain;
+            $days[$key]['total_xp'] = (int)$days[$key]['total_xp'] + $gain;
+        }
+
+        $prev = $row;
+    }
+
+    return array_values($days);
+}
+
+function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string $timezone): array {
+    $startUtc = (string)($xpWindow['start_utc'] ?? '1970-01-01 00:00:00');
+    $endUtc = (string)($xpWindow['end_utc'] ?? gmdate('Y-m-d H:i:s'));
+
+    [$baseline, $rows] = tracker_fetch_window_snapshots($pdo, $memberId, $startUtc, $endUtc, 500);
 
     $baselineXp = $baseline ? tracker_snapshot_total_xp($baseline) : null;
     if ($baselineXp === null && $rows) {
@@ -358,6 +490,19 @@ function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string
         $finalGain = isset($last['gained_xp']) ? (int)$last['gained_xp'] : null;
     }
 
+    $latestEndSnap = $rows ? $rows[count($rows) - 1] : $baseline;
+    $periodSkillGains = tracker_skill_gain_rows_between($baseline, $latestEndSnap);
+
+    $nowUtc = new DateTime('now', new DateTimeZone('UTC'));
+    $sevenStart = clone $nowUtc;
+    $sevenStart->sub(new DateInterval('P7D'));
+    $last7dSkillGains = tracker_build_skill_gains_for_window(
+        $pdo,
+        $memberId,
+        $sevenStart->format('Y-m-d H:i:s'),
+        $nowUtc->format('Y-m-d H:i:s')
+    );
+
     return [
         'has_data' => count($points) >= 2,
         'period' => (string)($xpWindow['period'] ?? ''),
@@ -366,6 +511,9 @@ function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string
         'snapshot_count' => count($points),
         'gained_total_xp' => $finalGain,
         'points' => $points,
+        'skill_gains' => $periodSkillGains,
+        'last_7d_skill_gains' => $last7dSkillGains,
+        'daily_skill_xp_30d' => tracker_build_daily_skill_xp_30d($pdo, $memberId, $timezone),
     ];
 }
 
@@ -968,35 +1116,8 @@ try {
         $gainTotal = $endTotal - $startTotal;
         if ($gainTotal < 0) $gainTotal = 0;
 
-        $startSkills = tracker_extract_skill_stats(tracker_parse_skills_json($startSnap['skills_json']));
-        $endSkills   = tracker_extract_skill_stats(tracker_parse_skills_json($endSnap['skills_json']));
-
-        $diffs = [];
-        $skillGains = [];
-        foreach ($endSkills as $skill => $stRow) {
-            $endXp = $stRow['xp'];
-            $startXp = $startSkills[$skill]['xp'] ?? null;
-            if ($endXp === null || $startXp === null) continue;
-            $d = (int)$endXp - (int)$startXp;
-            if ($d < 0) $d = 0;
-            $skillGains[] = [
-                'skill' => $skill,
-                'skill_key' => tracker_skill_key($skill),
-                'gained_xp' => $d,
-            ];
-            if ($d > 0) $diffs[$skill] = $d;
-        }
-
-        arsort($diffs);
-        $top = [];
-        foreach ($diffs as $skill => $d) {
-            $top[] = [
-                'skill' => $skill,
-                'skill_key' => tracker_skill_key($skill),
-                'gained_xp' => $d,
-            ];
-            if (count($top) >= 8) break;
-        }
+        $skillGains = tracker_skill_gain_rows_between($startSnap, $endSnap);
+        $top = $skillGains;
 
         $xp = [
             'period' => $xpWindow['period'],

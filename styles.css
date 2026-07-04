@@ -1718,11 +1718,23 @@ li { margin: 0 0 10px; }
 
 /* Activity Journal tabs and XP Stats */
 .activityJournalHeader {
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
+.activityJournalTitleLine {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.activityJournalTitleLine .h2 {
+  margin: 0;
+}
 .journalTabs {
-  margin-top: 8px;
+  margin-top: 0;
+  flex: 0 0 auto;
 }
 #activityLimitWrap.hidden,
 #activityJournalView.hidden,
@@ -1779,6 +1791,29 @@ li { margin: 0 0 10px; }
   font-weight: 950;
   color: #fff8dc;
 }
+.xpStatsValue.small {
+  font-size: 1rem;
+}
+.xpFavouriteSkill {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+.xpFavouriteSkillName {
+  color: #fff8dc;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xpFavouriteSkillValue {
+  margin-top: 2px;
+  color: #f4d58a;
+  font-weight: 900;
+  font-size: 0.9rem;
+}
 .xpStatsWindow {
   margin-top: 8px;
   color: #f7e7b2;
@@ -1788,7 +1823,8 @@ li { margin: 0 0 10px; }
 .xpChartCard {
   padding: 12px;
 }
-.xpLineChart {
+.xpLineChart,
+.xpDailyChart {
   display: block;
   width: 100%;
   height: auto;
@@ -1820,10 +1856,34 @@ li { margin: 0 0 10px; }
   margin-top: 2px;
   font-size: 1rem;
 }
+.xpDailyLegend {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.xpDailyLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff2c5;
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+.xpDailyLegendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,248,220,0.35);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
 .xpSkillBars {
   padding: 10px;
   display: grid;
   gap: 9px;
+}
+.xpSkillBars.compact {
+  gap: 7px;
 }
 .xpSkillBarRow {
   display: grid;
@@ -1899,6 +1959,10 @@ li { margin: 0 0 10px; }
   }
   .activityJournalHeader {
     align-items: stretch;
+  }
+  .activityJournalTitleLine {
+    align-items: stretch;
+    flex-direction: column;
   }
   .journalTabs,
   .journalTabs .segBtn {

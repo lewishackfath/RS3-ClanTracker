@@ -1488,20 +1488,60 @@ function renderXpLineChart(points) {
   `;
 }
 
-function renderXpTopSkillBars(topSkills) {
-  const rows = Array.isArray(topSkills) ? topSkills.filter(r => Number(r?.gained_xp) > 0).slice(0, 8) : [];
+function normaliseSkillGainRows(rows, includeZero = true) {
+  const list = Array.isArray(rows) ? rows : [];
+  return list
+    .map(row => ({
+      skill: String(row?.skill || "Skill"),
+      skill_key: String(row?.skill_key || row?.skill || "skill"),
+      gained_xp: Number.isFinite(Number(row?.gained_xp)) ? Number(row.gained_xp) : 0,
+    }))
+    .filter(row => includeZero || row.gained_xp > 0)
+    .sort((a, b) => {
+      const diff = Number(b.gained_xp || 0) - Number(a.gained_xp || 0);
+      if (diff !== 0) return diff;
+      return a.skill.localeCompare(b.skill);
+    });
+}
+
+function renderSkillGainSummary(label, row) {
+  if (!row) {
+    return `
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">${escapeHtml(label)}</div>
+        <div class="xpStatsValue small">—</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="xpStatsCard xpSkillSummaryCard">
+      <div class="xpStatsLabel">${escapeHtml(label)}</div>
+      <div class="xpFavouriteSkill">
+        <img class="xpSkillIcon" data-skill="${escapeHtml(row.skill)}" data-skillkey="${escapeHtml(row.skill_key)}" alt="${escapeHtml(row.skill)}" />
+        <div>
+          <div class="xpFavouriteSkillName">${escapeHtml(row.skill)}</div>
+          <div class="xpFavouriteSkillValue">+${escapeHtml(formatNumber(row.gained_xp || 0))} XP</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderXpSkillBars(skillRows, options = {}) {
+  const rows = normaliseSkillGainRows(skillRows, options.includeZero !== false);
   if (!rows.length) {
     return `<div class="xpStatsEmpty muted">No skill XP gains were detected for this period.</div>`;
   }
 
   const max = Math.max(...rows.map(r => Number(r.gained_xp || 0)), 1);
   return `
-    <div class="xpSkillBars">
+    <div class="xpSkillBars ${options.compact ? "compact" : ""}">
       ${rows.map((row, index) => {
         const skill = row.skill || "Skill";
         const key = row.skill_key || skill;
         const gain = Number(row.gained_xp || 0);
-        const width = Math.max(5, Math.round((gain / max) * 100));
+        const width = gain > 0 ? Math.max(3, Math.round((gain / max) * 100)) : 0;
         return `
           <div class="xpSkillBarRow">
             <div class="xpSkillRank">${index + 1}</div>
@@ -1517,6 +1557,86 @@ function renderXpTopSkillBars(topSkills) {
   `;
 }
 
+function xpSkillColour(skill) {
+  const index = Math.max(0, SKILLS.findIndex(s => s.toLowerCase() === String(skill || "").toLowerCase()));
+  const hue = (index * 47) % 360;
+  return `hsl(${hue} 58% 62%)`;
+}
+
+function renderXpDailySkillChart(days) {
+  const rows = Array.isArray(days) ? days : [];
+  if (!rows.length) {
+    return `<div class="xpStatsEmpty muted">No daily XP data is available yet.</div>`;
+  }
+
+  const skillsWithGain = SKILLS
+    .map(skill => ({
+      skill,
+      total: rows.reduce((sum, day) => sum + Number(day?.skills?.[skill] || 0), 0),
+    }))
+    .filter(row => row.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const activeSkills = skillsWithGain.map(row => row.skill);
+  const width = 740;
+  const height = 280;
+  const padLeft = 52;
+  const padRight = 16;
+  const padTop = 24;
+  const padBottom = 36;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+  const maxY = Math.max(...rows.map(day => Number(day?.total_xp || 0)), 1);
+  const gap = 3;
+  const barW = Math.max(4, (plotW / Math.max(rows.length, 1)) - gap);
+  const bottomY = padTop + plotH;
+
+  const barHtml = rows.map((day, i) => {
+    const x = padLeft + i * (plotW / Math.max(rows.length, 1)) + gap / 2;
+    let usedH = 0;
+    const segments = activeSkills.map(skill => {
+      const value = Number(day?.skills?.[skill] || 0);
+      if (value <= 0) return "";
+      const h = Math.max(1, (value / maxY) * plotH);
+      const y = bottomY - usedH - h;
+      usedH += h;
+      return `
+        <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${escapeHtml(xpSkillColour(skill))}">
+          <title>${escapeHtml(day?.label || day?.date || "Day")} — ${escapeHtml(skill)}: +${escapeHtml(formatNumber(value))} XP</title>
+        </rect>
+      `;
+    }).join("");
+
+    const showLabel = i === 0 || i === rows.length - 1 || i % 7 === 0;
+    return `
+      ${segments}
+      ${showLabel ? `<text class="xpChartAxis" x="${(x + barW / 2).toFixed(1)}" y="${height - 10}" text-anchor="middle">${escapeHtml(day?.label || "")}</text>` : ""}
+    `;
+  }).join("");
+
+  const legend = skillsWithGain.length ? `
+    <div class="xpDailyLegend">
+      ${skillsWithGain.map(row => `
+        <span class="xpDailyLegendItem"><span class="xpDailyLegendSwatch" style="background:${escapeHtml(xpSkillColour(row.skill))}"></span>${escapeHtml(row.skill)}</span>
+      `).join("")}
+    </div>
+  ` : `<div class="xpStatsEmpty muted">No XP gains detected in the last 30 days.</div>`;
+
+  return `
+    <div class="xpChartCard">
+      <div class="xpChartTitle">XP earned per day — last 30 days</div>
+      <svg class="xpDailyChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Stacked daily skill XP chart for the last 30 days">
+        <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
+        <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
+        <text class="xpChartAxis" x="${padLeft - 8}" y="${padTop + 4}" text-anchor="end">${escapeHtml(formatCompactNumber(maxY))}</text>
+        <text class="xpChartAxis" x="${padLeft - 8}" y="${bottomY + 4}" text-anchor="end">0</text>
+        ${barHtml}
+      </svg>
+      ${legend}
+    </div>
+  `;
+}
+
 function renderXpStats() {
   const el = qs("xpStatsView");
   if (!el) return;
@@ -1524,11 +1644,20 @@ function renderXpStats() {
   const stats = playerData?.xp_stats || null;
   const xp = playerData?.xp || null;
   const points = Array.isArray(stats?.points) ? stats.points : [];
+  const periodSkillGains = normaliseSkillGainRows(stats?.skill_gains || xp?.skill_gains || [], true);
+  const positiveGains = periodSkillGains.filter(row => Number(row.gained_xp || 0) > 0);
+  const favourite = positiveGains[0] || null;
+  const leastFavourite = periodSkillGains.length
+    ? periodSkillGains.slice().sort((a, b) => {
+        const diff = Number(a.gained_xp || 0) - Number(b.gained_xp || 0);
+        if (diff !== 0) return diff;
+        return a.skill.localeCompare(b.skill);
+      })[0]
+    : null;
+
   const totalGain = Number.isFinite(Number(stats?.gained_total_xp))
     ? Number(stats.gained_total_xp)
     : (Number.isFinite(Number(xp?.gained_total_xp)) ? Number(xp.gained_total_xp) : null);
-  const start = points[0]?.captured_at_local || xp?.start_utc || "—";
-  const end = points[points.length - 1]?.captured_at_local || xp?.end_utc || "—";
 
   el.innerHTML = `
     <div class="xpStatsSummary">
@@ -1536,18 +1665,15 @@ function renderXpStats() {
         <div class="xpStatsLabel">${escapeHtml(currentXpPeriodLabel())} XP</div>
         <div class="xpStatsValue">${totalGain === null ? "—" : `+${escapeHtml(formatNumber(totalGain))}`}</div>
       </div>
-      <div class="xpStatsCard">
-        <div class="xpStatsLabel">Snapshots</div>
-        <div class="xpStatsValue">${escapeHtml(formatNumber(stats?.snapshot_count || points.length || 0))}</div>
-      </div>
-      <div class="xpStatsCard wide">
-        <div class="xpStatsLabel">Window</div>
-        <div class="xpStatsWindow">${escapeHtml(start)} → ${escapeHtml(end)}</div>
-      </div>
+      ${renderSkillGainSummary("Favourite skill", favourite)}
+      ${renderSkillGainSummary("Least favourite skill", leastFavourite)}
     </div>
     ${renderXpLineChart(points)}
-    <div class="xpStatsSectionTitle">Top skill XP gains</div>
-    ${renderXpTopSkillBars(xp?.top_skills || [])}
+    ${renderXpDailySkillChart(stats?.daily_skill_xp_30d || [])}
+    <div class="xpStatsSectionTitle">Last 7 days by skill</div>
+    ${renderXpSkillBars(stats?.last_7d_skill_gains || [], { includeZero: true, compact: true })}
+    <div class="xpStatsSectionTitle">Skill XP gains — ${escapeHtml(currentXpPeriodLabel())}</div>
+    ${renderXpSkillBars(periodSkillGains, { includeZero: true })}
   `;
 
   el.querySelectorAll("img.xpSkillIcon").forEach(img => {
