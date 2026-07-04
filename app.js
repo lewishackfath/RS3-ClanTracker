@@ -1535,50 +1535,60 @@ function wireSkillIconFallbacks(root) {
 }
 
 
-function getOrCreateChartTooltip() {
-  let el = qs("chartTooltip");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "chartTooltip";
-    el.className = "chartTooltip hidden";
-    el.setAttribute("role", "tooltip");
-    document.body.appendChild(el);
+function getChartLocalTooltip(target) {
+  const card = target?.closest?.(".xpChartCard");
+  if (!card) return null;
+
+  let tooltip = card.querySelector(".chartLocalTooltip");
+  if (!tooltip) {
+    tooltip = document.createElement("div");
+    tooltip.className = "chartLocalTooltip hidden";
+    tooltip.setAttribute("role", "tooltip");
+    card.appendChild(tooltip);
   }
-  return el;
+
+  return tooltip;
+}
+
+function chartTooltipHtml(text) {
+  return String(text || "")
+    .split(/\n+/)
+    .filter(Boolean)
+    .map((line, index) => index === 0
+      ? `<div class="chartHoverTitle">${escapeHtml(line)}</div>`
+      : `<div>${escapeHtml(line)}</div>`)
+    .join("");
 }
 
 function positionChartTooltip(event, tooltip) {
   if (!event || !tooltip) return;
-  const offset = 14;
-  const padding = 10;
-  const rect = tooltip.getBoundingClientRect();
-  let left = event.clientX + offset;
-  let top = event.clientY + offset;
 
-  if (left + rect.width + padding > window.innerWidth) {
-    left = Math.max(padding, event.clientX - rect.width - offset);
-  }
-  if (top + rect.height + padding > window.innerHeight) {
-    top = Math.max(padding, event.clientY - rect.height - offset);
-  }
+  const card = tooltip.closest(".xpChartCard");
+  if (!card) return;
 
-  tooltip.style.left = `${left}px`;
-  tooltip.style.top = `${top}px`;
+  const rect = card.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y}px`;
 }
 
 function showChartTooltip(event, target) {
   const text = target?.getAttribute("data-chart-tooltip") || "";
   if (!text) return;
 
-  const tooltip = getOrCreateChartTooltip();
-  tooltip.textContent = text;
+  const tooltip = getChartLocalTooltip(target);
+  if (!tooltip) return;
+
+  tooltip.innerHTML = chartTooltipHtml(text);
   tooltip.classList.remove("hidden");
   positionChartTooltip(event, tooltip);
 }
 
-function hideChartTooltip() {
-  const tooltip = qs("chartTooltip");
-  if (tooltip) tooltip.classList.add("hidden");
+function hideChartTooltips(root) {
+  const scope = root || document;
+  scope.querySelectorAll(".chartLocalTooltip").forEach(tooltip => tooltip.classList.add("hidden"));
 }
 
 function wireChartTooltips() {
@@ -1591,7 +1601,7 @@ function wireChartTooltips() {
   document.addEventListener("pointermove", (event) => {
     const target = event.target?.closest?.("[data-chart-tooltip]");
     if (!target) return;
-    const tooltip = qs("chartTooltip");
+    const tooltip = getChartLocalTooltip(target);
     if (!tooltip || tooltip.classList.contains("hidden")) showChartTooltip(event, target);
     else positionChartTooltip(event, tooltip);
   });
@@ -1601,11 +1611,12 @@ function wireChartTooltips() {
     if (!target) return;
     const next = event.relatedTarget?.closest?.("[data-chart-tooltip]");
     if (next === target) return;
-    hideChartTooltip();
+    const card = target.closest?.(".xpChartCard");
+    hideChartTooltips(card || document);
   });
 
-  document.addEventListener("scroll", hideChartTooltip, true);
-  window.addEventListener("blur", hideChartTooltip);
+  document.addEventListener("scroll", () => hideChartTooltips(document), true);
+  window.addEventListener("blur", () => hideChartTooltips(document));
 }
 
 function renderXpLineChartBody(points) {
@@ -1652,13 +1663,14 @@ function renderXpLineChartBody(points) {
     const lastX = padLeft + plotW;
     const lastY = padTop + plotH - (finalGain / maxY) * plotH;
 
-    const tooltip = `${skill}: +${formatNumber(finalGain)} XP over ${currentXpPeriodLabel()}`;
+    const tooltip = `${skill}\n+${formatNumber(finalGain)} XP over ${currentXpPeriodLabel()}`;
 
     return `
       <g class="xpSkillLineGroup">
         <polyline class="xpSkillChartLine" style="stroke:${escapeHtml(xpSkillColour(skill))}" points="${escapeHtml(pointsStr)}" data-chart-tooltip="${escapeHtml(tooltip)}"></polyline>
         <polyline class="xpSkillChartHitLine" points="${escapeHtml(pointsStr)}" data-chart-tooltip="${escapeHtml(tooltip)}"></polyline>
         <circle class="xpSkillChartPoint" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3.2" style="fill:${escapeHtml(xpSkillColour(skill))}" data-chart-tooltip="${escapeHtml(tooltip)}"></circle>
+        <circle class="xpSkillChartPointHit" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="10" data-chart-tooltip="${escapeHtml(tooltip)}"></circle>
       </g>
     `;
   }).join("");
@@ -1685,6 +1697,7 @@ function renderXpLineChart(points) {
       </div>
       ${renderXpSkillFilters("line", "Toggle skills in the XP gained chart")}
       <div id="xpLineChartSvgMount">${renderXpLineChartBody(points)}</div>
+      <div class="chartLocalTooltip hidden" role="tooltip"></div>
     </div>
   `;
 }
@@ -1795,9 +1808,13 @@ function renderXpDailySkillChartBody(days) {
       const h = Math.max(1, (value / maxY) * plotH);
       const y = bottomY - usedH - h;
       usedH += h;
-      const tooltip = `${day?.label || day?.date || "Day"} — ${skill}: +${formatNumber(value)} XP`;
+      const tooltip = `${day?.label || day?.date || "Day"}\n${skill}: +${formatNumber(value)} XP`;
+      const hitPadX = 3;
+      const hitH = Math.max(10, h);
+      const hitY = Math.max(padTop, y - ((hitH - h) / 2));
       return `
-        <rect class="xpDailyChartSegment" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${escapeHtml(xpSkillColour(skill))}" data-chart-tooltip="${escapeHtml(tooltip)}"></rect>
+        <rect class="xpDailyChartSegment" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${escapeHtml(xpSkillColour(skill))}"></rect>
+        <rect class="xpDailyChartHitSegment" x="${(x - hitPadX).toFixed(1)}" y="${hitY.toFixed(1)}" width="${(barW + hitPadX * 2).toFixed(1)}" height="${hitH.toFixed(1)}" data-chart-tooltip="${escapeHtml(tooltip)}"></rect>
       `;
     }).join("");
 
@@ -1825,6 +1842,7 @@ function renderXpDailySkillChart(days) {
       <div class="xpChartTitle">XP earned per day — last 30 days</div>
       ${renderXpSkillFilters("daily", "Toggle skills in the daily XP chart")}
       <div id="xpDailyChartSvgMount">${renderXpDailySkillChartBody(days)}</div>
+      <div class="chartLocalTooltip hidden" role="tooltip"></div>
     </div>
   `;
 }

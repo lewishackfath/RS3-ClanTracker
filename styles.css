@@ -2042,37 +2042,70 @@ li { margin: 0 0 10px; }
 .xpSkillChartHitLine {
   fill: none;
   stroke: transparent;
-  stroke-width: 14;
+  stroke-width: 34;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: stroke;
 }
-.xpDailyChartSegment {
+.xpSkillChartPointHit {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
   cursor: help;
+}
+.xpDailyChartSegment {
+  pointer-events: none;
   transition: opacity .12s ease, filter .12s ease;
 }
+.xpDailyChartHitSegment {
+  fill: #000;
+  opacity: 0;
+  pointer-events: all;
+  cursor: help;
+}
+.xpDailyChartHitSegment:hover + .xpDailyChartSegment,
 .xpDailyChartSegment:hover {
   opacity: 0.88;
   filter: drop-shadow(0 2px 5px rgba(0,0,0,0.36));
 }
-.chartTooltip {
-  position: fixed;
-  z-index: 9999;
-  max-width: min(320px, calc(100vw - 24px));
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(246, 222, 159, 0.42);
-  background: linear-gradient(180deg, rgba(47, 27, 17, 0.98), rgba(29, 15, 9, 0.98));
-  color: #fff8dc;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.10);
-  font-size: 0.86rem;
+.chartLocalTooltip {
+  position: absolute;
+  z-index: 80;
+  max-width: min(320px, calc(100% - 24px));
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(246,222,159,0.38);
+  background: linear-gradient(180deg, rgba(39, 21, 12, 0.98), rgba(24, 11, 6, 0.98));
+  box-shadow: 0 14px 28px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.11);
+  color: var(--tile-text-muted);
+  font-size: 0.82rem;
   font-weight: 900;
-  line-height: 1.25;
+  line-height: 1.35;
+  white-space: nowrap;
   pointer-events: none;
-  transform: translateZ(0);
+  transform: translate(14px, 14px);
+  will-change: left, top;
 }
-.chartTooltip.hidden {
+.chartLocalTooltip::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid rgba(246,222,159,0.28);
+  border-top: 1px solid rgba(246,222,159,0.28);
+  background: rgba(39, 21, 12, 0.98);
+  transform: rotate(45deg);
+}
+.chartLocalTooltip.hidden {
   display: none;
+}
+.chartHoverTitle {
+  margin-bottom: 3px;
+  color: var(--tile-text);
+  font-weight: 950;
+  font-family: Georgia, "Times New Roman", serif;
 }
 .xpStatsSectionTitle {
   margin-top: 2px;
