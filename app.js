@@ -1977,20 +1977,23 @@ function renderCurrentSkills() {
     return;
   }
 
-  const skills = (cs.skills || []).slice();
+  const skills = (cs.skills || [])
+    .filter(s => s && !s.__is_total)
+    .sort((a, b) => {
+      const axp = Number(a?.xp || 0);
+      const bxp = Number(b?.xp || 0);
+      if (bxp !== axp) return bxp - axp;
+
+      const alevel = Number(a?.level || 0);
+      const blevel = Number(b?.level || 0);
+      if (blevel !== alevel) return blevel - alevel;
+
+      return String(a?.skill || "").localeCompare(String(b?.skill || ""));
+    })
+    .slice(0, 10);
+
   const gainMap = buildSkillGainMap();
   const periodLabel = currentXpPeriodLabel();
-
-  // Add Total Level tile (from API: current_skills.total)
-  if (cs.total && (cs.total.level !== undefined || cs.total.xp !== undefined)) {
-    skills.push({
-      __is_total: true,
-      skill: "Total Level",
-      skill_key: "total",
-      level: cs.total.level ?? null,
-      xp: cs.total.xp ?? null,
-    });
-  }
 
   gridEl.innerHTML = skills.map(s => {
     const isTotal = !!(s && s.__is_total);
@@ -2080,7 +2083,7 @@ function renderTopXpSkills() {
   if (!listEl) return;
 
   const xp = playerData?.xp;
-  const top = xp?.top_skills || [];
+  const top = (xp?.top_skills || []).slice(0, 10);
 
   if (!xp || !xp.has_data) {
     listEl.innerHTML = `<div class="muted">No XP snapshot data for this period yet.</div>`;
