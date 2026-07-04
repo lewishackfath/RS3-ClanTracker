@@ -2242,3 +2242,25 @@ li { margin: 0 0 10px; }
     height: 40px;
   }
 }
+
+
+/* Keep XP chart hover cards readable near graph edges. */
+#viewPlayer #activityPanel,
+#viewPlayer #xpStatsView,
+.xpStatsPanel {
+  overflow: visible;
+}
+.xpChartCard {
+  overflow: visible;
+  z-index: 1;
+}
+.xpChartCard:hover,
+.xpChartCard:focus-within {
+  z-index: 25;
+}
+.chartLocalTooltip {
+  max-width: min(340px, calc(100% - 16px));
+  min-width: 132px;
+  white-space: normal;
+  transform: none;
+}

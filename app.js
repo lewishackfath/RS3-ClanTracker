@@ -1567,8 +1567,30 @@ function positionChartTooltip(event, tooltip) {
   if (!card) return;
 
   const rect = card.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
+  const gap = 12;
+  const edgePad = 8;
+  const localX = event.clientX - rect.left;
+  const localY = event.clientY - rect.top;
+
+  // Measure after content has been written and the tooltip is visible.
+  const tooltipWidth = Math.max(tooltip.offsetWidth || 0, 140);
+  const tooltipHeight = Math.max(tooltip.offsetHeight || 0, 44);
+
+  let x = localX + gap;
+  let y = localY + gap;
+
+  // Keep the tooltip inside the chart card so it does not get clipped by the
+  // right/bottom edge. This mirrors the compact skill-card tooltip behaviour,
+  // but follows the pointer within the graph.
+  if (x + tooltipWidth > rect.width - edgePad) {
+    x = localX - tooltipWidth - gap;
+  }
+  if (y + tooltipHeight > rect.height - edgePad) {
+    y = localY - tooltipHeight - gap;
+  }
+
+  x = Math.max(edgePad, Math.min(x, rect.width - tooltipWidth - edgePad));
+  y = Math.max(edgePad, Math.min(y, rect.height - tooltipHeight - edgePad));
 
   tooltip.style.left = `${x}px`;
   tooltip.style.top = `${y}px`;
