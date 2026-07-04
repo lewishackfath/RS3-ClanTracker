@@ -168,20 +168,20 @@ include __DIR__ . '/includes/menu.php';
           <div class="panelTitleRow activityJournalHeader">
             <div class="activityJournalTitleLine">
               <h3 class="h2" id="journalTitle">Activity Journal</h3>
-              <div class="seg journalTabs" id="journalTabs" role="tablist" aria-label="Player journal views">
-                <button class="segBtn active" type="button" data-journal-view="activity" role="tab" aria-selected="true">Activity Journal</button>
-                <button class="segBtn" type="button" data-journal-view="xpstats" role="tab" aria-selected="false">XP Stats</button>
-              </div>
+              <label class="compactSelectLabel" for="activityLimit" id="activityLimitWrap">
+                Show
+                <select id="activityLimit" class="select selectSmall">
+                  <option value="20" selected>20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                </select>
+              </label>
             </div>
-            <label class="compactSelectLabel" for="activityLimit" id="activityLimitWrap">
-              Show
-              <select id="activityLimit" class="select selectSmall">
-                <option value="20" selected>20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="200">200</option>
-              </select>
-            </label>
+            <div class="seg journalTabs" id="journalTabs" role="tablist" aria-label="Player journal views">
+              <button class="segBtn active" type="button" data-journal-view="activity" role="tab" aria-selected="true">Activity Journal</button>
+              <button class="segBtn" type="button" data-journal-view="xpstats" role="tab" aria-selected="false">XP Stats</button>
+            </div>
           </div>
           <div id="activityJournalView">
             <div class="muted" id="activityStatus"></div>

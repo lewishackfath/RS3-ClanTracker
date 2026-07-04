@@ -1428,7 +1428,7 @@ function setJournalView(view) {
   });
 
   const title = qs("journalTitle");
-  if (title) title.textContent = selectedJournalView === "xpstats" ? "XP Stats" : "Activity Journal";
+  if (title) title.textContent = "Activity Journal";
 
   show(qs("activityJournalView"), selectedJournalView === "activity");
   show(qs("activityLimitWrap"), selectedJournalView === "activity");
@@ -1438,42 +1438,65 @@ function setJournalView(view) {
 }
 
 function renderXpLineChart(points) {
-  const rows = Array.isArray(points) ? points.filter(p => Number.isFinite(Number(p?.gained_xp))) : [];
-  if (rows.length < 2) {
+  const rows = Array.isArray(points) ? points : [];
+  const usableRows = rows.filter(p => p && typeof p === "object");
+
+  if (usableRows.length < 2) {
     return `<div class="xpStatsEmpty muted">Not enough XP snapshots yet to draw a trend for this period.</div>`;
   }
 
-  const width = 640;
-  const height = 210;
-  const padLeft = 46;
+  const skills = SKILLS.slice();
+  const width = 740;
+  const height = 280;
+  const padLeft = 54;
   const padRight = 18;
-  const padTop = 20;
-  const padBottom = 34;
+  const padTop = 24;
+  const padBottom = 38;
   const plotW = width - padLeft - padRight;
   const plotH = height - padTop - padBottom;
-  const maxY = Math.max(...rows.map(p => Number(p.gained_xp || 0)), 1);
 
-  const coords = rows.map((p, i) => {
-    const x = padLeft + (rows.length === 1 ? 0 : (i / (rows.length - 1)) * plotW);
-    const y = padTop + plotH - (Number(p.gained_xp || 0) / maxY) * plotH;
-    return { x, y, row: p };
-  });
+  const skillValue = (row, skill) => {
+    const value = row?.skills?.[skill];
+    if (Number.isFinite(Number(value))) return Math.max(0, Number(value));
+    return 0;
+  };
 
-  const line = coords.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
-  const firstLabel = formatShortDateFromUtc(rows[0]?.captured_at_utc);
-  const lastLabel = formatShortDateFromUtc(rows[rows.length - 1]?.captured_at_utc);
+  const maxY = Math.max(
+    ...usableRows.flatMap(row => skills.map(skill => skillValue(row, skill))),
+    1
+  );
+
+  const firstLabel = formatShortDateFromUtc(usableRows[0]?.captured_at_utc);
+  const lastLabel = formatShortDateFromUtc(usableRows[usableRows.length - 1]?.captured_at_utc);
   const midY = padTop + plotH / 2;
 
-  const pointsHtml = coords.map(c => `
-    <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4">
-      <title>${escapeHtml(c.row.captured_at_local || c.row.captured_at_utc || "Snapshot")}: +${escapeHtml(formatNumber(c.row.gained_xp))} XP</title>
-    </circle>
-  `).join("");
+  const lineHtml = skills.map(skill => {
+    const pointsStr = usableRows.map((row, i) => {
+      const x = padLeft + (usableRows.length === 1 ? 0 : (i / (usableRows.length - 1)) * plotW);
+      const y = padTop + plotH - (skillValue(row, skill) / maxY) * plotH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+
+    const finalGain = skillValue(usableRows[usableRows.length - 1], skill);
+    const lastX = padLeft + plotW;
+    const lastY = padTop + plotH - (finalGain / maxY) * plotH;
+
+    return `
+      <g class="xpSkillLineGroup">
+        <polyline class="xpSkillChartLine" style="stroke:${escapeHtml(xpSkillColour(skill))}" points="${escapeHtml(pointsStr)}">
+          <title>${escapeHtml(skill)}: +${escapeHtml(formatNumber(finalGain))} XP over ${escapeHtml(currentXpPeriodLabel())}</title>
+        </polyline>
+        <circle class="xpSkillChartPoint" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3.2" style="fill:${escapeHtml(xpSkillColour(skill))}">
+          <title>${escapeHtml(skill)}: +${escapeHtml(formatNumber(finalGain))} XP over ${escapeHtml(currentXpPeriodLabel())}</title>
+        </circle>
+      </g>
+    `;
+  }).join("");
 
   return `
     <div class="xpChartCard">
-      <div class="xpChartTitle">XP gained over ${escapeHtml(currentXpPeriodLabel())}</div>
-      <svg class="xpLineChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="XP gained trend chart">
+      <div class="xpChartTitle">XP gained by skill over ${escapeHtml(currentXpPeriodLabel())}</div>
+      <svg class="xpLineChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Per-skill XP gained trend chart">
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${height - padBottom}" y2="${height - padBottom}" />
@@ -1481,8 +1504,7 @@ function renderXpLineChart(points) {
         <text class="xpChartAxis" x="${padLeft - 8}" y="${height - padBottom + 4}" text-anchor="end">0</text>
         <text class="xpChartAxis" x="${padLeft}" y="${height - 10}" text-anchor="start">${escapeHtml(firstLabel)}</text>
         <text class="xpChartAxis" x="${width - padRight}" y="${height - 10}" text-anchor="end">${escapeHtml(lastLabel)}</text>
-        <polyline class="xpChartLine" points="${escapeHtml(line)}" />
-        ${pointsHtml}
+        ${lineHtml}
       </svg>
     </div>
   `;
@@ -1614,13 +1636,6 @@ function renderXpDailySkillChart(days) {
     `;
   }).join("");
 
-  const legend = skillsWithGain.length ? `
-    <div class="xpDailyLegend">
-      ${skillsWithGain.map(row => `
-        <span class="xpDailyLegendItem"><span class="xpDailyLegendSwatch" style="background:${escapeHtml(xpSkillColour(row.skill))}"></span>${escapeHtml(row.skill)}</span>
-      `).join("")}
-    </div>
-  ` : `<div class="xpStatsEmpty muted">No XP gains detected in the last 30 days.</div>`;
 
   return `
     <div class="xpChartCard">
@@ -1632,7 +1647,6 @@ function renderXpDailySkillChart(days) {
         <text class="xpChartAxis" x="${padLeft - 8}" y="${bottomY + 4}" text-anchor="end">0</text>
         ${barHtml}
       </svg>
-      ${legend}
     </div>
   `;
 }
@@ -1670,10 +1684,6 @@ function renderXpStats() {
     </div>
     ${renderXpLineChart(points)}
     ${renderXpDailySkillChart(stats?.daily_skill_xp_30d || [])}
-    <div class="xpStatsSectionTitle">Last 7 days by skill</div>
-    ${renderXpSkillBars(stats?.last_7d_skill_gains || [], { includeZero: true, compact: true })}
-    <div class="xpStatsSectionTitle">Skill XP gains — ${escapeHtml(currentXpPeriodLabel())}</div>
-    ${renderXpSkillBars(periodSkillGains, { includeZero: true })}
   `;
 
   el.querySelectorAll("img.xpSkillIcon").forEach(img => {

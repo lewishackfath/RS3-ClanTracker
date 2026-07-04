@@ -458,14 +458,27 @@ function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string
         }
     }
 
+    $baselineSkills = $baseline ? tracker_snapshot_skill_xp_map($baseline) : [];
+
     $points = [];
     $seen = [];
 
-    $addPoint = function(array $row) use (&$points, &$seen, $baselineXp, $timezone): void {
+    $addPoint = function(array $row) use (&$points, &$seen, $baselineXp, $baselineSkills, $timezone): void {
         $captured = (string)($row['captured_at_utc'] ?? '');
         if ($captured === '' || isset($seen[$captured])) return;
         $totalXp = tracker_snapshot_total_xp($row);
         if ($totalXp === null) return;
+
+        $currentSkills = tracker_snapshot_skill_xp_map($row);
+        $skillGains = [];
+        foreach (tracker_skill_order() as $skillName) {
+            $startXp = $baselineSkills[$skillName] ?? null;
+            $endXp = $currentSkills[$skillName] ?? null;
+            $skillGains[$skillName] = (is_numeric($startXp) && is_numeric($endXp))
+                ? max(0, (int)$endXp - (int)$startXp)
+                : 0;
+        }
+
         $gained = $baselineXp === null ? 0 : max(0, $totalXp - $baselineXp);
         $points[] = [
             'captured_at_utc' => $captured,
@@ -473,6 +486,7 @@ function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string
             'label' => tracker_short_local_label($captured, $timezone),
             'total_xp' => $totalXp,
             'gained_xp' => $gained,
+            'skills' => $skillGains,
         ];
         $seen[$captured] = true;
     };
