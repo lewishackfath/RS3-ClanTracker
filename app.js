@@ -1989,8 +1989,7 @@ function renderCurrentSkills() {
       if (blevel !== alevel) return blevel - alevel;
 
       return String(a?.skill || "").localeCompare(String(b?.skill || ""));
-    })
-    .slice(0, 10);
+    });
 
   const gainMap = buildSkillGainMap();
   const periodLabel = currentXpPeriodLabel();
