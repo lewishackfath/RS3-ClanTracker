@@ -1352,6 +1352,7 @@ let selectedXpPeriod = "7d";
 let selectedActivityLimit = 20;
 let selectedSkillView = "current";
 let selectedJournalView = "activity";
+let selectedXpChartSkills = new Set(SKILLS);
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
 
 function normaliseActivityLimit(value) {
@@ -1419,7 +1420,7 @@ function formatShortDateFromUtc(value) {
 }
 
 function setJournalView(view) {
-  selectedJournalView = view === "xpstats" ? "xpstats" : "activity";
+  selectedJournalView = view === "xpstats" || view === "drops" ? view : "activity";
 
   qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
     const active = btn.getAttribute("data-journal-view") === selectedJournalView;
@@ -1431,10 +1432,75 @@ function setJournalView(view) {
   if (title) title.textContent = "Activity Journal";
 
   show(qs("activityJournalView"), selectedJournalView === "activity");
-  show(qs("activityLimitWrap"), selectedJournalView === "activity");
   show(qs("xpStatsView"), selectedJournalView === "xpstats");
+  show(qs("dropHistoryView"), selectedJournalView === "drops");
+
+  const limitWrap = qs("activityLimitWrap");
+  if (limitWrap) {
+    limitWrap.classList.toggle("reservedHidden", selectedJournalView !== "activity");
+  }
 
   if (selectedJournalView === "xpstats") renderXpStats();
+  if (selectedJournalView === "drops") renderDropHistory();
+}
+
+function ensureXpSkillSelection() {
+  if (!(selectedXpChartSkills instanceof Set)) selectedXpChartSkills = new Set(SKILLS);
+  if (selectedXpChartSkills.size === 0) selectedXpChartSkills = new Set(SKILLS);
+}
+
+function getVisibleXpSkills() {
+  ensureXpSkillSelection();
+  const visible = SKILLS.filter(skill => selectedXpChartSkills.has(skill));
+  return visible.length ? visible : SKILLS.slice();
+}
+
+function renderXpSkillFilters(title = "Skill filters") {
+  ensureXpSkillSelection();
+  return `
+    <div class="xpSkillFilters" role="group" aria-label="${escapeHtml(title)}">
+      ${SKILLS.map(skill => {
+        const active = selectedXpChartSkills.has(skill);
+        return `
+          <button class="xpSkillFilterBtn ${active ? "active" : ""}" type="button" data-xp-skill="${escapeHtml(skill)}" title="${escapeHtml(active ? `Hide ${skill}` : `Show ${skill}`)}">
+            <img class="xpSkillFilterIcon" data-skill="${escapeHtml(skill)}" data-skillkey="${escapeHtml(skill)}" alt="${escapeHtml(skill)}" />
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function wireXpSkillFilters(root) {
+  const scope = root || document;
+  scope.querySelectorAll("button.xpSkillFilterBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const skill = btn.getAttribute("data-xp-skill") || "";
+      if (!skill) return;
+      ensureXpSkillSelection();
+      if (selectedXpChartSkills.has(skill)) {
+        if (selectedXpChartSkills.size <= 1) return;
+        selectedXpChartSkills.delete(skill);
+      } else {
+        selectedXpChartSkills.add(skill);
+      }
+      renderXpStats();
+    });
+  });
+}
+
+function wireSkillIconFallbacks(root) {
+  const scope = root || document;
+  scope.querySelectorAll("img.xpSkillIcon, img.xpSkillFilterIcon").forEach(img => {
+    const skillName = img.getAttribute("data-skill") || "";
+    const skillKey = img.getAttribute("data-skillkey") || "";
+    const candidates = [
+      ...iconCandidates("assets/skills/", skillName),
+      ...iconCandidates("assets/skills/", skillKey),
+      "assets/skills/_default.png",
+    ];
+    setImgWithFallback(img, candidates, "assets/skills/_default.png");
+  });
 }
 
 function renderXpLineChart(points) {
@@ -1445,7 +1511,7 @@ function renderXpLineChart(points) {
     return `<div class="xpStatsEmpty muted">Not enough XP snapshots yet to draw a trend for this period.</div>`;
   }
 
-  const skills = SKILLS.slice();
+  const visibleSkills = getVisibleXpSkills();
   const width = 740;
   const height = 280;
   const padLeft = 54;
@@ -1462,7 +1528,7 @@ function renderXpLineChart(points) {
   };
 
   const maxY = Math.max(
-    ...usableRows.flatMap(row => skills.map(skill => skillValue(row, skill))),
+    ...usableRows.flatMap(row => visibleSkills.map(skill => skillValue(row, skill))),
     1
   );
 
@@ -1470,7 +1536,7 @@ function renderXpLineChart(points) {
   const lastLabel = formatShortDateFromUtc(usableRows[usableRows.length - 1]?.captured_at_utc);
   const midY = padTop + plotH / 2;
 
-  const lineHtml = skills.map(skill => {
+  const lineHtml = visibleSkills.map(skill => {
     const pointsStr = usableRows.map((row, i) => {
       const x = padLeft + (usableRows.length === 1 ? 0 : (i / (usableRows.length - 1)) * plotW);
       const y = padTop + plotH - (skillValue(row, skill) / maxY) * plotH;
@@ -1495,7 +1561,10 @@ function renderXpLineChart(points) {
 
   return `
     <div class="xpChartCard">
-      <div class="xpChartTitle">XP gained by skill over ${escapeHtml(currentXpPeriodLabel())}</div>
+      <div class="xpChartTitleRow">
+        <div class="xpChartTitle">XP gained by skill over ${escapeHtml(currentXpPeriodLabel())}</div>
+      </div>
+      ${renderXpSkillFilters("Toggle skills in the XP gained chart")}
       <svg class="xpLineChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Per-skill XP gained trend chart">
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
@@ -1591,15 +1660,7 @@ function renderXpDailySkillChart(days) {
     return `<div class="xpStatsEmpty muted">No daily XP data is available yet.</div>`;
   }
 
-  const skillsWithGain = SKILLS
-    .map(skill => ({
-      skill,
-      total: rows.reduce((sum, day) => sum + Number(day?.skills?.[skill] || 0), 0),
-    }))
-    .filter(row => row.total > 0)
-    .sort((a, b) => b.total - a.total);
-
-  const activeSkills = skillsWithGain.map(row => row.skill);
+  const visibleSkills = getVisibleXpSkills();
   const width = 740;
   const height = 280;
   const padLeft = 52;
@@ -1608,7 +1669,8 @@ function renderXpDailySkillChart(days) {
   const padBottom = 36;
   const plotW = width - padLeft - padRight;
   const plotH = height - padTop - padBottom;
-  const maxY = Math.max(...rows.map(day => Number(day?.total_xp || 0)), 1);
+  const dayTotal = (day) => visibleSkills.reduce((sum, skill) => sum + Number(day?.skills?.[skill] || 0), 0);
+  const maxY = Math.max(...rows.map(day => dayTotal(day)), 1);
   const gap = 3;
   const barW = Math.max(4, (plotW / Math.max(rows.length, 1)) - gap);
   const bottomY = padTop + plotH;
@@ -1616,7 +1678,7 @@ function renderXpDailySkillChart(days) {
   const barHtml = rows.map((day, i) => {
     const x = padLeft + i * (plotW / Math.max(rows.length, 1)) + gap / 2;
     let usedH = 0;
-    const segments = activeSkills.map(skill => {
+    const segments = visibleSkills.map(skill => {
       const value = Number(day?.skills?.[skill] || 0);
       if (value <= 0) return "";
       const h = Math.max(1, (value / maxY) * plotH);
@@ -1636,10 +1698,10 @@ function renderXpDailySkillChart(days) {
     `;
   }).join("");
 
-
   return `
     <div class="xpChartCard">
       <div class="xpChartTitle">XP earned per day — last 30 days</div>
+      ${renderXpSkillFilters("Toggle skills in the daily XP chart")}
       <svg class="xpDailyChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Stacked daily skill XP chart for the last 30 days">
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
@@ -1684,17 +1746,73 @@ function renderXpStats() {
     </div>
     ${renderXpLineChart(points)}
     ${renderXpDailySkillChart(stats?.daily_skill_xp_30d || [])}
+    <div class="xpStatsSectionTitle">Per Skill XP — ${escapeHtml(currentXpPeriodLabel())}</div>
+    ${renderXpSkillBars(periodSkillGains, { includeZero: true })}
   `;
 
-  el.querySelectorAll("img.xpSkillIcon").forEach(img => {
-    const skillName = img.getAttribute("data-skill") || "";
-    const skillKey = img.getAttribute("data-skillkey") || "";
-    const candidates = [
-      ...iconCandidates("assets/skills/", skillName),
-      ...iconCandidates("assets/skills/", skillKey),
-      "assets/skills/_default.png",
-    ];
-    setImgWithFallback(img, candidates, "assets/skills/_default.png");
+  wireSkillIconFallbacks(el);
+  wireXpSkillFilters(el);
+}
+
+function renderDropHistory() {
+  const el = qs("dropHistoryView");
+  if (!el) return;
+
+  const history = playerData?.drop_history || {};
+  const items = Array.isArray(history?.items) ? history.items : [];
+  const total = Number.isFinite(Number(history?.total_detected)) ? Number(history.total_detected) : 0;
+  const unique = Number.isFinite(Number(history?.unique_items)) ? Number(history.unique_items) : items.length;
+
+  if (!items.length) {
+    el.innerHTML = `<div class="xpStatsEmpty muted">No item drops have been detected for this player yet.</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="dropHistorySummary">
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Detected drops</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(total))}</div>
+      </div>
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Unique items</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(unique))}</div>
+      </div>
+    </div>
+    <div class="dropHistoryList">
+      ${items.map(item => {
+        const name = String(item?.item_name || "Unknown drop");
+        const count = Number.isFinite(Number(item?.count)) ? Number(item.count) : 0;
+        const lastSeen = item?.last_seen_local || item?.last_seen_utc || "—";
+        return `
+          <div class="dropHistoryRow">
+            <img class="dropHistoryIcon" data-item="${escapeHtml(name)}" alt="${escapeHtml(name)}" />
+            <div class="dropHistoryMain">
+              <div class="dropHistoryName">${escapeHtml(name)}</div>
+              <div class="dropHistoryMeta">Last seen: ${escapeHtml(lastSeen)}</div>
+            </div>
+            <div class="dropHistoryCount">×${escapeHtml(formatNumber(count))}</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  el.querySelectorAll("img.dropHistoryIcon").forEach(img => {
+    const itemName = cleanItemNameForIcons(img.getAttribute("data-item") || "");
+    const candidates = [];
+    if (itemName) {
+      candidates.push(`/api/wiki_item_icon.php?item=${encodeURIComponent(itemName)}`);
+      const underscored = itemName.replace(/\s+/g, "_");
+      candidates.push(`https://runescape.wiki/images/${encodeURIComponent(underscored)}.png`);
+      candidates.push(
+        ...iconCandidates("assets/items/", itemName),
+        ...iconCandidates("assets/items/", toFileKey(itemName)),
+        ...iconCandidates("assets/items/", toFileKey(itemName).replace(/_/g, ""))
+      );
+    }
+    candidates.push("assets/activity/drop.svg", "assets/activity/default.png");
+    setImgWithFallback(img, candidates, "assets/activity/default.png");
   });
 }
 
@@ -2397,6 +2515,7 @@ async function loadPlayer(rsn, period) {
   if (qs("activityStatus")) qs("activityStatus").textContent = "";
   if (qs("activityList")) qs("activityList").innerHTML = "";
   if (qs("xpStatsView")) qs("xpStatsView").innerHTML = "";
+  if (qs("dropHistoryView")) qs("dropHistoryView").innerHTML = "";
 
   const activityLimit = normaliseActivityLimit(selectedActivityLimit);
   const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}&activity_limit=${encodeURIComponent(activityLimit)}`;

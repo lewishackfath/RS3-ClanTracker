@@ -531,6 +531,74 @@ function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string
     ];
 }
 
+
+function tracker_clean_drop_item_name(?string $value): ?string {
+    $s = trim((string)($value ?? ''));
+    if ($s === '') return null;
+    $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+    $s = trim($s, " \t\n\r\0\x0B\"'“”‘’. ");
+    return $s !== '' ? $s : null;
+}
+
+function tracker_extract_drop_item_name(?string $activityText, ?string $activityDetails): ?string {
+    $text = trim((string)($activityText ?? ''));
+    if ($text !== '' && preg_match('/^I\s+found\s+an?\s+(.+?)(?:\.\s*)?$/i', $text, $m)) {
+        return tracker_clean_drop_item_name($m[1] ?? null);
+    }
+
+    $details = trim((string)($activityDetails ?? ''));
+    if ($details !== '' && preg_match('/\bdropped\s+an?\s+(.+?)(?:\.\s*|$)/i', $details, $m)) {
+        return tracker_clean_drop_item_name($m[1] ?? null);
+    }
+
+    return null;
+}
+
+function tracker_build_drop_history(PDO $pdo, int $memberId, string $timezone): array {
+    $stmt = $pdo->prepare("\n        SELECT activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found a %'\n            OR activity_text LIKE 'I found an %'\n            OR activity_details LIKE '%dropped a %'\n            OR activity_details LIKE '%dropped an %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) DESC\n        LIMIT 10000\n    ");
+    $stmt->execute([':mid' => $memberId]);
+    $rows = $stmt->fetchAll() ?: [];
+
+    $items = [];
+    foreach ($rows as $row) {
+        $itemName = tracker_extract_drop_item_name($row['activity_text'] ?? null, $row['activity_details'] ?? null);
+        if (!$itemName) continue;
+
+        $key = mb_strtolower($itemName);
+        $seenUtc = (string)(($row['activity_date_utc'] ?? null) ?: ($row['announced_at'] ?? ''));
+        if (!isset($items[$key])) {
+            $items[$key] = [
+                'item_name' => $itemName,
+                'count' => 0,
+                'last_seen_utc' => null,
+                'last_seen_local' => null,
+            ];
+        }
+
+        $items[$key]['count']++;
+        if ($seenUtc !== '') {
+            $current = $items[$key]['last_seen_utc'];
+            if ($current === null || strcmp($seenUtc, (string)$current) > 0) {
+                $items[$key]['last_seen_utc'] = $seenUtc;
+                $items[$key]['last_seen_local'] = tracker_to_local($seenUtc, $timezone);
+            }
+        }
+    }
+
+    $out = array_values($items);
+    usort($out, static function(array $a, array $b): int {
+        $diff = ((int)($b['count'] ?? 0)) <=> ((int)($a['count'] ?? 0));
+        if ($diff !== 0) return $diff;
+        return strcasecmp((string)($a['item_name'] ?? ''), (string)($b['item_name'] ?? ''));
+    });
+
+    return [
+        'total_detected' => array_sum(array_map(static fn(array $r): int => (int)($r['count'] ?? 0), $out)),
+        'unique_items' => count($out),
+        'items' => $out,
+    ];
+}
+
 function tracker_dtmax(array $vals): ?string {
     $best = null;
     $bestTs = null;
@@ -1147,6 +1215,7 @@ try {
     }
 
     $xpStats = tracker_build_xp_stats($pdo, $memberId, $xpWindow, (string)$week['timezone']);
+    $dropHistory = tracker_build_drop_history($pdo, $memberId, (string)$week['timezone']);
 
     // Current skills list from latest snapshot
     $currentSkills = [
@@ -1276,6 +1345,7 @@ try {
         }, $activityRows),
         'xp' => $xp,
         'xp_stats' => $xpStats,
+        'drop_history' => $dropHistory,
         'xp_periods' => [
         ['value' => '24h', 'label' => 'Last 24 hours'],
         ['value' => '7d', 'label' => 'Last 7 days'],

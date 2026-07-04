@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607040101" />
+  <link rel="stylesheet" href="./styles.css?v=202607040202" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -181,6 +181,7 @@ include __DIR__ . '/includes/menu.php';
             <div class="seg journalTabs" id="journalTabs" role="tablist" aria-label="Player journal views">
               <button class="segBtn active" type="button" data-journal-view="activity" role="tab" aria-selected="true">Activity Journal</button>
               <button class="segBtn" type="button" data-journal-view="xpstats" role="tab" aria-selected="false">XP Stats</button>
+              <button class="segBtn" type="button" data-journal-view="drops" role="tab" aria-selected="false">Drop History</button>
             </div>
           </div>
           <div id="activityJournalView">
@@ -188,6 +189,7 @@ include __DIR__ . '/includes/menu.php';
             <div class="activityList" id="activityList"></div>
           </div>
           <div class="xpStatsPanel hidden" id="xpStatsView" aria-live="polite"></div>
+          <div class="dropHistoryPanel hidden" id="dropHistoryView" aria-live="polite"></div>
         </div>
       </div>
 
@@ -203,6 +205,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607040101"></script>
+  <script src="./app.js?v=202607040202"></script>
 </body>
 </html>
