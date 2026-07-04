@@ -2038,6 +2038,42 @@ li { margin: 0 0 10px; }
 .xpSkillLineGroup:hover .xpSkillChartPoint {
   opacity: 1;
 }
+
+.xpSkillChartHitLine {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: stroke;
+}
+.xpDailyChartSegment {
+  cursor: help;
+  transition: opacity .12s ease, filter .12s ease;
+}
+.xpDailyChartSegment:hover {
+  opacity: 0.88;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.36));
+}
+.chartTooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(246, 222, 159, 0.42);
+  background: linear-gradient(180deg, rgba(47, 27, 17, 0.98), rgba(29, 15, 9, 0.98));
+  color: #fff8dc;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.10);
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.25;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+.chartTooltip.hidden {
+  display: none;
+}
 .xpStatsSectionTitle {
   margin-top: 2px;
   font-size: 1rem;

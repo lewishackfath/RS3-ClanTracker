@@ -1534,6 +1534,80 @@ function wireSkillIconFallbacks(root) {
   });
 }
 
+
+function getOrCreateChartTooltip() {
+  let el = qs("chartTooltip");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "chartTooltip";
+    el.className = "chartTooltip hidden";
+    el.setAttribute("role", "tooltip");
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function positionChartTooltip(event, tooltip) {
+  if (!event || !tooltip) return;
+  const offset = 14;
+  const padding = 10;
+  const rect = tooltip.getBoundingClientRect();
+  let left = event.clientX + offset;
+  let top = event.clientY + offset;
+
+  if (left + rect.width + padding > window.innerWidth) {
+    left = Math.max(padding, event.clientX - rect.width - offset);
+  }
+  if (top + rect.height + padding > window.innerHeight) {
+    top = Math.max(padding, event.clientY - rect.height - offset);
+  }
+
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function showChartTooltip(event, target) {
+  const text = target?.getAttribute("data-chart-tooltip") || "";
+  if (!text) return;
+
+  const tooltip = getOrCreateChartTooltip();
+  tooltip.textContent = text;
+  tooltip.classList.remove("hidden");
+  positionChartTooltip(event, tooltip);
+}
+
+function hideChartTooltip() {
+  const tooltip = qs("chartTooltip");
+  if (tooltip) tooltip.classList.add("hidden");
+}
+
+function wireChartTooltips() {
+  document.addEventListener("pointerover", (event) => {
+    const target = event.target?.closest?.("[data-chart-tooltip]");
+    if (!target) return;
+    showChartTooltip(event, target);
+  });
+
+  document.addEventListener("pointermove", (event) => {
+    const target = event.target?.closest?.("[data-chart-tooltip]");
+    if (!target) return;
+    const tooltip = qs("chartTooltip");
+    if (!tooltip || tooltip.classList.contains("hidden")) showChartTooltip(event, target);
+    else positionChartTooltip(event, tooltip);
+  });
+
+  document.addEventListener("pointerout", (event) => {
+    const target = event.target?.closest?.("[data-chart-tooltip]");
+    if (!target) return;
+    const next = event.relatedTarget?.closest?.("[data-chart-tooltip]");
+    if (next === target) return;
+    hideChartTooltip();
+  });
+
+  document.addEventListener("scroll", hideChartTooltip, true);
+  window.addEventListener("blur", hideChartTooltip);
+}
+
 function renderXpLineChartBody(points) {
   const rows = Array.isArray(points) ? points : [];
   const usableRows = rows.filter(p => p && typeof p === "object");
@@ -1578,14 +1652,13 @@ function renderXpLineChartBody(points) {
     const lastX = padLeft + plotW;
     const lastY = padTop + plotH - (finalGain / maxY) * plotH;
 
+    const tooltip = `${skill}: +${formatNumber(finalGain)} XP over ${currentXpPeriodLabel()}`;
+
     return `
       <g class="xpSkillLineGroup">
-        <polyline class="xpSkillChartLine" style="stroke:${escapeHtml(xpSkillColour(skill))}" points="${escapeHtml(pointsStr)}">
-          <title>${escapeHtml(skill)}: +${escapeHtml(formatNumber(finalGain))} XP over ${escapeHtml(currentXpPeriodLabel())}</title>
-        </polyline>
-        <circle class="xpSkillChartPoint" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3.2" style="fill:${escapeHtml(xpSkillColour(skill))}">
-          <title>${escapeHtml(skill)}: +${escapeHtml(formatNumber(finalGain))} XP over ${escapeHtml(currentXpPeriodLabel())}</title>
-        </circle>
+        <polyline class="xpSkillChartLine" style="stroke:${escapeHtml(xpSkillColour(skill))}" points="${escapeHtml(pointsStr)}" data-chart-tooltip="${escapeHtml(tooltip)}"></polyline>
+        <polyline class="xpSkillChartHitLine" points="${escapeHtml(pointsStr)}" data-chart-tooltip="${escapeHtml(tooltip)}"></polyline>
+        <circle class="xpSkillChartPoint" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3.2" style="fill:${escapeHtml(xpSkillColour(skill))}" data-chart-tooltip="${escapeHtml(tooltip)}"></circle>
       </g>
     `;
   }).join("");
@@ -1722,10 +1795,9 @@ function renderXpDailySkillChartBody(days) {
       const h = Math.max(1, (value / maxY) * plotH);
       const y = bottomY - usedH - h;
       usedH += h;
+      const tooltip = `${day?.label || day?.date || "Day"} — ${skill}: +${formatNumber(value)} XP`;
       return `
-        <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${escapeHtml(xpSkillColour(skill))}">
-          <title>${escapeHtml(day?.label || day?.date || "Day")} — ${escapeHtml(skill)}: +${escapeHtml(formatNumber(value))} XP</title>
-        </rect>
+        <rect class="xpDailyChartSegment" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${escapeHtml(xpSkillColour(skill))}" data-chart-tooltip="${escapeHtml(tooltip)}"></rect>
       `;
     }).join("");
 
@@ -2783,6 +2855,8 @@ function wireCharacterSearch(inputEl, listEl) {
 }
 
 function wireUI() {
+  wireChartTooltips();
+
   const playerRsn = qs("playerRsn");
 
   wireCharacterSearch(qs("topPlayerRsn"), qs("topPlayerList"));
