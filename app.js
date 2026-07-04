@@ -1352,7 +1352,8 @@ let selectedXpPeriod = "7d";
 let selectedActivityLimit = 20;
 let selectedSkillView = "current";
 let selectedJournalView = "activity";
-let selectedXpChartSkills = new Set(SKILLS);
+let selectedXpLineChartSkills = new Set(SKILLS);
+let selectedXpDailyChartSkills = new Set(SKILLS);
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
 
 function normaliseActivityLimit(value) {
@@ -1444,25 +1445,33 @@ function setJournalView(view) {
   if (selectedJournalView === "drops") renderDropHistory();
 }
 
-function ensureXpSkillSelection() {
-  if (!(selectedXpChartSkills instanceof Set)) selectedXpChartSkills = new Set(SKILLS);
-  if (selectedXpChartSkills.size === 0) selectedXpChartSkills = new Set(SKILLS);
+function xpSkillSelectionForChart(chartKey) {
+  const key = chartKey === "daily" ? "daily" : "line";
+  if (key === "daily") {
+    if (!(selectedXpDailyChartSkills instanceof Set)) selectedXpDailyChartSkills = new Set(SKILLS);
+    if (selectedXpDailyChartSkills.size === 0) selectedXpDailyChartSkills = new Set(SKILLS);
+    return selectedXpDailyChartSkills;
+  }
+
+  if (!(selectedXpLineChartSkills instanceof Set)) selectedXpLineChartSkills = new Set(SKILLS);
+  if (selectedXpLineChartSkills.size === 0) selectedXpLineChartSkills = new Set(SKILLS);
+  return selectedXpLineChartSkills;
 }
 
-function getVisibleXpSkills() {
-  ensureXpSkillSelection();
-  const visible = SKILLS.filter(skill => selectedXpChartSkills.has(skill));
+function getVisibleXpSkills(chartKey = "line") {
+  const selected = xpSkillSelectionForChart(chartKey);
+  const visible = SKILLS.filter(skill => selected.has(skill));
   return visible.length ? visible : SKILLS.slice();
 }
 
-function renderXpSkillFilters(title = "Skill filters") {
-  ensureXpSkillSelection();
+function renderXpSkillFilters(chartKey = "line", title = "Skill filters") {
+  const selected = xpSkillSelectionForChart(chartKey);
   return `
     <div class="xpSkillFilters" role="group" aria-label="${escapeHtml(title)}">
       ${SKILLS.map(skill => {
-        const active = selectedXpChartSkills.has(skill);
+        const active = selected.has(skill);
         return `
-          <button class="xpSkillFilterBtn ${active ? "active" : ""}" type="button" data-xp-skill="${escapeHtml(skill)}" title="${escapeHtml(active ? `Hide ${skill}` : `Show ${skill}`)}">
+          <button class="xpSkillFilterBtn ${active ? "active" : ""}" type="button" data-xp-chart="${escapeHtml(chartKey)}" data-xp-skill="${escapeHtml(skill)}" title="${escapeHtml(active ? `Hide ${skill}` : `Show ${skill}`)}">
             <img class="xpSkillFilterIcon" data-skill="${escapeHtml(skill)}" data-skillkey="${escapeHtml(skill)}" alt="${escapeHtml(skill)}" />
           </button>
         `;
@@ -1471,20 +1480,45 @@ function renderXpSkillFilters(title = "Skill filters") {
   `;
 }
 
+function updateXpSkillFilterButton(btn, chartKey, skill) {
+  const selected = xpSkillSelectionForChart(chartKey);
+  const active = selected.has(skill);
+  btn.classList.toggle("active", active);
+  btn.setAttribute("title", active ? `Hide ${skill}` : `Show ${skill}`);
+}
+
+function rerenderXpChart(chartKey) {
+  const key = chartKey === "daily" ? "daily" : "line";
+  const stats = playerData?.xp_stats || null;
+  const mount = qs(key === "daily" ? "xpDailyChartMount" : "xpLineChartMount");
+  if (!mount) return;
+
+  mount.innerHTML = key === "daily"
+    ? renderXpDailySkillChart(stats?.daily_skill_xp_30d || [])
+    : renderXpLineChart(Array.isArray(stats?.points) ? stats.points : []);
+
+  wireSkillIconFallbacks(mount);
+  wireXpSkillFilters(mount);
+}
+
 function wireXpSkillFilters(root) {
   const scope = root || document;
   scope.querySelectorAll("button.xpSkillFilterBtn").forEach(btn => {
     btn.addEventListener("click", () => {
+      const chartKey = btn.getAttribute("data-xp-chart") || "line";
       const skill = btn.getAttribute("data-xp-skill") || "";
       if (!skill) return;
-      ensureXpSkillSelection();
-      if (selectedXpChartSkills.has(skill)) {
-        if (selectedXpChartSkills.size <= 1) return;
-        selectedXpChartSkills.delete(skill);
+
+      const selected = xpSkillSelectionForChart(chartKey);
+      if (selected.has(skill)) {
+        if (selected.size <= 1) return;
+        selected.delete(skill);
       } else {
-        selectedXpChartSkills.add(skill);
+        selected.add(skill);
       }
-      renderXpStats();
+
+      updateXpSkillFilterButton(btn, chartKey, skill);
+      rerenderXpChart(chartKey);
     });
   });
 }
@@ -1511,7 +1545,7 @@ function renderXpLineChart(points) {
     return `<div class="xpStatsEmpty muted">Not enough XP snapshots yet to draw a trend for this period.</div>`;
   }
 
-  const visibleSkills = getVisibleXpSkills();
+  const visibleSkills = getVisibleXpSkills("line");
   const width = 740;
   const height = 280;
   const padLeft = 54;
@@ -1564,7 +1598,7 @@ function renderXpLineChart(points) {
       <div class="xpChartTitleRow">
         <div class="xpChartTitle">XP gained by skill over ${escapeHtml(currentXpPeriodLabel())}</div>
       </div>
-      ${renderXpSkillFilters("Toggle skills in the XP gained chart")}
+      ${renderXpSkillFilters("line", "Toggle skills in the XP gained chart")}
       <svg class="xpLineChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Per-skill XP gained trend chart">
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
@@ -1660,7 +1694,7 @@ function renderXpDailySkillChart(days) {
     return `<div class="xpStatsEmpty muted">No daily XP data is available yet.</div>`;
   }
 
-  const visibleSkills = getVisibleXpSkills();
+  const visibleSkills = getVisibleXpSkills("daily");
   const width = 740;
   const height = 280;
   const padLeft = 52;
@@ -1701,7 +1735,7 @@ function renderXpDailySkillChart(days) {
   return `
     <div class="xpChartCard">
       <div class="xpChartTitle">XP earned per day — last 30 days</div>
-      ${renderXpSkillFilters("Toggle skills in the daily XP chart")}
+      ${renderXpSkillFilters("daily", "Toggle skills in the daily XP chart")}
       <svg class="xpDailyChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Stacked daily skill XP chart for the last 30 days">
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
@@ -1744,8 +1778,8 @@ function renderXpStats() {
       ${renderSkillGainSummary("Favourite skill", favourite)}
       ${renderSkillGainSummary("Least favourite skill", leastFavourite)}
     </div>
-    ${renderXpLineChart(points)}
-    ${renderXpDailySkillChart(stats?.daily_skill_xp_30d || [])}
+    <div id="xpLineChartMount">${renderXpLineChart(points)}</div>
+    <div id="xpDailyChartMount">${renderXpDailySkillChart(stats?.daily_skill_xp_30d || [])}</div>
     <div class="xpStatsSectionTitle">Per Skill XP — ${escapeHtml(currentXpPeriodLabel())}</div>
     ${renderXpSkillBars(periodSkillGains, { includeZero: true })}
   `;
