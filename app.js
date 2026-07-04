@@ -587,10 +587,18 @@ function loadBossIconMap() {
 }
 
 function cleanBossNameForIcons(name) {
-  return cleanItemNameForIcons(name)
+  let value = cleanItemNameForIcons(name)
+    // Hard mode boss activities may include the mode marker either before or
+    // after the boss name, e.g. "(Hard mode) General Graardor" or
+    // "General Graardor, a huge war chief. (Hard mode)".
+    .replace(/\(\s*hard\s*mode\s*\)/ig, " ")
+    .replace(/^[-–—:;,\.\s]+/, "")
+    .replace(/[-–—:;,\.\s]+$/, "")
     .replace(/^the\s+/i, "The ")
     .replace(/\s+/g, " ")
     .trim();
+
+  return value;
 }
 
 function addBossNameVariant(set, value) {
