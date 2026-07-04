@@ -264,6 +264,111 @@ function tracker_skill_order(): array {
     ];
 }
 
+
+function tracker_snapshot_total_xp(array $row): ?int {
+    if (isset($row['total_xp']) && is_numeric($row['total_xp'])) return (int)$row['total_xp'];
+
+    $rawSkills = tracker_parse_skills_json($row['skills_json'] ?? null);
+    if (isset($rawSkills['total']) && is_array($rawSkills['total']) && isset($rawSkills['total']['xp']) && is_numeric($rawSkills['total']['xp'])) {
+        return (int)$rawSkills['total']['xp'];
+    }
+
+    $stats = tracker_extract_skill_stats($rawSkills);
+    if (!$stats) return null;
+
+    $sum = 0;
+    $seen = false;
+    foreach (tracker_skill_order() as $skillName) {
+        $xp = $stats[$skillName]['xp'] ?? null;
+        if (!is_numeric($xp)) continue;
+        $sum += (int)$xp;
+        $seen = true;
+    }
+
+    return $seen ? $sum : null;
+}
+
+function tracker_short_local_label(?string $utcValue, string $timezone): string {
+    if (!$utcValue) return '';
+    try { $tz = new DateTimeZone($timezone); }
+    catch (Throwable $e) { $tz = new DateTimeZone('UTC'); }
+
+    try {
+        $dt = new DateTime((string)$utcValue, new DateTimeZone('UTC'));
+        $dt->setTimezone($tz);
+        return $dt->format('d M');
+    } catch (Throwable $e) {
+        return (string)$utcValue;
+    }
+}
+
+function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string $timezone): array {
+    $startUtc = (string)($xpWindow['start_utc'] ?? '1970-01-01 00:00:00');
+    $endUtc = (string)($xpWindow['end_utc'] ?? gmdate('Y-m-d H:i:s'));
+
+    $stmt = $pdo->prepare("\n        SELECT captured_at_utc, total_xp, skills_json\n        FROM member_xp_snapshots\n        WHERE member_id = :mid AND captured_at_utc <= :startUtc\n        ORDER BY captured_at_utc DESC\n        LIMIT 1\n    ");
+    $stmt->execute([':mid' => $memberId, ':startUtc' => $startUtc]);
+    $baseline = $stmt->fetch() ?: null;
+
+    $stmt = $pdo->prepare("\n        SELECT captured_at_utc, total_xp, skills_json\n        FROM member_xp_snapshots\n        WHERE member_id = :mid\n          AND captured_at_utc > :startUtc\n          AND captured_at_utc <= :endUtc\n        ORDER BY captured_at_utc ASC\n        LIMIT 500\n    ");
+    $stmt->execute([':mid' => $memberId, ':startUtc' => $startUtc, ':endUtc' => $endUtc]);
+    $rows = $stmt->fetchAll() ?: [];
+
+    if (!$baseline && $rows) {
+        $baseline = $rows[0];
+    }
+
+    $baselineXp = $baseline ? tracker_snapshot_total_xp($baseline) : null;
+    if ($baselineXp === null && $rows) {
+        foreach ($rows as $row) {
+            $value = tracker_snapshot_total_xp($row);
+            if ($value !== null) { $baselineXp = $value; break; }
+        }
+    }
+
+    $points = [];
+    $seen = [];
+
+    $addPoint = function(array $row) use (&$points, &$seen, $baselineXp, $timezone): void {
+        $captured = (string)($row['captured_at_utc'] ?? '');
+        if ($captured === '' || isset($seen[$captured])) return;
+        $totalXp = tracker_snapshot_total_xp($row);
+        if ($totalXp === null) return;
+        $gained = $baselineXp === null ? 0 : max(0, $totalXp - $baselineXp);
+        $points[] = [
+            'captured_at_utc' => $captured,
+            'captured_at_local' => tracker_to_local($captured, $timezone),
+            'label' => tracker_short_local_label($captured, $timezone),
+            'total_xp' => $totalXp,
+            'gained_xp' => $gained,
+        ];
+        $seen[$captured] = true;
+    };
+
+    if ($baseline) $addPoint($baseline);
+    foreach ($rows as $row) $addPoint($row);
+
+    usort($points, static function(array $a, array $b): int {
+        return strcmp((string)$a['captured_at_utc'], (string)$b['captured_at_utc']);
+    });
+
+    $finalGain = null;
+    if ($points) {
+        $last = $points[count($points) - 1];
+        $finalGain = isset($last['gained_xp']) ? (int)$last['gained_xp'] : null;
+    }
+
+    return [
+        'has_data' => count($points) >= 2,
+        'period' => (string)($xpWindow['period'] ?? ''),
+        'start_utc' => $startUtc,
+        'end_utc' => $endUtc,
+        'snapshot_count' => count($points),
+        'gained_total_xp' => $finalGain,
+        'points' => $points,
+    ];
+}
+
 function tracker_dtmax(array $vals): ?string {
     $best = null;
     $bestTs = null;
@@ -906,6 +1011,8 @@ try {
         ];
     }
 
+    $xpStats = tracker_build_xp_stats($pdo, $memberId, $xpWindow, (string)$week['timezone']);
+
     // Current skills list from latest snapshot
     $currentSkills = [
         'has_data' => false,
@@ -1033,6 +1140,7 @@ try {
             ];
         }, $activityRows),
         'xp' => $xp,
+        'xp_stats' => $xpStats,
         'xp_periods' => [
         ['value' => '24h', 'label' => 'Last 24 hours'],
         ['value' => '7d', 'label' => 'Last 7 days'],

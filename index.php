@@ -165,9 +165,15 @@ include __DIR__ . '/includes/menu.php';
         </div>
 
         <div class="panel" id="activityPanel">
-          <div class="panelTitleRow">
-            <h3 class="h2">Activity Journal</h3>
-            <label class="compactSelectLabel" for="activityLimit">
+          <div class="panelTitleRow activityJournalHeader">
+            <div>
+              <h3 class="h2" id="journalTitle">Activity Journal</h3>
+              <div class="seg journalTabs" id="journalTabs" role="tablist" aria-label="Player journal views">
+                <button class="segBtn active" type="button" data-journal-view="activity" role="tab" aria-selected="true">Activity Journal</button>
+                <button class="segBtn" type="button" data-journal-view="xpstats" role="tab" aria-selected="false">XP Stats</button>
+              </div>
+            </div>
+            <label class="compactSelectLabel" for="activityLimit" id="activityLimitWrap">
               Show
               <select id="activityLimit" class="select selectSmall">
                 <option value="20" selected>20</option>
@@ -177,8 +183,11 @@ include __DIR__ . '/includes/menu.php';
               </select>
             </label>
           </div>
-          <div class="muted" id="activityStatus"></div>
-          <div class="activityList" id="activityList"></div>
+          <div id="activityJournalView">
+            <div class="muted" id="activityStatus"></div>
+            <div class="activityList" id="activityList"></div>
+          </div>
+          <div class="xpStatsPanel hidden" id="xpStatsView" aria-live="polite"></div>
         </div>
       </div>
 
@@ -194,6 +203,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607020200"></script>
+  <script src="./app.js?v=202607020300"></script>
 </body>
 </html>

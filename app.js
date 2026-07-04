@@ -1351,6 +1351,7 @@ let playerData = null;
 let selectedXpPeriod = "7d";
 let selectedActivityLimit = 20;
 let selectedSkillView = "current";
+let selectedJournalView = "activity";
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
 
 function normaliseActivityLimit(value) {
@@ -1390,6 +1391,175 @@ function currentXpPeriodLabel() {
   const selected = sel?.selectedOptions?.[0]?.textContent?.trim();
   if (selected) return selected;
   return String(playerData?.xp?.period || selectedXpPeriod || "selected period");
+}
+
+
+function formatCompactNumber(n) {
+  if (n === null || n === undefined) return "—";
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  try {
+    return new Intl.NumberFormat("en-AU", {
+      notation: "compact",
+      maximumFractionDigits: x >= 1_000_000 ? 1 : 0,
+    }).format(x);
+  } catch {
+    return formatNumber(x);
+  }
+}
+
+function formatShortDateFromUtc(value) {
+  const ms = parseUtcDateToMs(value);
+  if (!Number.isFinite(ms)) return "—";
+  try {
+    return new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short" }).format(new Date(ms));
+  } catch {
+    return String(value || "—");
+  }
+}
+
+function setJournalView(view) {
+  selectedJournalView = view === "xpstats" ? "xpstats" : "activity";
+
+  qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
+    const active = btn.getAttribute("data-journal-view") === selectedJournalView;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  const title = qs("journalTitle");
+  if (title) title.textContent = selectedJournalView === "xpstats" ? "XP Stats" : "Activity Journal";
+
+  show(qs("activityJournalView"), selectedJournalView === "activity");
+  show(qs("activityLimitWrap"), selectedJournalView === "activity");
+  show(qs("xpStatsView"), selectedJournalView === "xpstats");
+
+  if (selectedJournalView === "xpstats") renderXpStats();
+}
+
+function renderXpLineChart(points) {
+  const rows = Array.isArray(points) ? points.filter(p => Number.isFinite(Number(p?.gained_xp))) : [];
+  if (rows.length < 2) {
+    return `<div class="xpStatsEmpty muted">Not enough XP snapshots yet to draw a trend for this period.</div>`;
+  }
+
+  const width = 640;
+  const height = 210;
+  const padLeft = 46;
+  const padRight = 18;
+  const padTop = 20;
+  const padBottom = 34;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+  const maxY = Math.max(...rows.map(p => Number(p.gained_xp || 0)), 1);
+
+  const coords = rows.map((p, i) => {
+    const x = padLeft + (rows.length === 1 ? 0 : (i / (rows.length - 1)) * plotW);
+    const y = padTop + plotH - (Number(p.gained_xp || 0) / maxY) * plotH;
+    return { x, y, row: p };
+  });
+
+  const line = coords.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
+  const firstLabel = formatShortDateFromUtc(rows[0]?.captured_at_utc);
+  const lastLabel = formatShortDateFromUtc(rows[rows.length - 1]?.captured_at_utc);
+  const midY = padTop + plotH / 2;
+
+  const pointsHtml = coords.map(c => `
+    <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4">
+      <title>${escapeHtml(c.row.captured_at_local || c.row.captured_at_utc || "Snapshot")}: +${escapeHtml(formatNumber(c.row.gained_xp))} XP</title>
+    </circle>
+  `).join("");
+
+  return `
+    <div class="xpChartCard">
+      <div class="xpChartTitle">XP gained over ${escapeHtml(currentXpPeriodLabel())}</div>
+      <svg class="xpLineChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="XP gained trend chart">
+        <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
+        <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
+        <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${height - padBottom}" y2="${height - padBottom}" />
+        <text class="xpChartAxis" x="${padLeft - 8}" y="${padTop + 4}" text-anchor="end">${escapeHtml(formatCompactNumber(maxY))}</text>
+        <text class="xpChartAxis" x="${padLeft - 8}" y="${height - padBottom + 4}" text-anchor="end">0</text>
+        <text class="xpChartAxis" x="${padLeft}" y="${height - 10}" text-anchor="start">${escapeHtml(firstLabel)}</text>
+        <text class="xpChartAxis" x="${width - padRight}" y="${height - 10}" text-anchor="end">${escapeHtml(lastLabel)}</text>
+        <polyline class="xpChartLine" points="${escapeHtml(line)}" />
+        ${pointsHtml}
+      </svg>
+    </div>
+  `;
+}
+
+function renderXpTopSkillBars(topSkills) {
+  const rows = Array.isArray(topSkills) ? topSkills.filter(r => Number(r?.gained_xp) > 0).slice(0, 8) : [];
+  if (!rows.length) {
+    return `<div class="xpStatsEmpty muted">No skill XP gains were detected for this period.</div>`;
+  }
+
+  const max = Math.max(...rows.map(r => Number(r.gained_xp || 0)), 1);
+  return `
+    <div class="xpSkillBars">
+      ${rows.map((row, index) => {
+        const skill = row.skill || "Skill";
+        const key = row.skill_key || skill;
+        const gain = Number(row.gained_xp || 0);
+        const width = Math.max(5, Math.round((gain / max) * 100));
+        return `
+          <div class="xpSkillBarRow">
+            <div class="xpSkillRank">${index + 1}</div>
+            <img class="xpSkillIcon" data-skill="${escapeHtml(skill)}" data-skillkey="${escapeHtml(key)}" alt="${escapeHtml(skill)}" />
+            <div class="xpSkillBarMain">
+              <div class="xpSkillBarMeta"><span>${escapeHtml(skill)}</span><strong>+${escapeHtml(formatNumber(gain))}</strong></div>
+              <div class="xpSkillBarTrack"><div class="xpSkillBarFill" style="width:${width}%"></div></div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderXpStats() {
+  const el = qs("xpStatsView");
+  if (!el) return;
+
+  const stats = playerData?.xp_stats || null;
+  const xp = playerData?.xp || null;
+  const points = Array.isArray(stats?.points) ? stats.points : [];
+  const totalGain = Number.isFinite(Number(stats?.gained_total_xp))
+    ? Number(stats.gained_total_xp)
+    : (Number.isFinite(Number(xp?.gained_total_xp)) ? Number(xp.gained_total_xp) : null);
+  const start = points[0]?.captured_at_local || xp?.start_utc || "—";
+  const end = points[points.length - 1]?.captured_at_local || xp?.end_utc || "—";
+
+  el.innerHTML = `
+    <div class="xpStatsSummary">
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">${escapeHtml(currentXpPeriodLabel())} XP</div>
+        <div class="xpStatsValue">${totalGain === null ? "—" : `+${escapeHtml(formatNumber(totalGain))}`}</div>
+      </div>
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Snapshots</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(stats?.snapshot_count || points.length || 0))}</div>
+      </div>
+      <div class="xpStatsCard wide">
+        <div class="xpStatsLabel">Window</div>
+        <div class="xpStatsWindow">${escapeHtml(start)} → ${escapeHtml(end)}</div>
+      </div>
+    </div>
+    ${renderXpLineChart(points)}
+    <div class="xpStatsSectionTitle">Top skill XP gains</div>
+    ${renderXpTopSkillBars(xp?.top_skills || [])}
+  `;
+
+  el.querySelectorAll("img.xpSkillIcon").forEach(img => {
+    const skillName = img.getAttribute("data-skill") || "";
+    const skillKey = img.getAttribute("data-skillkey") || "";
+    const candidates = [
+      ...iconCandidates("assets/skills/", skillName),
+      ...iconCandidates("assets/skills/", skillKey),
+      "assets/skills/_default.png",
+    ];
+    setImgWithFallback(img, candidates, "assets/skills/_default.png");
+  });
 }
 
 function buildSkillGainMap() {
@@ -2061,6 +2231,7 @@ function renderPlayer() {
   }
 
   renderLastPull(qs("playerLastPull"), playerData.last_pull);
+  setJournalView(selectedJournalView);
 }
 
 async function loadPlayer(rsn, period) {
@@ -2089,6 +2260,7 @@ async function loadPlayer(rsn, period) {
   updateSkillPanelView();
   if (qs("activityStatus")) qs("activityStatus").textContent = "";
   if (qs("activityList")) qs("activityList").innerHTML = "";
+  if (qs("xpStatsView")) qs("xpStatsView").innerHTML = "";
 
   const activityLimit = normaliseActivityLimit(selectedActivityLimit);
   const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}&activity_limit=${encodeURIComponent(activityLimit)}`;
@@ -2384,6 +2556,10 @@ function wireUI() {
     selectedActivityLimit = normaliseActivityLimit(qs("activityLimit")?.value || 20);
     const { player } = getParams();
     if (player) loadPlayer(player, selectedXpPeriod);
+  });
+
+  qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
+    btn.addEventListener("click", () => setJournalView(btn.getAttribute("data-journal-view") || "activity"));
   });
 
   qs("skillViewToggle")?.querySelectorAll("button[data-skill-view]").forEach(btn => {

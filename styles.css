@@ -1714,3 +1714,194 @@ li { margin: 0 0 10px; }
     justify-content: flex-start;
   }
 }
+
+
+/* Activity Journal tabs and XP Stats */
+.activityJournalHeader {
+  align-items: flex-start;
+  gap: 12px;
+}
+.journalTabs {
+  margin-top: 8px;
+}
+#activityLimitWrap.hidden,
+#activityJournalView.hidden,
+#xpStatsView.hidden {
+  display: none !important;
+}
+.xpStatsPanel {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+.xpStatsSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.xpStatsCard,
+.xpChartCard,
+.xpSkillBars {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px 13px 18px 14px;
+  border: 1px solid rgba(246, 222, 159, 0.26);
+  background:
+    radial-gradient(circle at top left, rgba(246,222,159,0.18), transparent 34%),
+    linear-gradient(180deg, rgba(89,55,31,0.96), rgba(47,27,17,0.96));
+  color: #fff2c5;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 0 0 1px rgba(42,23,15,0.55),
+    0 12px 26px rgba(18,8,3,0.24);
+}
+.xpStatsCard {
+  padding: 12px;
+  min-height: 78px;
+}
+.xpStatsCard.wide {
+  grid-column: span 1;
+}
+.xpStatsLabel,
+.xpStatsSectionTitle,
+.xpChartTitle {
+  color: #f4d58a;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+}
+.xpStatsLabel {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+.xpStatsValue {
+  margin-top: 6px;
+  font-size: 1.32rem;
+  font-weight: 950;
+  color: #fff8dc;
+}
+.xpStatsWindow {
+  margin-top: 8px;
+  color: #f7e7b2;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.xpChartCard {
+  padding: 12px;
+}
+.xpLineChart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+}
+.xpChartGrid {
+  stroke: rgba(246, 222, 159, 0.18);
+  stroke-width: 1;
+}
+.xpChartAxis {
+  fill: rgba(255, 248, 220, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+}
+.xpChartLine {
+  fill: none;
+  stroke: #e4b65b;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+}
+.xpLineChart circle {
+  fill: #fff2c5;
+  stroke: #7d5830;
+  stroke-width: 2;
+}
+.xpStatsSectionTitle {
+  margin-top: 2px;
+  font-size: 1rem;
+}
+.xpSkillBars {
+  padding: 10px;
+  display: grid;
+  gap: 9px;
+}
+.xpSkillBarRow {
+  display: grid;
+  grid-template-columns: 28px 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+.xpSkillRank {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(246,222,159,0.30);
+  background: rgba(30,14,8,0.34);
+  color: #f4d58a;
+  font-weight: 950;
+}
+.xpSkillIcon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border-radius: 10px;
+  padding: 3px;
+  background: rgba(255,248,220,0.10);
+  border: 1px solid rgba(246,222,159,0.20);
+}
+.xpSkillBarMain {
+  min-width: 0;
+}
+.xpSkillBarMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #fff8dc;
+  font-weight: 850;
+  font-size: 0.92rem;
+}
+.xpSkillBarMeta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xpSkillBarMeta strong {
+  flex: 0 0 auto;
+  color: #f4d58a;
+}
+.xpSkillBarTrack {
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: rgba(20,10,6,0.48);
+  overflow: hidden;
+  border: 1px solid rgba(246,222,159,0.14);
+}
+.xpSkillBarFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8b5d2c, #e4b65b, #fff2c5);
+  box-shadow: 0 0 12px rgba(228,182,91,0.35);
+}
+.xpStatsEmpty {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,248,220,0.12);
+  border: 1px dashed rgba(246,222,159,0.26);
+  color: #f7e7b2;
+}
+@media (max-width: 760px) {
+  .xpStatsSummary {
+    grid-template-columns: 1fr;
+  }
+  .activityJournalHeader {
+    align-items: stretch;
+  }
+  .journalTabs,
+  .journalTabs .segBtn {
+    width: 100%;
+  }
+}
