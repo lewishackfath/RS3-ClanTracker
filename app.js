@@ -1490,15 +1490,12 @@ function updateXpSkillFilterButton(btn, chartKey, skill) {
 function rerenderXpChart(chartKey) {
   const key = chartKey === "daily" ? "daily" : "line";
   const stats = playerData?.xp_stats || null;
-  const mount = qs(key === "daily" ? "xpDailyChartMount" : "xpLineChartMount");
+  const mount = qs(key === "daily" ? "xpDailyChartSvgMount" : "xpLineChartSvgMount");
   if (!mount) return;
 
   mount.innerHTML = key === "daily"
-    ? renderXpDailySkillChart(stats?.daily_skill_xp_30d || [])
-    : renderXpLineChart(Array.isArray(stats?.points) ? stats.points : []);
-
-  wireSkillIconFallbacks(mount);
-  wireXpSkillFilters(mount);
+    ? renderXpDailySkillChartBody(stats?.daily_skill_xp_30d || [])
+    : renderXpLineChartBody(Array.isArray(stats?.points) ? stats.points : []);
 }
 
 function wireXpSkillFilters(root) {
@@ -1537,7 +1534,7 @@ function wireSkillIconFallbacks(root) {
   });
 }
 
-function renderXpLineChart(points) {
+function renderXpLineChartBody(points) {
   const rows = Array.isArray(points) ? points : [];
   const usableRows = rows.filter(p => p && typeof p === "object");
 
@@ -1594,11 +1591,6 @@ function renderXpLineChart(points) {
   }).join("");
 
   return `
-    <div class="xpChartCard">
-      <div class="xpChartTitleRow">
-        <div class="xpChartTitle">XP gained by skill over ${escapeHtml(currentXpPeriodLabel())}</div>
-      </div>
-      ${renderXpSkillFilters("line", "Toggle skills in the XP gained chart")}
       <svg class="xpLineChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Per-skill XP gained trend chart">
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
@@ -1609,9 +1601,21 @@ function renderXpLineChart(points) {
         <text class="xpChartAxis" x="${width - padRight}" y="${height - 10}" text-anchor="end">${escapeHtml(lastLabel)}</text>
         ${lineHtml}
       </svg>
+  `;
+}
+
+function renderXpLineChart(points) {
+  return `
+    <div class="xpChartCard">
+      <div class="xpChartTitleRow">
+        <div class="xpChartTitle">XP gained by skill over ${escapeHtml(currentXpPeriodLabel())}</div>
+      </div>
+      ${renderXpSkillFilters("line", "Toggle skills in the XP gained chart")}
+      <div id="xpLineChartSvgMount">${renderXpLineChartBody(points)}</div>
     </div>
   `;
 }
+
 
 function normaliseSkillGainRows(rows, includeZero = true) {
   const list = Array.isArray(rows) ? rows : [];
@@ -1688,7 +1692,7 @@ function xpSkillColour(skill) {
   return `hsl(${hue} 58% 62%)`;
 }
 
-function renderXpDailySkillChart(days) {
+function renderXpDailySkillChartBody(days) {
   const rows = Array.isArray(days) ? days : [];
   if (!rows.length) {
     return `<div class="xpStatsEmpty muted">No daily XP data is available yet.</div>`;
@@ -1733,9 +1737,6 @@ function renderXpDailySkillChart(days) {
   }).join("");
 
   return `
-    <div class="xpChartCard">
-      <div class="xpChartTitle">XP earned per day — last 30 days</div>
-      ${renderXpSkillFilters("daily", "Toggle skills in the daily XP chart")}
       <svg class="xpDailyChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Stacked daily skill XP chart for the last 30 days">
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
         <line class="xpChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
@@ -1743,9 +1744,19 @@ function renderXpDailySkillChart(days) {
         <text class="xpChartAxis" x="${padLeft - 8}" y="${bottomY + 4}" text-anchor="end">0</text>
         ${barHtml}
       </svg>
+  `;
+}
+
+function renderXpDailySkillChart(days) {
+  return `
+    <div class="xpChartCard">
+      <div class="xpChartTitle">XP earned per day — last 30 days</div>
+      ${renderXpSkillFilters("daily", "Toggle skills in the daily XP chart")}
+      <div id="xpDailyChartSvgMount">${renderXpDailySkillChartBody(days)}</div>
     </div>
   `;
 }
+
 
 function renderXpStats() {
   const el = qs("xpStatsView");
@@ -1813,42 +1824,34 @@ function renderDropHistory() {
         <div class="xpStatsValue">${escapeHtml(formatNumber(unique))}</div>
       </div>
     </div>
-    <div class="dropHistoryList">
-      ${items.map(item => {
-        const name = String(item?.item_name || "Unknown drop");
-        const count = Number.isFinite(Number(item?.count)) ? Number(item.count) : 0;
-        const lastSeen = item?.last_seen_local || item?.last_seen_utc || "—";
-        return `
-          <div class="dropHistoryRow">
-            <img class="dropHistoryIcon" data-item="${escapeHtml(name)}" alt="${escapeHtml(name)}" />
-            <div class="dropHistoryMain">
-              <div class="dropHistoryName">${escapeHtml(name)}</div>
-              <div class="dropHistoryMeta">Last seen: ${escapeHtml(lastSeen)}</div>
-            </div>
-            <div class="dropHistoryCount">×${escapeHtml(formatNumber(count))}</div>
-          </div>
-        `;
-      }).join("")}
+    <div class="dropHistoryTableWrap">
+      <table class="dropHistoryTable">
+        <thead>
+          <tr>
+            <th scope="col">Drop name</th>
+            <th scope="col">Last seen</th>
+            <th scope="col" class="num">Drop count</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(item => {
+            const name = String(item?.item_name || "Unknown drop");
+            const count = Number.isFinite(Number(item?.count)) ? Number(item.count) : 0;
+            const lastSeen = item?.last_seen_local || item?.last_seen_utc || "—";
+            return `
+              <tr>
+                <td class="dropHistoryNameCell">${escapeHtml(name)}</td>
+                <td>${escapeHtml(lastSeen)}</td>
+                <td class="num">${escapeHtml(formatNumber(count))}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
     </div>
   `;
-
-  el.querySelectorAll("img.dropHistoryIcon").forEach(img => {
-    const itemName = cleanItemNameForIcons(img.getAttribute("data-item") || "");
-    const candidates = [];
-    if (itemName) {
-      candidates.push(`/api/wiki_item_icon.php?item=${encodeURIComponent(itemName)}`);
-      const underscored = itemName.replace(/\s+/g, "_");
-      candidates.push(`https://runescape.wiki/images/${encodeURIComponent(underscored)}.png`);
-      candidates.push(
-        ...iconCandidates("assets/items/", itemName),
-        ...iconCandidates("assets/items/", toFileKey(itemName)),
-        ...iconCandidates("assets/items/", toFileKey(itemName).replace(/_/g, ""))
-      );
-    }
-    candidates.push("assets/activity/drop.svg", "assets/activity/default.png");
-    setImgWithFallback(img, candidates, "assets/activity/default.png");
-  });
 }
+
 
 function buildSkillGainMap() {
   const map = new Map();
