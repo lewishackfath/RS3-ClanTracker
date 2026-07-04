@@ -1979,17 +1979,7 @@ function renderCurrentSkills() {
 
   const skills = (cs.skills || [])
     .filter(s => s && !s.__is_total)
-    .sort((a, b) => {
-      const axp = Number(a?.xp || 0);
-      const bxp = Number(b?.xp || 0);
-      if (bxp !== axp) return bxp - axp;
-
-      const alevel = Number(a?.level || 0);
-      const blevel = Number(b?.level || 0);
-      if (blevel !== alevel) return blevel - alevel;
-
-      return String(a?.skill || "").localeCompare(String(b?.skill || ""));
-    });
+    .sort(compareSkillsByIdAscending);
 
   const gainMap = buildSkillGainMap();
   const periodLabel = currentXpPeriodLabel();
@@ -2163,6 +2153,33 @@ function renderSkillPanel() {
 
 function statIconPath(name) {
   return `assets/stats/${name}.png`;
+}
+
+function skillIdForSort(skillRow) {
+  const numericCandidates = [
+    skillRow?.skill_id,
+    skillRow?.id,
+    skillRow?.skill_index,
+    skillRow?.skill_order,
+    skillRow?.order,
+  ];
+
+  for (const value of numericCandidates) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+
+  const name = String(skillRow?.skill || skillRow?.name || "").trim().toLowerCase();
+  const configured = window.TrackerSkills?.SKILLS || [];
+  const idx = configured.findIndex(s => String(s?.name || "").trim().toLowerCase() === name);
+  return idx >= 0 ? idx + 1 : 9999;
+}
+
+function compareSkillsByIdAscending(a, b) {
+  const aid = skillIdForSort(a);
+  const bid = skillIdForSort(b);
+  if (aid !== bid) return aid - bid;
+  return String(a?.skill || a?.name || "").localeCompare(String(b?.skill || b?.name || ""));
 }
 
 function getCurrentSkillLevel(skillName) {
