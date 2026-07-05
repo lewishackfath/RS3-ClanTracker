@@ -890,12 +890,12 @@ function cleanDropItemNameForLookup(name, rules = _itemNameCleanupRules) {
   }
 
   for (const prefix of activeRules.strip_prefixes || []) {
-    const re = new RegExp(`^${escapeRegExp(prefix)}\s+`, "i");
+    const re = new RegExp(`^${escapeRegExp(prefix)}\\s+`, "i");
     value = value.replace(re, "");
   }
 
   for (const suffix of activeRules.strip_suffixes || []) {
-    const re = new RegExp(`\s+${escapeRegExp(suffix)}$`, "i");
+    const re = new RegExp(`\\s+${escapeRegExp(suffix)}$`, "i");
     value = value.replace(re, "");
   }
 
