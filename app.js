@@ -738,26 +738,30 @@ function setPlayerAvatar(rsn) {
     return;
   }
 
-    // RuneScape avatar endpoint expects underscores instead of spaces in the RSN
+  // Prefer the same local cached avatar path used by the clan overview. If the
+  // cached file is missing, fall back to the avatar proxy so it can fetch/cache
+  // a fresh copy, and finally to the default chat head.
   const apiName = name.replace(/\s+/g, "_");
-  const url = `api/avatar.php?player=${encodeURIComponent(apiName)}`;
+  const candidates = [
+    getCachedAvatarUrl(name),
+    `api/avatar.php?player=${encodeURIComponent(apiName)}`,
+    DEFAULT_AVATAR_URL,
+  ];
+  let index = 0;
+
   img.alt = `${name} avatar`;
-
-  img.onload = () => {
-    img.classList.remove("hidden");
-  };
-
+  img.onload = () => img.classList.remove("hidden");
   img.onerror = () => {
-    if (img.dataset.fallbackApplied === "1") {
-      img.classList.remove("hidden");
+    index += 1;
+    if (index >= candidates.length) {
+      img.classList.add("hidden");
       return;
     }
-    img.dataset.fallbackApplied = "1";
-    img.src = DEFAULT_AVATAR_URL;
+    img.src = candidates[index];
   };
 
-  img.dataset.fallbackApplied = "0";
-  img.src = url;
+  img.classList.add("hidden");
+  img.src = candidates[index];
 }
 
 /* ---------------- Clan avatars (cached only) ---------------- */
@@ -804,22 +808,113 @@ function findSkillInText(text) {
 function cleanItemNameForIcons(name) {
   let s = String(name || "");
   if (s.normalize) s = s.normalize("NFKC");
-  s = s.replace(/\u00A0/g, " ").replace(/\s+/g, " ").trim();
+  s = s.replace(/ /g, " ").replace(/\s+/g, " ").trim();
   s = s.replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim();
   s = s.replace(/\.\s*$/, "").trim();
   return s;
 }
 
+const DEFAULT_ITEM_NAME_CLEANUP_RULES = {
+  strip_prefixes: ["pair of"],
+  strip_suffixes: [],
+  replacements: [],
+};
+
+let _itemNameCleanupRules = DEFAULT_ITEM_NAME_CLEANUP_RULES;
+let _itemNameCleanupRulesPromise = null;
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normaliseItemCleanupRules(raw) {
+  const merged = {
+    strip_prefixes: [...DEFAULT_ITEM_NAME_CLEANUP_RULES.strip_prefixes],
+    strip_suffixes: [...DEFAULT_ITEM_NAME_CLEANUP_RULES.strip_suffixes],
+    replacements: [...DEFAULT_ITEM_NAME_CLEANUP_RULES.replacements],
+  };
+
+  if (!raw || typeof raw !== "object") return merged;
+
+  for (const key of ["strip_prefixes", "strip_suffixes"]) {
+    if (!Array.isArray(raw[key])) continue;
+    for (const value of raw[key]) {
+      const text = String(value || "").trim();
+      if (text && !merged[key].some(existing => existing.toLowerCase() === text.toLowerCase())) {
+        merged[key].push(text);
+      }
+    }
+  }
+
+  if (Array.isArray(raw.replacements)) {
+    for (const rule of raw.replacements) {
+      if (!rule || typeof rule !== "object") continue;
+      const from = String(rule.from || "");
+      if (!from) continue;
+      merged.replacements.push({
+        from,
+        to: String(rule.to ?? ""),
+        flags: String(rule.flags || "i"),
+      });
+    }
+  }
+
+  return merged;
+}
+
+function loadItemNameCleanupRules() {
+  if (_itemNameCleanupRulesPromise) return _itemNameCleanupRulesPromise;
+
+  _itemNameCleanupRulesPromise = fetch("assets/activity/item_name_cleanup.json", { cache: "no-cache" })
+    .then(res => res.ok ? res.json() : null)
+    .then(json => {
+      _itemNameCleanupRules = normaliseItemCleanupRules(json);
+      return _itemNameCleanupRules;
+    })
+    .catch(() => DEFAULT_ITEM_NAME_CLEANUP_RULES);
+
+  return _itemNameCleanupRulesPromise;
+}
+
+function cleanDropItemNameForLookup(name, rules = _itemNameCleanupRules) {
+  let value = cleanItemNameForIcons(name);
+  const activeRules = normaliseItemCleanupRules(rules);
+
+  for (const rule of activeRules.replacements || []) {
+    try {
+      const re = new RegExp(rule.from, rule.flags || "i");
+      value = value.replace(re, rule.to ?? "");
+    } catch {
+      // Ignore invalid custom regex rules so one bad rule cannot break icons.
+    }
+  }
+
+  for (const prefix of activeRules.strip_prefixes || []) {
+    const re = new RegExp(`^${escapeRegExp(prefix)}\s+`, "i");
+    value = value.replace(re, "");
+  }
+
+  for (const suffix of activeRules.strip_suffixes || []) {
+    const re = new RegExp(`\s+${escapeRegExp(suffix)}$`, "i");
+    value = value.replace(re, "");
+  }
+
+  return cleanItemNameForIcons(value);
+}
+
+// Start fetching early; defaults are used immediately until the JSON arrives.
+loadItemNameCleanupRules();
+
 function extractDropItemNameFromText(activityText) {
   const t = String(activityText || "").trim();
   const m = t.match(/^I found a[n]?\s+(.+?)(?:\.\s*)?$/i);
-  return (m && m[1]) ? cleanItemNameForIcons(m[1]) : null;
+  return (m && m[1]) ? cleanDropItemNameForLookup(m[1]) : null;
 }
 
 function extractDropItemNameFromDetails(details) {
   const d = String(details || "").trim();
   const m = d.match(/\bdropped a[n]?\s+(.+?)(?:\.\s*|$)/i);
-  return (m && m[1]) ? cleanItemNameForIcons(m[1]) : null;
+  return (m && m[1]) ? cleanDropItemNameForLookup(m[1]) : null;
 }
 
 function extractBossKillFromText(activityText) {
@@ -2571,7 +2666,7 @@ function renderPlayer() {
     activityList.querySelectorAll("img.miniIcon").forEach(img => {
       const kind = img.getAttribute("data-kind") || "default";
       const skillName = img.getAttribute("data-skill") || "";
-      const itemName = cleanItemNameForIcons(img.getAttribute("data-item") || "");
+      const itemName = cleanDropItemNameForLookup(img.getAttribute("data-item") || "");
       const bossName = cleanBossNameForIcons(img.getAttribute("data-boss") || "");
 
       if (kind === "level") {
@@ -2618,6 +2713,26 @@ function renderPlayer() {
       }
 
       setImgWithFallback(img, ["assets/activity/default.png"], "assets/activity/default.png");
+    });
+
+    // Re-apply drop icons once configurable item-name cleanup rules have loaded.
+    loadItemNameCleanupRules().then(() => {
+      activityList.querySelectorAll('img.miniIcon[data-kind="drop"]').forEach(img => {
+        const itemName = cleanDropItemNameForLookup(img.getAttribute("data-item") || "");
+        const candidates = [];
+        if (itemName) {
+          candidates.push(`/api/wiki_item_icon.php?item=${encodeURIComponent(itemName)}`);
+          const underscored = itemName.replace(/\s+/g, "_");
+          candidates.push(`https://runescape.wiki/images/${encodeURIComponent(underscored)}.png`);
+          candidates.push(
+            ...iconCandidates("assets/items/", itemName),
+            ...iconCandidates("assets/items/", toFileKey(itemName)),
+            ...iconCandidates("assets/items/", toFileKey(itemName).replace(/_/g, ""))
+          );
+        }
+        candidates.push("assets/activity/default.png");
+        setImgWithFallback(img, candidates, "assets/activity/default.png");
+      });
     });
 
     // Apply boss icon mappings from assets/activity/monsters/icon_map.json.

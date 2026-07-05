@@ -532,11 +532,77 @@ function tracker_build_xp_stats(PDO $pdo, int $memberId, array $xpWindow, string
 }
 
 
+function tracker_drop_item_cleanup_rules(): array {
+    static $rules = null;
+    if ($rules !== null) return $rules;
+
+    $rules = [
+        'strip_prefixes' => ['pair of'],
+        'strip_suffixes' => [],
+        'replacements' => [],
+    ];
+
+    $path = __DIR__ . '/../assets/activity/item_name_cleanup.json';
+    if (!is_file($path)) return $rules;
+
+    $json = json_decode((string)@file_get_contents($path), true);
+    if (!is_array($json)) return $rules;
+
+    foreach (['strip_prefixes', 'strip_suffixes'] as $key) {
+        if (!isset($json[$key]) || !is_array($json[$key])) continue;
+        foreach ($json[$key] as $value) {
+            $text = trim((string)$value);
+            if ($text !== '' && !in_array($text, $rules[$key], true)) {
+                $rules[$key][] = $text;
+            }
+        }
+    }
+
+    if (isset($json['replacements']) && is_array($json['replacements'])) {
+        foreach ($json['replacements'] as $rule) {
+            if (!is_array($rule) || empty($rule['from'])) continue;
+            $rules['replacements'][] = [
+                'from' => (string)$rule['from'],
+                'to' => (string)($rule['to'] ?? ''),
+                'flags' => (string)($rule['flags'] ?? 'i'),
+            ];
+        }
+    }
+
+    return $rules;
+}
+
 function tracker_clean_drop_item_name(?string $value): ?string {
     $s = trim((string)($value ?? ''));
     if ($s === '') return null;
     $s = preg_replace('/\s+/', ' ', $s) ?? $s;
-    $s = trim($s, " \t\n\r\0\x0B\"'“”‘’. ");
+    $s = trim($s, "\"'“”‘’. ");
+
+    $rules = tracker_drop_item_cleanup_rules();
+
+    foreach (($rules['replacements'] ?? []) as $rule) {
+        $from = (string)($rule['from'] ?? '');
+        if ($from === '') continue;
+        $flags = preg_replace('/[^imsxuADSUXJ]/', '', (string)($rule['flags'] ?? 'i')) ?: 'i';
+        $pattern = '~' . str_replace('~', '\\~', $from) . '~' . $flags;
+        $replaced = @preg_replace($pattern, (string)($rule['to'] ?? ''), $s);
+        if (is_string($replaced)) $s = $replaced;
+    }
+
+    foreach (($rules['strip_prefixes'] ?? []) as $prefix) {
+        $prefix = trim((string)$prefix);
+        if ($prefix === '') continue;
+        $s = preg_replace('/^' . preg_quote($prefix, '/') . '\s+/i', '', $s) ?? $s;
+    }
+
+    foreach (($rules['strip_suffixes'] ?? []) as $suffix) {
+        $suffix = trim((string)$suffix);
+        if ($suffix === '') continue;
+        $s = preg_replace('/\s+' . preg_quote($suffix, '/') . '$/i', '', $s) ?? $s;
+    }
+
+    $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+    $s = trim($s, "\"'“”‘’. ");
     return $s !== '' ? $s : null;
 }
 
