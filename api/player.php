@@ -537,7 +537,7 @@ function tracker_drop_item_cleanup_rules(): array {
     if ($rules !== null) return $rules;
 
     $rules = [
-        'strip_prefixes' => ['pair of'],
+        'strip_prefixes' => ['pair of', 'some'],
         'strip_suffixes' => [],
         'replacements' => [],
     ];
@@ -608,12 +608,12 @@ function tracker_clean_drop_item_name(?string $value): ?string {
 
 function tracker_extract_drop_item_name(?string $activityText, ?string $activityDetails): ?string {
     $text = trim((string)($activityText ?? ''));
-    if ($text !== '' && preg_match('/^I\s+found\s+an?\s+(.+?)(?:\.\s*)?$/i', $text, $m)) {
+    if ($text !== '' && preg_match('/^I\s+found\s+(?:an?|some)\s+(.+?)(?:\.\s*)?$/i', $text, $m)) {
         return tracker_clean_drop_item_name($m[1] ?? null);
     }
 
     $details = trim((string)($activityDetails ?? ''));
-    if ($details !== '' && preg_match('/\bdropped\s+an?\s+(.+?)(?:\.\s*|$)/i', $details, $m)) {
+    if ($details !== '' && preg_match('/\bdropped\s+(?:an?|some)\s+(.+?)(?:\.\s*|$)/i', $details, $m)) {
         return tracker_clean_drop_item_name($m[1] ?? null);
     }
 

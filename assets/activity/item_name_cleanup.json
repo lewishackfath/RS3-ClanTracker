@@ -1,6 +1,7 @@
 {
   "strip_prefixes": [
-    "pair of"
+    "pair of",
+    "some"
   ],
   "strip_suffixes": [],
   "replacements": []

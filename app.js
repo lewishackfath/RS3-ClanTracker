@@ -815,7 +815,7 @@ function cleanItemNameForIcons(name) {
 }
 
 const DEFAULT_ITEM_NAME_CLEANUP_RULES = {
-  strip_prefixes: ["pair of"],
+  strip_prefixes: ["pair of", "some"],
   strip_suffixes: [],
   replacements: [],
 };
@@ -907,13 +907,13 @@ loadItemNameCleanupRules();
 
 function extractDropItemNameFromText(activityText) {
   const t = String(activityText || "").trim();
-  const m = t.match(/^I found a[n]?\s+(.+?)(?:\.\s*)?$/i);
+  const m = t.match(/^I found\s+(?:an?|some)\s+(.+?)(?:\.\s*)?$/i);
   return (m && m[1]) ? cleanDropItemNameForLookup(m[1]) : null;
 }
 
 function extractDropItemNameFromDetails(details) {
   const d = String(details || "").trim();
-  const m = d.match(/\bdropped a[n]?\s+(.+?)(?:\.\s*|$)/i);
+  const m = d.match(/\bdropped\s+(?:an?|some)\s+(.+?)(?:\.\s*|$)/i);
   return (m && m[1]) ? cleanDropItemNameForLookup(m[1]) : null;
 }
 
