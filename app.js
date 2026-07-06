@@ -905,6 +905,106 @@ function cleanDropItemNameForLookup(name, rules = _itemNameCleanupRules) {
 // Start fetching early; defaults are used immediately until the JSON arrives.
 loadItemNameCleanupRules();
 
+const DEFAULT_ITEM_ICON_ALIASES = {
+  "Bandos shield": "Bandos warshield",
+  "Hiss of Saradomin": "Saradomin's hiss",
+};
+
+let _itemIconAliases = DEFAULT_ITEM_ICON_ALIASES;
+let _itemIconAliasesPromise = null;
+
+function normaliseItemAliasKey(name) {
+  return cleanItemNameForIcons(name)
+    .replace(/[’']/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normaliseItemIconAliases(raw) {
+  const merged = { ...DEFAULT_ITEM_ICON_ALIASES };
+
+  const addAlias = (from, to) => {
+    const source = cleanItemNameForIcons(from);
+    const target = cleanItemNameForIcons(to);
+    if (!source || !target) return;
+    merged[source] = target;
+  };
+
+  if (!raw || typeof raw !== "object") return merged;
+
+  const sourceObject = (raw.aliases && typeof raw.aliases === "object" && !Array.isArray(raw.aliases))
+    ? raw.aliases
+    : raw;
+
+  if (sourceObject && typeof sourceObject === "object" && !Array.isArray(sourceObject)) {
+    for (const [from, to] of Object.entries(sourceObject)) {
+      if (typeof to === "string") addAlias(from, to);
+    }
+  }
+
+  if (Array.isArray(raw.aliases)) {
+    for (const row of raw.aliases) {
+      if (!row || typeof row !== "object") continue;
+      addAlias(row.from || row.source || row.runemetrics || row.activity_name, row.to || row.target || row.wiki || row.item_name);
+    }
+  }
+
+  return merged;
+}
+
+function loadItemIconAliases() {
+  if (_itemIconAliasesPromise) return _itemIconAliasesPromise;
+
+  _itemIconAliasesPromise = fetch("assets/activity/item_icon_alias.json", { cache: "no-cache" })
+    .then(res => res.ok ? res.json() : null)
+    .then(json => {
+      _itemIconAliases = normaliseItemIconAliases(json);
+      return _itemIconAliases;
+    })
+    .catch(() => DEFAULT_ITEM_ICON_ALIASES);
+
+  return _itemIconAliasesPromise;
+}
+
+function getItemIconLookupName(name, aliases = _itemIconAliases) {
+  const cleaned = cleanDropItemNameForLookup(name);
+  if (!cleaned) return "";
+
+  const wanted = normaliseItemAliasKey(cleaned);
+  const activeAliases = normaliseItemIconAliases(aliases);
+  for (const [from, to] of Object.entries(activeAliases)) {
+    if (normaliseItemAliasKey(from) === wanted) {
+      return cleanItemNameForIcons(to);
+    }
+  }
+
+  return cleaned;
+}
+
+function dropItemIconCandidates(itemName) {
+  const cleaned = cleanDropItemNameForLookup(itemName);
+  const lookup = getItemIconLookupName(cleaned);
+  const names = Array.from(new Set([lookup, cleaned].filter(Boolean)));
+  const candidates = [];
+
+  for (const name of names) {
+    candidates.push(`/api/wiki_item_icon.php?item=${encodeURIComponent(name)}`);
+    const underscored = name.replace(/\s+/g, "_");
+    candidates.push(`https://runescape.wiki/images/${encodeURIComponent(underscored)}.png`);
+    candidates.push(
+      ...iconCandidates("assets/items/", name),
+      ...iconCandidates("assets/items/", toFileKey(name)),
+      ...iconCandidates("assets/items/", toFileKey(name).replace(/_/g, ""))
+    );
+  }
+
+  return Array.from(new Set(candidates));
+}
+
+// Start fetching early; default aliases are used immediately until the JSON arrives.
+loadItemIconAliases();
+
 function extractDropItemNameFromText(activityText) {
   const t = String(activityText || "").trim();
   const m = t.match(/^I found\s+(?:an?|some)\s+(.+?)(?:\.\s*)?$/i);
@@ -2764,17 +2864,7 @@ function renderPlayer() {
       }
 
       if (kind === "drop") {
-        const candidates = [];
-        if (itemName) {
-          candidates.push(`/api/wiki_item_icon.php?item=${encodeURIComponent(itemName)}`);
-          const underscored = itemName.replace(/\s+/g, "_");
-          candidates.push(`https://runescape.wiki/images/${encodeURIComponent(underscored)}.png`);
-          candidates.push(
-            ...iconCandidates("assets/items/", itemName),
-            ...iconCandidates("assets/items/", toFileKey(itemName)),
-            ...iconCandidates("assets/items/", toFileKey(itemName).replace(/_/g, ""))
-          );
-        }
+        const candidates = itemName ? dropItemIconCandidates(itemName) : [];
         candidates.push("assets/activity/default.png");
         setImgWithFallback(img, candidates, "assets/activity/default.png");
         return;
@@ -2788,21 +2878,11 @@ function renderPlayer() {
       setImgWithFallback(img, ["assets/activity/default.png"], "assets/activity/default.png");
     });
 
-    // Re-apply drop icons once configurable item-name cleanup rules have loaded.
-    loadItemNameCleanupRules().then(() => {
+    // Re-apply drop icons once configurable item-name cleanup and alias rules have loaded.
+    Promise.all([loadItemNameCleanupRules(), loadItemIconAliases()]).then(() => {
       activityList.querySelectorAll('img.miniIcon[data-kind="drop"]').forEach(img => {
         const itemName = cleanDropItemNameForLookup(img.getAttribute("data-item") || "");
-        const candidates = [];
-        if (itemName) {
-          candidates.push(`/api/wiki_item_icon.php?item=${encodeURIComponent(itemName)}`);
-          const underscored = itemName.replace(/\s+/g, "_");
-          candidates.push(`https://runescape.wiki/images/${encodeURIComponent(underscored)}.png`);
-          candidates.push(
-            ...iconCandidates("assets/items/", itemName),
-            ...iconCandidates("assets/items/", toFileKey(itemName)),
-            ...iconCandidates("assets/items/", toFileKey(itemName).replace(/_/g, ""))
-          );
-        }
+        const candidates = itemName ? dropItemIconCandidates(itemName) : [];
         candidates.push("assets/activity/default.png");
         setImgWithFallback(img, candidates, "assets/activity/default.png");
       });
