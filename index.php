@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607020310" />
+  <link rel="stylesheet" href="./styles.css?v=202607020401" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -156,6 +156,11 @@ include __DIR__ . '/includes/menu.php';
             <div class="skillList hidden" id="skillList"></div>
           </div>
 
+          <div class="panel skillExtremesPanel" id="skillExtremesPanel">
+            <h3 class="h2">Highest/Lowest Level Skills</h3>
+            <div class="skillExtremesGrid" id="skillExtremesGrid"></div>
+          </div>
+
           <div class="panel" id="questsPanel">
             <h3 class="h2" style="margin-bottom:8px;">Quests</h3>
             <div class="muted" id="questMeta">—</div>
@@ -205,6 +210,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607020007"></script>
+  <script src="./app.js?v=202607020401"></script>
 </body>
 </html>

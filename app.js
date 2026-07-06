@@ -2085,6 +2085,20 @@ function skillGainFor(skillName, skillKey, gainMap) {
   return playerData?.xp?.has_data ? 0 : null;
 }
 
+function displaySkillLevelForRow(skillRow) {
+  const name = String(skillRow?.skill || skillRow?.name || "").trim();
+  const levelRaw = (skillRow?.level === null || skillRow?.level === undefined) ? null : Number(skillRow.level);
+  const xp = (skillRow?.xp === null || skillRow?.xp === undefined) ? null : Number(skillRow.xp);
+  let displayLevel = Number.isFinite(levelRaw) && levelRaw > 0 ? levelRaw : null;
+
+  const vLevel = (window.TrackerSkills && typeof window.TrackerSkills.virtualLevelFromXp === "function")
+    ? window.TrackerSkills.virtualLevelFromXp(Number(xp || 0), name)
+    : displayLevel;
+
+  displayLevel = Math.max(Number(displayLevel || 0), Number(vLevel || 0)) || null;
+  return Number.isFinite(Number(displayLevel)) && Number(displayLevel) > 0 ? Number(displayLevel) : null;
+}
+
 function renderCurrentSkills() {
   const gridEl = qs("skillsGrid");
   const cs = playerData?.current_skills;
@@ -2108,21 +2122,16 @@ function renderCurrentSkills() {
     const levelRaw = (s.level === null || s.level === undefined) ? null : Number(s.level);
     const xp = (s.xp === null || s.xp === undefined) ? null : Number(s.xp);
 
-    let displayLevel = Number.isFinite(levelRaw) && levelRaw > 0 ? levelRaw : null;
+    let displayLevel = isTotal ? (Number.isFinite(levelRaw) && levelRaw > 0 ? levelRaw : null) : displaySkillLevelForRow(s);
     let isVirtualShown = false;
     let tierClass = isTotal ? "total" : "";
     let badgeHtml = "";
 
     if (!isTotal) {
-      const vLevel = (window.TrackerSkills && typeof window.TrackerSkills.virtualLevelFromXp === 'function')
-        ? window.TrackerSkills.virtualLevelFromXp(Number(xp || 0), name)
-        : displayLevel;
-
       const maxV = (window.TrackerSkills && typeof window.TrackerSkills.maxVirtualLevelForSkill === 'function')
         ? window.TrackerSkills.maxVirtualLevelForSkill(name)
         : 120;
 
-      displayLevel = Math.max(Number(displayLevel || 0), Number(vLevel || 0)) || null;
       isVirtualShown = !!(displayLevel && levelRaw && displayLevel > levelRaw);
 
       const is200m = Number(xp || 0) >= 200_000_000;
@@ -2261,9 +2270,73 @@ function setSkillView(view) {
   updateSkillPanelView();
 }
 
+function skillExtremeItemHtml(row) {
+  const name = String(row?.skill || "—");
+  const key = String(row?.skill_key || name);
+  const level = displaySkillLevelForRow(row);
+  const xp = Number(row?.xp);
+  const levelText = Number.isFinite(level) ? String(level) : "—";
+  const xpText = Number.isFinite(xp) ? formatNumber(xp) : "—";
+
+  return `
+    <div class="skillExtremeItem">
+      <img class="miniIcon" data-skill="${escapeHtml(name)}" data-skillkey="${escapeHtml(key)}" alt="" />
+      <div class="skillExtremeText">
+        <div class="skillExtremeName">${escapeHtml(name)}</div>
+        <div class="skillExtremeMeta">Level ${escapeHtml(levelText)} • ${escapeHtml(xpText)} XP</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSkillExtremes() {
+  const container = qs("skillExtremesGrid");
+  if (!container) return;
+
+  const rows = (playerData?.current_skills?.skills || [])
+    .filter(row => row && !row.__is_total)
+    .map(row => ({ ...row, _displayLevel: displaySkillLevelForRow(row), _xp: Number(row?.xp || 0) }))
+    .filter(row => Number.isFinite(row._displayLevel));
+
+  if (!rows.length) {
+    container.innerHTML = `<div class="muted">No skill level data available yet.</div>`;
+    return;
+  }
+
+  const highest = [...rows]
+    .sort((a, b) => (b._displayLevel - a._displayLevel) || (b._xp - a._xp) || compareSkillsByIdAscending(a, b))
+    .slice(0, 5);
+
+  const lowest = [...rows]
+    .sort((a, b) => (a._displayLevel - b._displayLevel) || (a._xp - b._xp) || compareSkillsByIdAscending(a, b))
+    .slice(0, 5);
+
+  container.innerHTML = `
+    <div class="skillExtremeColumn">
+      <div class="skillExtremeHeading">Highest</div>
+      <div class="skillExtremeList">${highest.map(skillExtremeItemHtml).join("")}</div>
+    </div>
+    <div class="skillExtremeColumn">
+      <div class="skillExtremeHeading">Lowest</div>
+      <div class="skillExtremeList">${lowest.map(skillExtremeItemHtml).join("")}</div>
+    </div>
+  `;
+
+  container.querySelectorAll("img.miniIcon").forEach(img => {
+    const skillName = img.getAttribute("data-skill") || "";
+    const skillKey = img.getAttribute("data-skillkey") || "";
+    const candidates = [
+      ...iconCandidates("assets/skills/", skillKey),
+      ...iconCandidates("assets/skills/", skillName),
+    ];
+    setImgWithFallback(img, candidates, "assets/skills/_default.png");
+  });
+}
+
 function renderSkillPanel() {
   renderCurrentSkills();
   renderTopXpSkills();
+  renderSkillExtremes();
   updateSkillPanelView();
 }
 
