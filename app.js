@@ -347,9 +347,23 @@ function toFileKey(s) {
     .replace(/^_+|_+$/g, "");
 }
 
+function localAssetIconUrl(type, nameOrPath, mode = "name") {
+  const value = String(nameOrPath || "").trim();
+  if (!value) return "";
+  const param = mode === "path" ? "path" : "name";
+  return `api/asset_icon.php?type=${encodeURIComponent(type)}&${param}=${encodeURIComponent(value)}`;
+}
+
 function iconCandidates(basePath, keyOrName) {
   const raw = String(keyOrName || "").trim();
   if (!raw) return [];
+
+  // Resolve local assets server-side to avoid browser-side 404 spam while still
+  // supporting mixed-case filenames and png/webp/jpg/jpeg/svg variants.
+  if (basePath === "assets/skills/") return [localAssetIconUrl("skill", raw)];
+  if (basePath === "assets/activity/monsters/") return [localAssetIconUrl("monster", raw)];
+  if (basePath === "assets/activity/") return [localAssetIconUrl("activity", raw)];
+  if (basePath === "assets/items/") return [localAssetIconUrl("item", raw)];
 
   const lower = raw.toLowerCase();
   const tc = titleCaseWord(raw);
@@ -655,18 +669,21 @@ function bossMappedIconCandidates(iconPath) {
   const raw = String(iconPath).trim();
   if (!raw) return [];
 
-  const direct = (/^(https?:)?\//i.test(raw) || raw.startsWith("assets/"))
-    ? _mappedIconCandidates(raw)
-    : _mappedIconCandidates(`assets/activity/monsters/${raw}`);
+  if (/^https?:\/\//i.test(raw)) return [raw];
 
-  const fileName = raw.split(/[\\/]/).pop() || raw;
+  const localPath = raw.startsWith("assets/") ? raw : `assets/activity/monsters/${raw}`;
+  const fileName = raw.split(/[\/]/).pop() || raw;
   const stem = fileName.replace(/\.(png|webp|jpe?g|svg)$/i, "");
-  const stemCandidates = stem ? [
-    ...iconCandidates("assets/activity/monsters/", stem),
-    ...iconCandidates("assets/activity/monsters/", stem.replace(/[_-]+/g, " "))
-  ] : [];
 
-  return Array.from(new Set([...direct, ...stemCandidates]));
+  const candidates = [localAssetIconUrl("monster", localPath, "path")];
+  if (stem) {
+    candidates.push(
+      ...iconCandidates("assets/activity/monsters/", stem),
+      ...iconCandidates("assets/activity/monsters/", stem.replace(/[_-]+/g, " "))
+    );
+  }
+
+  return Array.from(new Set(candidates.filter(Boolean)));
 }
 
 function findMappedBossIcon(bossName, bossIconMap) {
@@ -946,7 +963,10 @@ function normaliseItemIconAliases(raw) {
   if (Array.isArray(raw.aliases)) {
     for (const row of raw.aliases) {
       if (!row || typeof row !== "object") continue;
-      addAlias(row.from || row.source || row.runemetrics || row.activity_name, row.to || row.target || row.wiki || row.item_name);
+      addAlias(
+        row.from || row.source || row.runemetrics || row.activity_name,
+        row.to || row.target || row.wiki || row.item_name
+      );
     }
   }
 
@@ -973,6 +993,7 @@ function getItemIconLookupName(name, aliases = _itemIconAliases) {
 
   const wanted = normaliseItemAliasKey(cleaned);
   const activeAliases = normaliseItemIconAliases(aliases);
+
   for (const [from, to] of Object.entries(activeAliases)) {
     if (normaliseItemAliasKey(from) === wanted) {
       return cleanItemNameForIcons(to);
@@ -990,8 +1011,6 @@ function dropItemIconCandidates(itemName) {
 
   for (const name of names) {
     candidates.push(`/api/wiki_item_icon.php?item=${encodeURIComponent(name)}`);
-    const underscored = name.replace(/\s+/g, "_");
-    candidates.push(`https://runescape.wiki/images/${encodeURIComponent(underscored)}.png`);
     candidates.push(
       ...iconCandidates("assets/items/", name),
       ...iconCandidates("assets/items/", toFileKey(name)),
@@ -2881,7 +2900,7 @@ function renderPlayer() {
     // Re-apply drop icons once configurable item-name cleanup and alias rules have loaded.
     Promise.all([loadItemNameCleanupRules(), loadItemIconAliases()]).then(() => {
       activityList.querySelectorAll('img.miniIcon[data-kind="drop"]').forEach(img => {
-        const itemName = cleanDropItemNameForLookup(img.getAttribute("data-item") || "");
+        const itemName = img.getAttribute("data-item") || "";
         const candidates = itemName ? dropItemIconCandidates(itemName) : [];
         candidates.push("assets/activity/default.png");
         setImgWithFallback(img, candidates, "assets/activity/default.png");
