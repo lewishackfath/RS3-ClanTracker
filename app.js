@@ -175,7 +175,10 @@ function utcAgeSeconds(utc) {
   return Math.floor((Date.now() - ms) / 1000);
 }
 
-const xpRefreshAttempted = new Set();
+const PLAYER_XP_REFRESH_SECONDS = 15 * 60;
+const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const playerBackgroundRefreshInFlight = new Set();
+let autoRefreshTimer = null;
 
 function getParams() {
   const p = new URLSearchParams(window.location.search);
@@ -2943,6 +2946,81 @@ function renderPlayer() {
   setJournalView(selectedJournalView);
 }
 
+function buildPlayerApiUrl(rsn, period, activityLimit, deferRefresh = true) {
+  const params = new URLSearchParams();
+  params.set("player", String(rsn || ""));
+  params.set("period", String(period || "7d"));
+  params.set("activity_limit", String(normaliseActivityLimit(activityLimit || selectedActivityLimit)));
+  params.set("defer_refresh", deferRefresh ? "1" : "0");
+  return `${API.player}?${params.toString()}`;
+}
+
+function cacheNeedsRefresh(cache) {
+  if (!cache || typeof cache !== "object") return false;
+  return !!(cache.needs_refresh || cache.stale || cache.deferred_refresh);
+}
+
+function playerXpNeedsRefresh(data) {
+  const lastSnapUtc =
+    data?.last_pull?.sources?.last_xp_snapshot_utc ||
+    data?.current_skills?.captured_at_utc ||
+    null;
+  const age = utcAgeSeconds(lastSnapUtc);
+  return (age === null) || (age >= PLAYER_XP_REFRESH_SECONDS);
+}
+
+function playerNeedsBackgroundRefresh(data) {
+  if (!data || !data.ok) return false;
+  return playerXpNeedsRefresh(data) ||
+    cacheNeedsRefresh(data?.quests?.cache) ||
+    cacheNeedsRefresh(data?.hiscores_lite?.cache);
+}
+
+async function refreshPlayerInBackground(rsn, period, opts = {}) {
+  const name = String(rsn || "").trim();
+  if (!name) return;
+
+  const key = name.toLowerCase();
+  if (playerBackgroundRefreshInFlight.has(key)) return;
+
+  const force = !!opts.force;
+  const onlyIfNeeded = opts.onlyIfNeeded !== false;
+  const currentData = playerData;
+  if (!force && onlyIfNeeded && !playerNeedsBackgroundRefresh(currentData)) return;
+
+  playerBackgroundRefreshInFlight.add(key);
+
+  try {
+    const selectedPeriodAtStart = String(period || selectedXpPeriod || "7d");
+    const selectedLimitAtStart = normaliseActivityLimit(selectedActivityLimit);
+
+    if (force || playerXpNeedsRefresh(currentData)) {
+      const rsnForRefresh = name.replace(/\s+/g, "_");
+      const refreshUrl = `${API.refreshPlayerXp}?rsn=${encodeURIComponent(rsnForRefresh)}`;
+      await fetchJson(refreshUrl);
+    }
+
+    const fresh = await fetchJson(buildPlayerApiUrl(name, selectedPeriodAtStart, selectedLimitAtStart, false));
+    if (!fresh || !fresh.ok) return;
+
+    const params = getParams();
+    if (String(params.player || "").trim().toLowerCase() !== key) return;
+    if (String(selectedXpPeriod || "7d") !== selectedPeriodAtStart) return;
+    if (normaliseActivityLimit(selectedActivityLimit) !== selectedLimitAtStart) return;
+
+    playerData = fresh;
+    selectedXpPeriod = fresh.xp?.period || selectedPeriodAtStart;
+    selectedActivityLimit = normaliseActivityLimit(fresh.activity_limit || selectedLimitAtStart);
+    populateXpPeriods(fresh.xp_periods || [], selectedXpPeriod);
+    populateActivityLimitOptions(fresh.activity_limit_options, selectedActivityLimit);
+    renderPlayer();
+  } catch {
+    // Keep the already-rendered cached data if the background refresh fails.
+  } finally {
+    playerBackgroundRefreshInFlight.delete(key);
+  }
+}
+
 async function loadPlayer(rsn, period) {
   playerData = null;
 
@@ -2973,7 +3051,7 @@ async function loadPlayer(rsn, period) {
   if (qs("dropHistoryView")) qs("dropHistoryView").innerHTML = "";
 
   const activityLimit = normaliseActivityLimit(selectedActivityLimit);
-  const url = `${API.player}?player=${encodeURIComponent(rsn)}&period=${encodeURIComponent(period || "7d")}&activity_limit=${encodeURIComponent(activityLimit)}`;
+  const url = buildPlayerApiUrl(rsn, period || "7d", activityLimit, true);
   const data = await fetchJson(url);
 
   if (!data || !data.ok) {
@@ -2990,35 +3068,9 @@ async function loadPlayer(rsn, period) {
   populateActivityLimitOptions(data.activity_limit_options, selectedActivityLimit);
   renderPlayer();
 
-  // If we haven't collected XP recently, trigger a refresh for this player.
-  // Then reload the player data once.
-  try {
-    const key = String(rsn || "").trim().toLowerCase();
-    if (!key) return;
-
-    const lastSnapUtc =
-      data?.last_pull?.sources?.last_xp_snapshot_utc ||
-      data?.current_skills?.captured_at_utc ||
-      null;
-
-    const age = utcAgeSeconds(lastSnapUtc);
-    const needsRefresh = (age === null) || (age > 300);
-
-    if (needsRefresh && !xpRefreshAttempted.has(key)) {
-      xpRefreshAttempted.add(key);
-
-      const rsnForRefresh = String(rsn || "").trim().replace(/\s+/g, "_");
-      const refreshUrl = `${API.refreshPlayerXp}?rsn=${encodeURIComponent(rsnForRefresh)}`;
-      const refresh = await fetchJson(refreshUrl);
-
-      if (refresh && refresh.ok && refresh.refreshed) {
-        // re-load with the same period
-        loadPlayer(rsn, selectedXpPeriod);
-      }
-    }
-  } catch {
-    // ignore refresh errors
-  }
+  // Render cached/stale data immediately, then update the page once fresh
+  // RuneMetrics/HiScores data has loaded in the background.
+  refreshPlayerInBackground(rsn, selectedXpPeriod, { onlyIfNeeded: true });
 }
 
 /* ---------------- Render views ---------------- */
@@ -3200,6 +3252,25 @@ function wireCharacterSearch(inputEl, listEl) {
   });
 }
 
+function refreshCurrentViewInBackground() {
+  const { clan, player, configuredClan } = getParams();
+
+  if (player && qs("viewPlayer") && !qs("viewPlayer").classList.contains("hidden")) {
+    refreshPlayerInBackground(player, selectedXpPeriod, { force: true, onlyIfNeeded: false });
+    return;
+  }
+
+  const clanToOpen = clan || configuredClan;
+  if (clanToOpen && qs("viewClan") && !qs("viewClan").classList.contains("hidden")) {
+    loadClanOverview(clanToOpen, selectedClanXpPeriod);
+  }
+}
+
+function startAutoRefreshTimer() {
+  if (autoRefreshTimer) return;
+  autoRefreshTimer = setInterval(refreshCurrentViewInBackground, AUTO_REFRESH_INTERVAL_MS);
+}
+
 function wireUI() {
   wireChartTooltips();
 
@@ -3283,3 +3354,4 @@ function wireUI() {
 
 wireUI();
 render();
+startAutoRefreshTimer();

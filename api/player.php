@@ -760,19 +760,45 @@ function tracker_write_json_cache(PDO $pdo, string $cacheName, int $memberId, in
  * The returned payload is already slimmed for the frontend, but the latest
  * source response is still represented in the summary/error fields.
  */
-function tracker_get_cached_quests(PDO $pdo, int $memberId, int $clanId, string $rsn): array {
+function tracker_get_cached_quests(PDO $pdo, int $memberId, int $clanId, string $rsn, bool $allowRefresh = true): array {
     $ttl = tracker_cache_ttl_seconds('TRACKER_RM_QUESTS_TTL_SECONDS', 6 * 60 * 60);
     $cached = tracker_read_json_cache($pdo, 'rm_quests', $memberId, $clanId);
 
-    if ($cached && tracker_is_cache_fresh($cached['updated_at'] ?? null, $ttl)) {
+    $isFresh = $cached ? tracker_is_cache_fresh($cached['updated_at'] ?? null, $ttl) : false;
+    if ($cached && ($isFresh || !$allowRefresh)) {
         $payload = $cached['data'];
         $payload['cache'] = [
             'hit' => true,
-            'stale' => false,
+            'stale' => !$isFresh,
+            'needs_refresh' => !$isFresh,
+            'deferred_refresh' => (!$allowRefresh && !$isFresh),
             'updated_at_utc' => $cached['updated_at'] ?? null,
             'ttl_seconds' => $ttl,
         ];
         return $payload;
+    }
+
+    if (!$allowRefresh) {
+        return [
+            'ok' => false,
+            'http_code' => 0,
+            'error' => 'Quest cache is empty',
+            'hint' => null,
+            'loggedIn' => null,
+            'rsn' => $rsn,
+            'source' => 'runemetrics_quests',
+            'fetched_at_utc' => null,
+            'totals' => null,
+            'quests' => [],
+            'cache' => [
+                'hit' => false,
+                'stale' => true,
+                'needs_refresh' => true,
+                'deferred_refresh' => true,
+                'updated_at_utc' => null,
+                'ttl_seconds' => $ttl,
+            ],
+        ];
     }
 
     try {
@@ -835,6 +861,8 @@ function tracker_get_cached_quests(PDO $pdo, int $memberId, int $clanId, string 
         $payload['cache'] = [
             'hit' => false,
             'stale' => false,
+            'needs_refresh' => false,
+            'deferred_refresh' => false,
             'updated_at_utc' => tracker_utc_now_string(),
             'ttl_seconds' => $ttl,
         ];
@@ -845,6 +873,8 @@ function tracker_get_cached_quests(PDO $pdo, int $memberId, int $clanId, string 
             $payload['cache'] = [
                 'hit' => true,
                 'stale' => true,
+                'needs_refresh' => true,
+                'deferred_refresh' => false,
                 'updated_at_utc' => $cached['updated_at'] ?? null,
                 'ttl_seconds' => $ttl,
                 'refresh_error' => $e->getMessage(),
@@ -866,6 +896,8 @@ function tracker_get_cached_quests(PDO $pdo, int $memberId, int $clanId, string 
             'cache' => [
                 'hit' => false,
                 'stale' => false,
+                'needs_refresh' => false,
+                'deferred_refresh' => false,
                 'updated_at_utc' => null,
                 'ttl_seconds' => $ttl,
             ],
@@ -1031,19 +1063,45 @@ function tracker_parse_hiscores_lite(string $raw, string $rsn): array {
     ];
 }
 
-function tracker_get_cached_hiscores_lite(PDO $pdo, int $memberId, int $clanId, string $rsn): array {
+function tracker_get_cached_hiscores_lite(PDO $pdo, int $memberId, int $clanId, string $rsn, bool $allowRefresh = true): array {
     $ttl = tracker_cache_ttl_seconds('TRACKER_HISCORES_LITE_TTL_SECONDS', 6 * 60 * 60);
     $cached = tracker_read_json_cache($pdo, 'hiscores_lite', $memberId, $clanId);
 
-    if ($cached && tracker_is_cache_fresh($cached['updated_at'] ?? null, $ttl)) {
+    $isFresh = $cached ? tracker_is_cache_fresh($cached['updated_at'] ?? null, $ttl) : false;
+    if ($cached && ($isFresh || !$allowRefresh)) {
         $payload = $cached['data'];
         $payload['cache'] = [
             'hit' => true,
-            'stale' => false,
+            'stale' => !$isFresh,
+            'needs_refresh' => !$isFresh,
+            'deferred_refresh' => (!$allowRefresh && !$isFresh),
             'updated_at_utc' => $cached['updated_at'] ?? null,
             'ttl_seconds' => $ttl,
         ];
         return $payload;
+    }
+
+    if (!$allowRefresh) {
+        return [
+            'ok' => false,
+            'http_code' => 0,
+            'rsn' => $rsn,
+            'source' => 'rs3_hiscores_lite',
+            'fetched_at_utc' => null,
+            'error' => 'HiScores Lite cache is empty',
+            'hint' => null,
+            'misc' => [],
+            'summary' => null,
+            'rows' => [],
+            'cache' => [
+                'hit' => false,
+                'stale' => true,
+                'needs_refresh' => true,
+                'deferred_refresh' => true,
+                'updated_at_utc' => null,
+                'ttl_seconds' => $ttl,
+            ],
+        ];
     }
 
     try {
@@ -1059,6 +1117,8 @@ function tracker_get_cached_hiscores_lite(PDO $pdo, int $memberId, int $clanId, 
         $payload['cache'] = [
             'hit' => false,
             'stale' => false,
+            'needs_refresh' => false,
+            'deferred_refresh' => false,
             'updated_at_utc' => tracker_utc_now_string(),
             'ttl_seconds' => $ttl,
         ];
@@ -1069,6 +1129,8 @@ function tracker_get_cached_hiscores_lite(PDO $pdo, int $memberId, int $clanId, 
             $payload['cache'] = [
                 'hit' => true,
                 'stale' => true,
+                'needs_refresh' => true,
+                'deferred_refresh' => false,
                 'updated_at_utc' => $cached['updated_at'] ?? null,
                 'ttl_seconds' => $ttl,
                 'refresh_error' => $e->getMessage(),
@@ -1090,6 +1152,8 @@ function tracker_get_cached_hiscores_lite(PDO $pdo, int $memberId, int $clanId, 
             'cache' => [
                 'hit' => false,
                 'stale' => false,
+                'needs_refresh' => false,
+                'deferred_refresh' => false,
                 'updated_at_utc' => null,
                 'ttl_seconds' => $ttl,
             ],
@@ -1102,6 +1166,8 @@ try {
     if ($player === '') tracker_json(['ok' => false, 'error' => 'Missing player'], 400);
 
     $period = tracker_get_param('period', 16);
+    $deferRefreshRaw = strtolower(tracker_get_param('defer_refresh', 8));
+    $allowExternalRefresh = !in_array($deferRefreshRaw, ['1', 'true', 'yes', 'y'], true);
 
     $activityLimitRaw = (int)(tracker_get_param('activity_limit', 8) ?: '20');
     $allowedActivityLimits = [20, 50, 100, 200];
@@ -1348,8 +1414,8 @@ try {
     $privateSinceLocal = $privateSinceUtc ? tracker_to_local((string)$privateSinceUtc, (string)$week['timezone']) : null;
 
     // ---- Cached RuneMetrics quests + HiScores Lite misc stats ----
-    $questsLive = tracker_get_cached_quests($pdo, $memberId, $clanId, (string)$member['rsn']);
-    $hiscoresLite = tracker_get_cached_hiscores_lite($pdo, $memberId, $clanId, (string)$member['rsn']);
+    $questsLive = tracker_get_cached_quests($pdo, $memberId, $clanId, (string)$member['rsn'], $allowExternalRefresh);
+    $hiscoresLite = tracker_get_cached_hiscores_lite($pdo, $memberId, $clanId, (string)$member['rsn'], $allowExternalRefresh);
 
     $questsCacheUtc = $questsLive['cache']['updated_at_utc'] ?? null;
     $hiscoresCacheUtc = $hiscoresLite['cache']['updated_at_utc'] ?? null;
@@ -1360,6 +1426,7 @@ try {
 
     tracker_json([
         'ok' => true,
+        'deferred_refresh' => !$allowExternalRefresh,
         'member' => [
             'id' => $memberId,
             'rsn' => $member['rsn'],
