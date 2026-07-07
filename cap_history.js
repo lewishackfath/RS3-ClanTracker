@@ -38,14 +38,14 @@
     }
   }
 
-  function renderCapsPerDayChart() {
+  function renderCapsPerCapWeekChart() {
     const mount = el("capHistoryCapsChart");
     const data = state.data;
     if (!mount) return;
 
-    const rows = Array.isArray(data?.caps_per_day_90d) ? data.caps_per_day_90d : [];
+    const rows = Array.isArray(data?.caps_per_cap_week_1y) ? data.caps_per_cap_week_1y : [];
     if (!rows.length) {
-      mount.innerHTML = '<section class="panel capHistoryChartPanel"><div class="capHistoryChartEmpty">No cap/day history is available yet.</div></section>';
+      mount.innerHTML = '<section class="panel capHistoryChartPanel"><div class="capHistoryChartEmpty">No cap-week history is available yet.</div></section>';
       return;
     }
 
@@ -71,8 +71,8 @@
       const h = count > 0 ? Math.max(2, (count / maxY) * plotH) : 0;
       const x = padLeft + (index * step) + (gap / 2);
       const y = bottomY - h;
-      const showLabel = index === 0 || index === rows.length - 1 || index % 15 === 0;
-      const title = `${row.label || row.date || "Day"}: ${number(count)} caps`;
+      const showLabel = index === 0 || index === rows.length - 1 || index % 4 === 0;
+      const title = `Cap week starting ${row.label || row.date || "week"}: ${number(count)} caps`;
       return `
         <rect class="capHistoryChartBar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2">
           <title>${escapeHtml(title)}</title>
@@ -82,15 +82,15 @@
     }).join("");
 
     mount.innerHTML = `
-      <section class="panel capHistoryChartPanel" aria-label="Caps per day for the last 90 days">
+      <section class="panel capHistoryChartPanel" aria-label="Caps per cap week for the last year">
         <div class="capHistoryChartHeader">
           <div>
-            <h2 class="h2">Caps/day — last 90 days</h2>
-            <div class="muted">${number(total)} caps logged • Peak ${number(peak)} in one day</div>
+            <h2 class="h2">Caps/cap week — last year</h2>
+            <div class="muted">${number(total)} caps logged • Peak ${number(peak)} in one cap week</div>
           </div>
         </div>
         <div class="capHistoryChartScroll">
-          <svg class="capHistoryCapsChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Caps per day for the last 90 days">
+          <svg class="capHistoryCapsChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Caps per cap week for the last year">
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
@@ -185,7 +185,7 @@
     setText("capHistoryTotalVisits", number(data.stats?.total_visits));
     setText("capHistoryTotalCaps", number(data.stats?.total_caps));
     setText("capHistoryGenerated", data.generated_at_utc ? `Generated: ${data.generated_at_utc} UTC` : "");
-    renderCapsPerDayChart();
+    renderCapsPerCapWeekChart();
 
     renderRankFilter();
 

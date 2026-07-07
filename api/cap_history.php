@@ -79,33 +79,71 @@ function tracker_ch_rank_icon(?string $rank): string {
 }
 
 
-function tracker_ch_caps_per_day_90(PDO $pdo, int $clanId, string $tzName): array {
+function tracker_ch_current_cap_week_start_local(array $clan): DateTimeImmutable {
+    $tzName = (string)($clan['timezone'] ?? 'UTC');
     try {
         $tz = new DateTimeZone($tzName);
     } catch (Throwable $e) {
         $tz = new DateTimeZone('UTC');
     }
 
-    $utc = new DateTimeZone('UTC');
-    $todayLocal = (new DateTimeImmutable('now', $tz))->setTime(0, 0, 0, 0);
-    $startLocal = $todayLocal->modify('-89 days');
-    $endLocalExclusive = $todayLocal->modify('+1 day');
+    $resetWeekday = (int)($clan['reset_weekday'] ?? 0); // PHP w: 0=Sun..6=Sat
+    if ($resetWeekday < 0 || $resetWeekday > 6) $resetWeekday = 0;
 
-    $days = [];
-    for ($i = 0; $i < 90; $i++) {
-        $day = $startLocal->modify('+' . $i . ' days');
-        $key = $day->format('Y-m-d');
-        $days[$key] = [
-            'date' => $key,
-            'label' => $day->format('j M'),
+    $resetTimeRaw = (string)($clan['reset_time'] ?? '00:00:00');
+    $parts = array_map('intval', explode(':', $resetTimeRaw));
+    $h = max(0, min(23, (int)($parts[0] ?? 0)));
+    $m = max(0, min(59, (int)($parts[1] ?? 0)));
+    $sec = max(0, min(59, (int)($parts[2] ?? 0)));
+
+    $nowLocal = new DateTimeImmutable('now', $tz);
+    $localWeekday = (int)$nowLocal->format('w');
+    $diffDays = ($localWeekday - $resetWeekday + 7) % 7;
+
+    $candidate = $nowLocal->modify('-' . $diffDays . ' days')->setTime($h, $m, $sec, 0);
+    if ($nowLocal < $candidate) {
+        $candidate = $candidate->modify('-7 days');
+    }
+
+    return $candidate;
+}
+
+function tracker_ch_caps_per_cap_week_52(PDO $pdo, int $clanId, array $clan): array {
+    $tzName = (string)($clan['timezone'] ?? 'UTC');
+    try {
+        $tz = new DateTimeZone($tzName);
+    } catch (Throwable $e) {
+        $tzName = 'UTC';
+        $tz = new DateTimeZone('UTC');
+    }
+
+    $utc = new DateTimeZone('UTC');
+    $currentWeekStartLocal = tracker_ch_current_cap_week_start_local($clan);
+    $firstWeekStartLocal = $currentWeekStartLocal->modify('-51 weeks');
+    $lastWeekEndLocal = $currentWeekStartLocal->modify('+1 week');
+
+    $weeks = [];
+    for ($i = 0; $i < 52; $i++) {
+        $weekStartLocal = $firstWeekStartLocal->modify('+' . $i . ' weeks');
+        $weekEndLocal = $weekStartLocal->modify('+1 week');
+        $weekStartUtc = $weekStartLocal->setTimezone($utc);
+        $key = $weekStartUtc->format('Y-m-d H:i:s');
+
+        $weeks[$key] = [
+            'week_start_utc' => $weekStartUtc->format('Y-m-d H:i:s'),
+            'week_end_utc' => $weekEndLocal->setTimezone($utc)->format('Y-m-d H:i:s'),
+            'week_start_local' => $weekStartLocal->format('Y-m-d H:i:s'),
+            'week_end_local' => $weekEndLocal->format('Y-m-d H:i:s'),
+            'date' => $weekStartLocal->format('Y-m-d'),
+            'label' => $weekStartLocal->format('j M'),
             'count' => 0,
         ];
     }
 
-    $startUtc = $startLocal->setTimezone($utc)->format('Y-m-d H:i:s');
-    $endUtc = $endLocalExclusive->setTimezone($utc)->format('Y-m-d H:i:s');
+    $startUtc = $firstWeekStartLocal->setTimezone($utc)->format('Y-m-d H:i:s');
+    $endUtc = $lastWeekEndLocal->setTimezone($utc)->format('Y-m-d H:i:s');
 
-    $stmt = $pdo->prepare("\n        SELECT capped_at_utc\n        FROM member_caps\n        WHERE clan_id = :cid\n          AND capped_at_utc >= :start_utc\n          AND capped_at_utc < :end_utc\n        ORDER BY capped_at_utc ASC\n    ");
+    $stmt = $pdo->prepare("\n        SELECT cap_week_start_utc, COUNT(*) AS cap_count\n        FROM member_caps\n        WHERE clan_id = :cid\n          AND cap_week_start_utc >= :start_utc\n          AND cap_week_start_utc < :end_utc\n        GROUP BY cap_week_start_utc\n        ORDER BY cap_week_start_utc ASC\n    ");
     $stmt->execute([
         ':cid' => $clanId,
         ':start_utc' => $startUtc,
@@ -113,16 +151,17 @@ function tracker_ch_caps_per_day_90(PDO $pdo, int $clanId, string $tzName): arra
     ]);
 
     while ($row = $stmt->fetch()) {
-        $raw = (string)($row['capped_at_utc'] ?? '');
+        $raw = (string)($row['cap_week_start_utc'] ?? '');
         if ($raw === '') continue;
         try {
-            $dt = new DateTimeImmutable($raw, $utc);
-            $key = $dt->setTimezone($tz)->format('Y-m-d');
-            if (isset($days[$key])) $days[$key]['count']++;
+            $key = (new DateTimeImmutable($raw, $utc))->format('Y-m-d H:i:s');
+            if (isset($weeks[$key])) {
+                $weeks[$key]['count'] = (int)($row['cap_count'] ?? 0);
+            }
         } catch (Throwable $e) {}
     }
 
-    return array_values($days);
+    return array_values($weeks);
 }
 
 function tracker_ch_to_local(?string $utcDt, string $tzName): ?string {
@@ -248,7 +287,7 @@ usort($groups, function(array $a, array $b): int {
     return tracker_ch_compare_ranks_desc((string)($a['rank_name'] ?? ''), (string)($b['rank_name'] ?? ''));
 });
 
-$capsPerDay90 = tracker_ch_caps_per_day_90($pdo, $clanId, $tzName);
+$capsPerCapWeek52 = tracker_ch_caps_per_cap_week_52($pdo, $clanId, $clan);
 
 tracker_json([
     'ok' => true,
@@ -262,7 +301,7 @@ tracker_json([
         'total_caps' => $totalCaps,
         'total_visits' => $totalVisits,
     ],
-    'caps_per_day_90d' => $capsPerDay90,
+    'caps_per_cap_week_1y' => $capsPerCapWeek52,
     'members' => $outMembers,
     'rank_groups' => $groups,
     'generated_at_utc' => gmdate('Y-m-d H:i:s'),
