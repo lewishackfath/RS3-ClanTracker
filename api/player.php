@@ -669,7 +669,7 @@ function tracker_boss_log_default_item_aliases(): array {
     return [
         'Bandos shield' => 'Bandos warshield',
         'Hiss of Saradomin' => "Saradomin's hiss",
-        'Bill (pet)' => 'Bill',
+        'Bill (pet)' => 'Bill pet',
     ];
 }
 
@@ -826,12 +826,14 @@ function tracker_load_boss_log_definitions(): array {
         $itemsRaw = (isset($json['items']) && is_array($json['items'])) ? $json['items'] : [];
         $items = [];
         foreach ($itemsRaw as $idx => $itemRow) {
+            $iconName = '';
             if (is_string($itemRow)) {
                 $itemName = trim($itemRow);
                 $aliases = [];
                 $order = $idx + 1;
             } elseif (is_array($itemRow)) {
                 $itemName = trim((string)($itemRow['name'] ?? ''));
+                $iconName = trim((string)($itemRow['icon_name'] ?? $itemRow['icon'] ?? $itemRow['wiki_icon'] ?? ''));
                 $aliasesRaw = (isset($itemRow['aliases']) && is_array($itemRow['aliases'])) ? $itemRow['aliases'] : [];
                 $aliases = [];
                 foreach ($aliasesRaw as $alias) {
@@ -864,6 +866,7 @@ function tracker_load_boss_log_definitions(): array {
             $items[] = [
                 'key' => $itemKey,
                 'name' => $itemName,
+                'icon_name' => $iconName !== '' ? $iconName : null,
                 'aliases' => $dedupedAliases,
                 'order' => $order,
             ];
@@ -1041,6 +1044,7 @@ function tracker_build_boss_collection_log(PDO $pdo, int $memberId, int $clanId,
             $items[] = [
                 'key' => $itemKey,
                 'name' => (string)($item['name'] ?? ''),
+                'icon_name' => isset($item['icon_name']) && is_string($item['icon_name']) && trim($item['icon_name']) !== '' ? trim($item['icon_name']) : null,
                 'aliases' => $item['aliases'] ?? [],
                 'found' => $isFound,
                 'drop_count' => $isFound ? (int)($state['drop_count'] ?? 0) : 0,

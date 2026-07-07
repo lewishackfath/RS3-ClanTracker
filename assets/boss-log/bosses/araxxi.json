@@ -36,42 +36,48 @@
       "aliases": [
         "Araxyte pet"
       ],
-      "order": 8
+      "order": 8,
+      "icon_name": "Bill pet"
     },
     {
       "name": "Lana",
       "aliases": [
         "Araxyte pet"
       ],
-      "order": 9
+      "order": 9,
+      "icon_name": "Lana pet"
     },
     {
       "name": "Pete",
       "aliases": [
         "Araxyte pet"
       ],
-      "order": 10
+      "order": 10,
+      "icon_name": "Pete pet"
     },
     {
       "name": "Dave",
       "aliases": [
         "Araxyte pet"
       ],
-      "order": 11
+      "order": 11,
+      "icon_name": "Dave pet"
     },
     {
       "name": "Steve",
       "aliases": [
         "Araxyte pet"
       ],
-      "order": 12
+      "order": 12,
+      "icon_name": "Steve pet"
     },
     {
       "name": "Gavin",
       "aliases": [
         "Araxyte pet"
       ],
-      "order": 13
+      "order": 13,
+      "icon_name": "Gavin pet"
     },
     {
       "name": "Barry",

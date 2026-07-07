@@ -928,6 +928,7 @@ loadItemNameCleanupRules();
 const DEFAULT_ITEM_ICON_ALIASES = {
   "Bandos shield": "Bandos warshield",
   "Hiss of Saradomin": "Saradomin's hiss",
+  "Bill (pet)": "Bill pet",
 };
 
 let _itemIconAliases = DEFAULT_ITEM_ICON_ALIASES;
@@ -2196,7 +2197,7 @@ function wireBossCollectionLogIcons(root) {
 
   const applyIcons = () => {
     root.querySelectorAll("img.bossLogItemIcon").forEach(img => {
-      const itemName = img.getAttribute("data-item") || "";
+      const itemName = img.getAttribute("data-icon-item") || img.getAttribute("data-item") || "";
       const candidates = itemName ? dropItemIconCandidates(itemName) : [];
       candidates.push("assets/activity/default.png");
       setImgWithFallback(img, candidates, "assets/activity/default.png");
@@ -2297,9 +2298,10 @@ function renderBossCollectionLog() {
                 const title = isFound
                   ? `${itemName}${count > 1 ? ` × ${formatNumber(count)}` : ""}${lastSeen ? ` — last seen ${lastSeen}` : ""}`
                   : `${itemName} — not yet collected`;
-                return `
+                const iconItemName = String(item?.icon_name || item?.icon || item?.wiki_icon || itemName);
+              return `
                   <div class="bossLogItem ${isFound ? "found" : "missing"}" title="${escapeHtml(title)}">
-                    <img class="bossLogItemIcon" data-item="${escapeHtml(itemName)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async">
+                    <img class="bossLogItemIcon" data-item="${escapeHtml(itemName)}" data-icon-item="${escapeHtml(iconItemName)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async">
                     <div class="bossLogItemName">${escapeHtml(itemName)}</div>
                     ${isFound && count > 1 ? `<div class="bossLogItemCount">×${escapeHtml(formatNumber(count))}</div>` : ""}
                   </div>
