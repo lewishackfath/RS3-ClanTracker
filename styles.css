@@ -1934,49 +1934,155 @@ li { margin: 0 0 10px; }
   padding: 10px 12px;
   font-weight: 750;
 }
-.bossLogToggleBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
+.bossLogFilterPanel {
   border-radius: 16px;
-  border: 1px solid rgba(246,222,159,0.22);
+  border: 1px solid rgba(246,222,159,0.25);
   background: rgba(38, 20, 12, 0.34);
+  overflow: hidden;
 }
-.bossLogToggle {
-  appearance: none;
-  display: inline-flex;
+.bossLogFilterSummary {
+  display: flex;
   align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(246,222,159,0.26);
-  border-radius: 999px;
-  background: rgba(24,12,7,0.44);
-  color: #d6c8a0;
-  padding: 7px 10px;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 850;
-  line-height: 1.1;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 13px;
+  color: #fff8dc;
   cursor: pointer;
-  transition: transform .15s ease, opacity .15s ease, border-color .15s ease, background .15s ease, color .15s ease;
+  font-size: 0.92rem;
+  font-weight: 950;
+  list-style: none;
+  user-select: none;
 }
-.bossLogToggle small {
-  color: inherit;
-  opacity: 0.82;
-  font-size: 0.72rem;
+.bossLogFilterSummary::-webkit-details-marker {
+  display: none;
+}
+.bossLogFilterSummary::before {
+  content: "▸";
+  flex: 0 0 auto;
+  color: #f4d58a;
+  transition: transform .15s ease;
+}
+.bossLogFilterPanel[open] .bossLogFilterSummary::before {
+  transform: rotate(90deg);
+}
+.bossLogFilterSummary span {
+  flex: 1 1 auto;
+}
+.bossLogFilterSummary small {
+  flex: 0 0 auto;
+  color: #f4d58a;
+  font-size: 0.78rem;
   font-weight: 900;
 }
-.bossLogToggle.active {
-  border-color: rgba(246,222,159,0.54);
-  background: rgba(246,222,159,0.14);
+.bossLogFilterBody {
+  display: grid;
+  gap: 10px;
+  padding: 0 10px 10px;
+}
+.bossLogFilterActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+.bossLogToggleAll,
+.bossLogToggle {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  transition: transform .15s ease, opacity .15s ease, border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.bossLogToggleAll {
+  border: 1px solid rgba(244,213,138,0.62);
+  border-radius: 999px;
+  background: rgba(244,213,138,0.18);
   color: #fff8dc;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+.bossLogToggleAll:hover,
+.bossLogToggleAll:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(244,213,138,0.88);
+  background: rgba(244,213,138,0.26);
+  outline: none;
+}
+.bossLogToggleBar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 8px;
+}
+.bossLogToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  min-height: 38px;
+  border: 1px solid rgba(246,222,159,0.24);
+  border-radius: 12px;
+  background: rgba(18,8,3,0.52);
+  color: #b9ab86;
+  padding: 8px 10px;
+  font-size: 0.80rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: left;
+}
+.bossLogToggle span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bossLogToggle small {
+  flex: 0 0 auto;
+  color: inherit;
+  opacity: 0.86;
+  font-size: 0.70rem;
+  font-weight: 950;
+}
+.bossLogToggle.active {
+  border-color: rgba(244,213,138,0.78);
+  background:
+    linear-gradient(180deg, rgba(244,213,138,0.26), rgba(154,98,36,0.22)),
+    rgba(45,25,12,0.76);
+  color: #fff8dc;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 2px 8px rgba(18,8,3,0.18);
+}
+.bossLogToggle.active::before {
+  content: "✓";
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(244,213,138,0.9);
+  color: #261207;
+  font-size: 0.70rem;
+  font-weight: 950;
+}
+.bossLogToggle.inactive {
+  opacity: 0.62;
+}
+.bossLogToggle.inactive::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(246,222,159,0.30);
+  background: rgba(0,0,0,0.16);
 }
 .bossLogToggle:hover,
 .bossLogToggle:focus-visible {
   transform: translateY(-1px);
-  border-color: rgba(246,222,159,0.60);
-  background: rgba(246,222,159,0.18);
+  border-color: rgba(246,222,159,0.68);
+  background: rgba(246,222,159,0.16);
   color: #fff8dc;
+  opacity: 1;
   outline: none;
 }
 .bossLogGrid {
@@ -2048,39 +2154,54 @@ li { margin: 0 0 10px; }
 .bossLogItems {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 92px));
+  gap: 14px 12px;
+  align-items: start;
 }
 .bossLogItem {
-  position: relative;
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 6px;
-  min-height: 96px;
-  padding: 9px 7px;
-  border-radius: 14px 10px 14px 10px;
-  border: 1px solid rgba(246,222,159,0.20);
-  background: rgba(24,12,7,0.34);
-  transition: transform .15s ease, opacity .15s ease, border-color .15s ease, background .15s ease;
+  gap: 7px;
+  width: 92px;
+  min-width: 92px;
+  color: #fff8dc;
+  transition: transform .15s ease, opacity .15s ease;
 }
-.bossLogItem.found {
-  background: rgba(246,222,159,0.10);
-  border-color: rgba(246,222,159,0.36);
+.bossLogItemTile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 14px 10px 14px 10px;
+  border: 1px solid rgba(246,222,159,0.22);
+  background: rgba(24,12,7,0.38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.bossLogItem.found .bossLogItemTile {
+  background: rgba(246,222,159,0.12);
+  border-color: rgba(246,222,159,0.42);
 }
 .bossLogItem.missing {
-  opacity: 0.54;
+  opacity: 0.58;
 }
 .bossLogItem:hover,
 .bossLogItem:focus-within {
   transform: translateY(-1px);
   opacity: 1;
-  border-color: rgba(246,222,159,0.46);
-  background: rgba(246,222,159,0.12);
+}
+.bossLogItem:hover .bossLogItemTile,
+.bossLogItem:focus-within .bossLogItemTile {
+  border-color: rgba(246,222,159,0.54);
+  background: rgba(246,222,159,0.14);
 }
 .bossLogItemIcon {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
+  max-width: 48px;
+  max-height: 48px;
   object-fit: contain;
   image-rendering: auto;
   filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));
@@ -2089,7 +2210,8 @@ li { margin: 0 0 10px; }
   filter: grayscale(1) opacity(0.62);
 }
 .bossLogItemName {
-  max-width: 100%;
+  width: 92px;
+  min-height: 31px;
   color: #fff8dc;
   font-size: 0.72rem;
   font-weight: 850;
@@ -2099,14 +2221,15 @@ li { margin: 0 0 10px; }
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
 }
 .bossLogItem.missing .bossLogItemName {
   color: #d6c8a0;
 }
 .bossLogItemCount {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: -6px;
+  right: -7px;
   min-width: 22px;
   padding: 2px 5px;
   border-radius: 999px;
@@ -2118,326 +2241,7 @@ li { margin: 0 0 10px; }
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
-.xpStatsPanel {
-  margin-top: 12px;
-  display: grid;
-  gap: 12px;
-}
-.xpStatsSummary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-.xpStatsCard,
-.xpChartCard,
-.xpSkillBars {
-  position: relative;
-  overflow: hidden;
-  border-radius: 18px 13px 18px 14px;
-  border: 1px solid rgba(246, 222, 159, 0.26);
-  background:
-    radial-gradient(circle at top left, rgba(246,222,159,0.18), transparent 34%),
-    linear-gradient(180deg, rgba(89,55,31,0.96), rgba(47,27,17,0.96));
-  color: #fff2c5;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 0 0 1px rgba(42,23,15,0.55),
-    0 12px 26px rgba(18,8,3,0.24);
-}
-.xpStatsCard {
-  padding: 12px;
-  min-height: 78px;
-}
-.xpStatsCard.wide {
-  grid-column: span 1;
-}
-.xpStatsLabel,
-.xpStatsSectionTitle,
-.xpChartTitle {
-  color: #f4d58a;
-  font-weight: 950;
-  letter-spacing: 0.02em;
-}
-.xpStatsLabel {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-}
-.xpStatsValue {
-  margin-top: 6px;
-  font-size: 1.32rem;
-  font-weight: 950;
-  color: #fff8dc;
-}
-.xpStatsValue.small {
-  font-size: 1rem;
-}
-.xpFavouriteSkill {
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-}
-.xpFavouriteSkillName {
-  color: #fff8dc;
-  font-weight: 950;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.xpFavouriteSkillValue {
-  margin-top: 2px;
-  color: #f4d58a;
-  font-weight: 900;
-  font-size: 0.9rem;
-}
-.xpStatsWindow {
-  margin-top: 8px;
-  color: #f7e7b2;
-  font-weight: 800;
-  line-height: 1.35;
-}
-.xpChartCard {
-  padding: 12px;
-}
-.xpLineChart,
-.xpDailyChart {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin-top: 8px;
-}
-.xpChartGrid {
-  stroke: rgba(246, 222, 159, 0.18);
-  stroke-width: 1;
-}
-.xpChartAxis {
-  fill: rgba(255, 248, 220, 0.78);
-  font-size: 12px;
-  font-weight: 800;
-}
-.xpChartLine,
-.xpSkillChartLine {
-  fill: none;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.62;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.28));
-}
-.xpSkillChartLine {
-  transition: opacity .16s ease, stroke-width .16s ease, filter .16s ease;
-}
-.xpSkillLineGroup:hover .xpSkillChartLine,
-.xpSkillLineGroup:focus-within .xpSkillChartLine {
-  opacity: 1;
-  stroke-width: 5;
-  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.42));
-}
-.xpLineChart circle,
-.xpSkillChartPoint {
-  stroke: #2b170f;
-  stroke-width: 1.5;
-  opacity: 0.82;
-}
-.xpSkillLineGroup:hover .xpSkillChartPoint {
-  opacity: 1;
-}
-
-.xpSkillChartHitLine {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 34;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  pointer-events: stroke;
-}
-.xpSkillChartPointHit {
-  fill: transparent;
-  stroke: transparent;
-  pointer-events: all;
-  cursor: help;
-}
-.xpDailyChartSegment {
-  pointer-events: none;
-  transition: opacity .12s ease, filter .12s ease;
-}
-.xpDailyChartHitSegment {
-  fill: #000;
-  opacity: 0;
-  pointer-events: all;
-  cursor: help;
-}
-.xpDailyChartHitSegment:hover + .xpDailyChartSegment,
-.xpDailyChartSegment:hover {
-  opacity: 0.88;
-  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.36));
-}
-.chartLocalTooltip {
-  position: absolute;
-  z-index: 80;
-  max-width: min(320px, calc(100% - 24px));
-  padding: 9px 11px;
-  border-radius: 12px;
-  border: 1px solid rgba(246,222,159,0.38);
-  background: linear-gradient(180deg, rgba(39, 21, 12, 0.98), rgba(24, 11, 6, 0.98));
-  box-shadow: 0 14px 28px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.11);
-  color: var(--tile-text-muted);
-  font-size: 0.82rem;
-  font-weight: 900;
-  line-height: 1.35;
-  white-space: nowrap;
-  pointer-events: none;
-  transform: translate(14px, 14px);
-  will-change: left, top;
-}
-.chartLocalTooltip::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  top: -5px;
-  width: 10px;
-  height: 10px;
-  border-left: 1px solid rgba(246,222,159,0.28);
-  border-top: 1px solid rgba(246,222,159,0.28);
-  background: rgba(39, 21, 12, 0.98);
-  transform: rotate(45deg);
-}
-.chartLocalTooltip.hidden {
-  display: none;
-}
-.chartHoverTitle {
-  margin-bottom: 3px;
-  color: var(--tile-text);
-  font-weight: 950;
-  font-family: Georgia, "Times New Roman", serif;
-}
-.xpStatsSectionTitle {
-  margin-top: 2px;
-  font-size: 1rem;
-}
-.xpDailyLegend {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-}
-.xpDailyLegendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #fff2c5;
-  font-weight: 800;
-  font-size: 0.78rem;
-}
-.xpDailyLegendSwatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,248,220,0.35);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
-}
-.xpSkillBars {
-  padding: 10px;
-  display: grid;
-  gap: 9px;
-}
-.xpSkillBars.compact {
-  gap: 7px;
-}
-.xpSkillBarRow {
-  display: grid;
-  grid-template-columns: 28px 34px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-}
-.xpSkillRank {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  border: 1px solid rgba(246,222,159,0.30);
-  background: rgba(30,14,8,0.34);
-  color: #f4d58a;
-  font-weight: 950;
-}
-.xpSkillIcon {
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
-  border-radius: 10px;
-  padding: 3px;
-  background: rgba(255,248,220,0.10);
-  border: 1px solid rgba(246,222,159,0.20);
-}
-.xpSkillBarMain {
-  min-width: 0;
-}
-.xpSkillBarMeta {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  color: #fff8dc;
-  font-weight: 850;
-  font-size: 0.92rem;
-}
-.xpSkillBarMeta span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.xpSkillBarMeta strong {
-  flex: 0 0 auto;
-  color: #f4d58a;
-}
-.xpSkillBarTrack {
-  height: 8px;
-  margin-top: 5px;
-  border-radius: 999px;
-  background: rgba(20,10,6,0.48);
-  overflow: hidden;
-  border: 1px solid rgba(246,222,159,0.14);
-}
-.xpSkillBarFill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #8b5d2c, #e4b65b, #fff2c5);
-  box-shadow: 0 0 12px rgba(228,182,91,0.35);
-}
-.xpStatsEmpty {
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(255,248,220,0.12);
-  border: 1px dashed rgba(246,222,159,0.26);
-  color: #f7e7b2;
-}
-
-
 @media (max-width: 760px) {
-  .xpStatsSummary {
-    grid-template-columns: 1fr;
-  }
-  .activityJournalHeader {
-    align-items: stretch;
-  }
-  .activityJournalTitleLine {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .journalTabs,
-  .journalTabs .segBtn {
-    width: 100%;
-  }
-  .dropHistorySummary {
-    grid-template-columns: 1fr;
-  }
-
-  .dropHistoryTable {
-    min-width: 460px;
-  }
-
   .dropHistoryRow {
     grid-template-columns: 44px minmax(0, 1fr) auto;
     gap: 9px;
@@ -2449,8 +2253,20 @@ li { margin: 0 0 10px; }
   .bossLogSummary {
     grid-template-columns: 1fr;
   }
+  .bossLogFilterSummary {
+    padding: 10px 11px;
+  }
+  .bossLogFilterBody {
+    padding: 0 8px 8px;
+  }
+  .bossLogFilterActions {
+    justify-content: stretch;
+  }
+  .bossLogToggleAll {
+    width: 100%;
+  }
   .bossLogToggleBar {
-    padding: 8px;
+    grid-template-columns: 1fr;
   }
   .bossLogToggle {
     max-width: 100%;
@@ -2460,10 +2276,26 @@ li { margin: 0 0 10px; }
     grid-template-columns: 1fr;
   }
   .bossLogItems {
-    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(82px, 82px));
+    gap: 12px 9px;
   }
   .bossLogItem {
-    min-height: 90px;
+    width: 82px;
+    min-width: 82px;
+  }
+  .bossLogItemTile {
+    width: 62px;
+    height: 62px;
+  }
+  .bossLogItemIcon {
+    width: 44px;
+    height: 44px;
+    max-width: 44px;
+    max-height: 44px;
+  }
+  .bossLogItemName {
+    width: 82px;
+    font-size: 0.68rem;
   }
 }
 

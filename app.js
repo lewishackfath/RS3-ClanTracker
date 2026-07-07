@@ -928,7 +928,9 @@ loadItemNameCleanupRules();
 const DEFAULT_ITEM_ICON_ALIASES = {
   "Bandos shield": "Bandos warshield",
   "Hiss of Saradomin": "Saradomin's hiss",
-  "Bill (pet)": "Bill pet",
+  "Bill (pet)": "Bill (pet) pet",
+  "Vitalis": "Vitalis (pet)",
+  "Zammo the Rak": "Zammo the Rak pet",
 };
 
 let _itemIconAliases = DEFAULT_ITEM_ICON_ALIASES;
@@ -1571,6 +1573,7 @@ let selectedActivityLimit = 20;
 let selectedSkillView = "current";
 let selectedJournalView = "activity";
 let hiddenBossLogKeys = new Set();
+let bossLogFilterExpanded = false;
 let selectedXpLineChartSkills = new Set(SKILLS);
 let selectedXpDailyChartSkills = new Set(SKILLS);
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
@@ -2255,22 +2258,38 @@ function renderBossCollectionLog() {
     ? `<div class="bossLogNotice">${escapeHtml(log.error || "Boss collection log storage is not ready. Run the updated database bootstrap, then reload this page.")}</div>`
     : "";
 
+  const visibleCount = visibleBosses.length;
+  const allVisible = visibleCount === bosses.length;
+  const toggleAllLabel = allVisible ? "Hide all bosses" : "Show all bosses";
   const toggleHtml = `
-    <div class="bossLogToggleBar" role="group" aria-label="Show or hide bosses">
-      ${bosses.map(boss => {
-        const key = bossLogKeyFor(boss);
-        const items = Array.isArray(boss?.items) ? boss.items : [];
-        const found = Number.isFinite(Number(boss?.found_items)) ? Number(boss.found_items) : items.filter(item => item?.found).length;
-        const total = Number.isFinite(Number(boss?.total_items)) ? Number(boss.total_items) : items.length;
-        const isVisible = !hiddenBossLogKeys.has(key);
-        return `
-          <button class="bossLogToggle ${isVisible ? "active" : ""}" type="button" data-boss-log-toggle="${escapeHtml(key)}" aria-pressed="${isVisible ? "true" : "false"}">
-            <span>${escapeHtml(boss?.name || "Unknown boss")}</span>
-            <small>${escapeHtml(formatNumber(found))}/${escapeHtml(formatNumber(total))}</small>
+    <details class="bossLogFilterPanel" ${bossLogFilterExpanded ? "open" : ""}>
+      <summary class="bossLogFilterSummary">
+        <span>Boss filters</span>
+        <small>${escapeHtml(formatNumber(visibleCount))}/${escapeHtml(formatNumber(bosses.length))} shown</small>
+      </summary>
+      <div class="bossLogFilterBody">
+        <div class="bossLogFilterActions">
+          <button class="bossLogToggleAll" type="button" data-boss-log-toggle-all="1">
+            ${escapeHtml(toggleAllLabel)}
           </button>
-        `;
-      }).join("")}
-    </div>
+        </div>
+        <div class="bossLogToggleBar" role="group" aria-label="Show or hide bosses">
+          ${bosses.map(boss => {
+            const key = bossLogKeyFor(boss);
+            const items = Array.isArray(boss?.items) ? boss.items : [];
+            const found = Number.isFinite(Number(boss?.found_items)) ? Number(boss.found_items) : items.filter(item => item?.found).length;
+            const total = Number.isFinite(Number(boss?.total_items)) ? Number(boss.total_items) : items.length;
+            const isVisible = !hiddenBossLogKeys.has(key);
+            return `
+              <button class="bossLogToggle ${isVisible ? "active" : "inactive"}" type="button" data-boss-log-toggle="${escapeHtml(key)}" aria-pressed="${isVisible ? "true" : "false"}">
+                <span>${escapeHtml(boss?.name || "Unknown boss")}</span>
+                <small>${escapeHtml(formatNumber(found))}/${escapeHtml(formatNumber(total))}</small>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </details>
   `;
 
   const bossCardsHtml = visibleBosses.length
@@ -2301,9 +2320,11 @@ function renderBossCollectionLog() {
                 const iconItemName = String(item?.icon_name || item?.icon || item?.wiki_icon || itemName);
               return `
                   <div class="bossLogItem ${isFound ? "found" : "missing"}" title="${escapeHtml(title)}">
-                    <img class="bossLogItemIcon" data-item="${escapeHtml(itemName)}" data-icon-item="${escapeHtml(iconItemName)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async">
+                    <div class="bossLogItemTile" aria-hidden="true">
+                      <img class="bossLogItemIcon" data-item="${escapeHtml(itemName)}" data-icon-item="${escapeHtml(iconItemName)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async">
+                      ${isFound && count > 1 ? `<div class="bossLogItemCount">×${escapeHtml(formatNumber(count))}</div>` : ""}
+                    </div>
                     <div class="bossLogItemName">${escapeHtml(itemName)}</div>
-                    ${isFound && count > 1 ? `<div class="bossLogItemCount">×${escapeHtml(formatNumber(count))}</div>` : ""}
                   </div>
                 `;
               }).join("")}
@@ -2335,15 +2356,34 @@ function renderBossCollectionLog() {
     </div>
   `;
 
+  const filterPanel = el.querySelector(".bossLogFilterPanel");
+  if (filterPanel) {
+    filterPanel.addEventListener("toggle", () => {
+      bossLogFilterExpanded = Boolean(filterPanel.open);
+    });
+  }
+
   el.querySelectorAll("[data-boss-log-toggle]").forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-boss-log-toggle") || "";
       if (!key) return;
+      bossLogFilterExpanded = true;
       if (hiddenBossLogKeys.has(key)) hiddenBossLogKeys.delete(key);
       else hiddenBossLogKeys.add(key);
       renderBossCollectionLog();
     });
   });
+
+  const toggleAllBtn = el.querySelector("[data-boss-log-toggle-all]");
+  if (toggleAllBtn) {
+    toggleAllBtn.addEventListener("click", () => {
+      bossLogFilterExpanded = true;
+      const keys = bosses.map(bossLogKeyFor).filter(Boolean);
+      const allVisibleNow = keys.every(key => !hiddenBossLogKeys.has(key));
+      hiddenBossLogKeys = allVisibleNow ? new Set(keys) : new Set();
+      renderBossCollectionLog();
+    });
+  }
 
   wireBossCollectionLogIcons(el);
 }

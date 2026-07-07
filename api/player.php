@@ -669,7 +669,9 @@ function tracker_boss_log_default_item_aliases(): array {
     return [
         'Bandos shield' => 'Bandos warshield',
         'Hiss of Saradomin' => "Saradomin's hiss",
-        'Bill (pet)' => 'Bill pet',
+        'Bill (pet)' => 'Bill (pet) pet',
+        'Vitalis' => 'Vitalis (pet)',
+        'Zammo the Rak' => 'Zammo the Rak pet',
     ];
 }
 
