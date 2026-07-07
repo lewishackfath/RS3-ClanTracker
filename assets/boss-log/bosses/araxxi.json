@@ -1,0 +1,91 @@
+{
+  "key": "araxxi",
+  "name": "Araxxi",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Spider leg top",
+      "order": 1
+    },
+    {
+      "name": "Spider leg middle",
+      "order": 2
+    },
+    {
+      "name": "Spider leg bottom",
+      "order": 3
+    },
+    {
+      "name": "Araxxi's fang",
+      "order": 4
+    },
+    {
+      "name": "Araxxi's eye",
+      "order": 5
+    },
+    {
+      "name": "Araxxi's web",
+      "order": 6
+    },
+    {
+      "name": "Araxyte pheromone",
+      "order": 7
+    },
+    {
+      "name": "Bill",
+      "aliases": [
+        "Araxyte pet"
+      ],
+      "order": 8
+    },
+    {
+      "name": "Lana",
+      "aliases": [
+        "Araxyte pet"
+      ],
+      "order": 9
+    },
+    {
+      "name": "Pete",
+      "aliases": [
+        "Araxyte pet"
+      ],
+      "order": 10
+    },
+    {
+      "name": "Dave",
+      "aliases": [
+        "Araxyte pet"
+      ],
+      "order": 11
+    },
+    {
+      "name": "Steve",
+      "aliases": [
+        "Araxyte pet"
+      ],
+      "order": 12
+    },
+    {
+      "name": "Gavin",
+      "aliases": [
+        "Araxyte pet"
+      ],
+      "order": 13
+    },
+    {
+      "name": "Barry",
+      "aliases": [
+        "Araxyte egg"
+      ],
+      "order": 14
+    },
+    {
+      "name": "Mallory",
+      "aliases": [
+        "Araxyte egg"
+      ],
+      "order": 15
+    }
+  ]
+}

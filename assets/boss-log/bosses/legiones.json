@@ -1,0 +1,73 @@
+{
+  "key": "legiones",
+  "name": "Legiones",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Ascension signet I",
+      "order": 1
+    },
+    {
+      "name": "Ascension signet II",
+      "order": 2
+    },
+    {
+      "name": "Ascension signet III",
+      "order": 3
+    },
+    {
+      "name": "Ascension signet IV",
+      "order": 4
+    },
+    {
+      "name": "Ascension signet V",
+      "order": 5
+    },
+    {
+      "name": "Ascension signet VI",
+      "order": 6
+    },
+    {
+      "name": "Legio Primulus",
+      "aliases": [
+        "Corrupted Ascension signet I"
+      ],
+      "order": 7
+    },
+    {
+      "name": "Legio Secundulus",
+      "aliases": [
+        "Corrupted Ascension signet II"
+      ],
+      "order": 8
+    },
+    {
+      "name": "Legio Tertiolus",
+      "aliases": [
+        "Corrupted Ascension signet III"
+      ],
+      "order": 9
+    },
+    {
+      "name": "Legio Quartulus",
+      "aliases": [
+        "Corrupted Ascension signet IV"
+      ],
+      "order": 10
+    },
+    {
+      "name": "Legio Quintulus",
+      "aliases": [
+        "Corrupted Ascension signet V"
+      ],
+      "order": 11
+    },
+    {
+      "name": "Legio Sextulus",
+      "aliases": [
+        "Corrupted Ascension signet VI"
+      ],
+      "order": 12
+    }
+  ]
+}

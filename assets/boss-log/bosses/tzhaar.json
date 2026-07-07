@@ -1,0 +1,34 @@
+{
+  "key": "tzhaar",
+  "name": "TzHaar",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Fire cape",
+      "order": 1
+    },
+    {
+      "name": "TokHaar-Kal-Ket",
+      "order": 2
+    },
+    {
+      "name": "TokHaar-Kal-Mej",
+      "order": 3
+    },
+    {
+      "name": "TokHaar-Kal-Xil",
+      "order": 4
+    },
+    {
+      "name": "TokHaar-Kal-Mor",
+      "order": 5
+    },
+    {
+      "name": "Shrimpy",
+      "aliases": [
+        "Volcanic shard"
+      ],
+      "order": 6
+    }
+  ]
+}

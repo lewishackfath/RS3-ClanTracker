@@ -1,0 +1,38 @@
+{
+  "key": "dragonkin_laboratory",
+  "name": "Dragonkin Laboratory",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Greater Flurry ability codex",
+      "order": 1
+    },
+    {
+      "name": "Greater Fury ability codex",
+      "order": 2
+    },
+    {
+      "name": "Greater Barge ability codex",
+      "order": 3
+    },
+    {
+      "name": "Redacted Dragonkin Research",
+      "order": 4
+    },
+    {
+      "name": "Diary of an Overzealous Gnome",
+      "order": 5
+    },
+    {
+      "name": "Draconic energy",
+      "order": 6
+    },
+    {
+      "name": "Bisdi",
+      "aliases": [
+        "Inert black stone crystal"
+      ],
+      "order": 7
+    }
+  ]
+}

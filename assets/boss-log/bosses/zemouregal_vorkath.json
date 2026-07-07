@@ -1,0 +1,30 @@
+{
+  "key": "zemouregal_vorkath",
+  "name": "Zemouregal & Vorkath",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Vorkath's spike",
+      "order": 1
+    },
+    {
+      "name": "Vorkath's scale",
+      "order": 2
+    },
+    {
+      "name": "Invoke Lord of Bones incantation codex",
+      "order": 3
+    },
+    {
+      "name": "Zemouregal's nexus",
+      "order": 4
+    },
+    {
+      "name": "Vorki",
+      "aliases": [
+        "Vorkath's claw"
+      ],
+      "order": 5
+    }
+  ]
+}

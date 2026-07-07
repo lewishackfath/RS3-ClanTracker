@@ -621,7 +621,7 @@ function tracker_extract_drop_item_name(?string $activityText, ?string $activity
 }
 
 function tracker_build_drop_history(PDO $pdo, int $memberId, string $timezone): array {
-    $stmt = $pdo->prepare("\n        SELECT activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found a %'\n            OR activity_text LIKE 'I found an %'\n            OR activity_details LIKE '%dropped a %'\n            OR activity_details LIKE '%dropped an %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) DESC\n        LIMIT 10000\n    ");
+    $stmt = $pdo->prepare("\n        SELECT activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found a %'\n            OR activity_text LIKE 'I found an %'\n            OR activity_text LIKE 'I found some %'\n            OR activity_details LIKE '%dropped a %'\n            OR activity_details LIKE '%dropped an %'\n            OR activity_details LIKE '%dropped some %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) DESC\n        LIMIT 10000\n    ");
     $stmt->execute([':mid' => $memberId]);
     $rows = $stmt->fetchAll() ?: [];
 
@@ -664,6 +664,304 @@ function tracker_build_drop_history(PDO $pdo, int $memberId, string $timezone): 
         'items' => $out,
     ];
 }
+
+function tracker_boss_log_item_key(?string $value): string {
+    $s = tracker_clean_drop_item_name($value) ?? trim((string)($value ?? ''));
+    if ($s === '') return '';
+    $s = html_entity_decode($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $s = str_replace(['’', '‘', '`'], "'", $s);
+    $s = mb_strtolower($s);
+    $s = preg_replace('/&/u', ' and ', $s) ?? $s;
+    $s = preg_replace('/[^a-z0-9]+/u', ' ', $s) ?? $s;
+    $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+    return trim($s);
+}
+
+function tracker_load_boss_log_definitions(): array {
+    static $cache = null;
+    if (is_array($cache)) return $cache;
+
+    $baseDir = __DIR__ . '/../assets/boss-log';
+    $indexPath = $baseDir . '/bosses.json';
+    $out = [
+        'version' => null,
+        'source' => 'https://runescape.wiki/w/Boss_collection_log',
+        'bosses' => [],
+        'total_items' => 0,
+    ];
+
+    if (!is_file($indexPath)) {
+        $cache = $out;
+        return $cache;
+    }
+
+    $indexRaw = file_get_contents($indexPath);
+    $indexJson = is_string($indexRaw) ? json_decode($indexRaw, true) : null;
+    if (!is_array($indexJson)) {
+        $cache = $out;
+        return $cache;
+    }
+
+    $out['version'] = $indexJson['version'] ?? null;
+    $out['source'] = (string)($indexJson['source'] ?? $out['source']);
+    $bossRows = (isset($indexJson['bosses']) && is_array($indexJson['bosses'])) ? $indexJson['bosses'] : [];
+
+    foreach ($bossRows as $bossRow) {
+        if (!is_array($bossRow)) continue;
+        $bossKey = trim((string)($bossRow['key'] ?? ''));
+        $bossName = trim((string)($bossRow['name'] ?? ''));
+        $file = trim((string)($bossRow['file'] ?? ''));
+        if ($bossKey === '' || $bossName === '' || $file === '') continue;
+
+        $file = str_replace(['\\', '..'], ['/', ''], $file);
+        $path = $baseDir . '/' . ltrim($file, '/');
+        if (!is_file($path)) continue;
+
+        $raw = file_get_contents($path);
+        $json = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($json)) continue;
+
+        $itemsRaw = (isset($json['items']) && is_array($json['items'])) ? $json['items'] : [];
+        $items = [];
+        foreach ($itemsRaw as $idx => $itemRow) {
+            if (is_string($itemRow)) {
+                $itemName = trim($itemRow);
+                $aliases = [];
+                $order = $idx + 1;
+            } elseif (is_array($itemRow)) {
+                $itemName = trim((string)($itemRow['name'] ?? ''));
+                $aliasesRaw = (isset($itemRow['aliases']) && is_array($itemRow['aliases'])) ? $itemRow['aliases'] : [];
+                $aliases = [];
+                foreach ($aliasesRaw as $alias) {
+                    $alias = trim((string)$alias);
+                    if ($alias !== '' && strcasecmp($alias, $itemName) !== 0) $aliases[] = $alias;
+                }
+                $order = isset($itemRow['order']) && is_numeric($itemRow['order']) ? (int)$itemRow['order'] : ($idx + 1);
+            } else {
+                continue;
+            }
+
+            if ($itemName === '') continue;
+            $itemKey = tracker_boss_log_item_key($itemName);
+            if ($itemKey === '') continue;
+
+            $items[] = [
+                'key' => $itemKey,
+                'name' => $itemName,
+                'aliases' => array_values(array_unique($aliases)),
+                'order' => $order,
+            ];
+        }
+
+        usort($items, static fn(array $a, array $b): int => ((int)($a['order'] ?? 0)) <=> ((int)($b['order'] ?? 0)));
+        $out['total_items'] += count($items);
+        $out['bosses'][] = [
+            'key' => $bossKey,
+            'name' => $bossName,
+            'file' => $file,
+            'order' => isset($bossRow['order']) && is_numeric($bossRow['order']) ? (int)$bossRow['order'] : count($out['bosses']) + 1,
+            'items' => $items,
+        ];
+    }
+
+    usort($out['bosses'], static fn(array $a, array $b): int => ((int)($a['order'] ?? 0)) <=> ((int)($b['order'] ?? 0)));
+    $cache = $out;
+    return $cache;
+}
+
+function tracker_sync_member_boss_collection_log(PDO $pdo, int $memberId, int $clanId, array $definitions): array {
+    $index = [];
+    foreach (($definitions['bosses'] ?? []) as $boss) {
+        if (!is_array($boss)) continue;
+        $bossKey = (string)($boss['key'] ?? '');
+        $bossName = (string)($boss['name'] ?? '');
+        foreach (($boss['items'] ?? []) as $item) {
+            if (!is_array($item)) continue;
+            $itemName = (string)($item['name'] ?? '');
+            $itemKey = (string)($item['key'] ?? tracker_boss_log_item_key($itemName));
+            if ($bossKey === '' || $itemKey === '' || $itemName === '') continue;
+
+            $matchNames = array_merge([$itemName], (array)($item['aliases'] ?? []));
+            foreach ($matchNames as $matchName) {
+                $matchKey = tracker_boss_log_item_key((string)$matchName);
+                if ($matchKey === '') continue;
+                $index[$matchKey][] = [
+                    'boss_key' => $bossKey,
+                    'boss_name' => $bossName,
+                    'item_key' => $itemKey,
+                    'item_name' => $itemName,
+                ];
+            }
+        }
+    }
+
+    if (!$index) return ['matched_activities' => 0, 'matched_items' => 0, 'stored_items' => 0];
+
+    $stmt = $pdo->prepare("\n        SELECT id, activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found a %'\n            OR activity_text LIKE 'I found an %'\n            OR activity_text LIKE 'I found some %'\n            OR activity_details LIKE '%dropped a %'\n            OR activity_details LIKE '%dropped an %'\n            OR activity_details LIKE '%dropped some %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) ASC\n        LIMIT 50000\n    ");
+    $stmt->execute([':mid' => $memberId]);
+    $rows = $stmt->fetchAll() ?: [];
+
+    $found = [];
+    $matchedActivities = 0;
+    foreach ($rows as $row) {
+        $dropName = tracker_extract_drop_item_name($row['activity_text'] ?? null, $row['activity_details'] ?? null);
+        if (!$dropName) continue;
+
+        $matchKey = tracker_boss_log_item_key($dropName);
+        if ($matchKey === '' || empty($index[$matchKey])) continue;
+
+        $matchedActivities++;
+        $seenUtc = (string)(($row['activity_date_utc'] ?? null) ?: ($row['announced_at'] ?? ''));
+        $activityId = isset($row['id']) && is_numeric($row['id']) ? (int)$row['id'] : null;
+
+        foreach ($index[$matchKey] as $ref) {
+            $compound = $ref['boss_key'] . '|' . $ref['item_key'];
+            if (!isset($found[$compound])) {
+                $found[$compound] = [
+                    'boss_key' => $ref['boss_key'],
+                    'boss_name' => $ref['boss_name'],
+                    'item_key' => $ref['item_key'],
+                    'item_name' => $ref['item_name'],
+                    'drop_count' => 0,
+                    'first_seen_utc' => null,
+                    'last_seen_utc' => null,
+                    'source_activity_id' => null,
+                ];
+            }
+
+            $found[$compound]['drop_count']++;
+            if ($seenUtc !== '') {
+                if ($found[$compound]['first_seen_utc'] === null || strcmp($seenUtc, (string)$found[$compound]['first_seen_utc']) < 0) {
+                    $found[$compound]['first_seen_utc'] = $seenUtc;
+                }
+                if ($found[$compound]['last_seen_utc'] === null || strcmp($seenUtc, (string)$found[$compound]['last_seen_utc']) >= 0) {
+                    $found[$compound]['last_seen_utc'] = $seenUtc;
+                    $found[$compound]['source_activity_id'] = $activityId;
+                }
+            }
+        }
+    }
+
+    if (!$found) return ['matched_activities' => $matchedActivities, 'matched_items' => 0, 'stored_items' => 0];
+
+    $upsert = $pdo->prepare("\n        INSERT INTO member_boss_collection_log\n            (member_id, member_clan_id, boss_key, boss_name, item_key, item_name, drop_count, first_seen_utc, last_seen_utc, source_activity_id)\n        VALUES\n            (:member_id, :member_clan_id, :boss_key, :boss_name, :item_key, :item_name, :drop_count, :first_seen_utc, :last_seen_utc, :source_activity_id)\n        ON DUPLICATE KEY UPDATE\n            member_clan_id = VALUES(member_clan_id),\n            boss_name = VALUES(boss_name),\n            item_name = VALUES(item_name),\n            drop_count = GREATEST(drop_count, VALUES(drop_count)),\n            first_seen_utc = CASE\n                WHEN first_seen_utc IS NULL THEN VALUES(first_seen_utc)\n                WHEN VALUES(first_seen_utc) IS NULL THEN first_seen_utc\n                WHEN VALUES(first_seen_utc) < first_seen_utc THEN VALUES(first_seen_utc)\n                ELSE first_seen_utc\n            END,\n            last_seen_utc = CASE\n                WHEN last_seen_utc IS NULL THEN VALUES(last_seen_utc)\n                WHEN VALUES(last_seen_utc) IS NULL THEN last_seen_utc\n                WHEN VALUES(last_seen_utc) > last_seen_utc THEN VALUES(last_seen_utc)\n                ELSE last_seen_utc\n            END,\n            source_activity_id = VALUES(source_activity_id),\n            updated_at = CURRENT_TIMESTAMP(3)\n    ");
+
+    $stored = 0;
+    foreach ($found as $row) {
+        $upsert->execute([
+            ':member_id' => $memberId,
+            ':member_clan_id' => $clanId,
+            ':boss_key' => $row['boss_key'],
+            ':boss_name' => $row['boss_name'],
+            ':item_key' => $row['item_key'],
+            ':item_name' => $row['item_name'],
+            ':drop_count' => (int)$row['drop_count'],
+            ':first_seen_utc' => $row['first_seen_utc'],
+            ':last_seen_utc' => $row['last_seen_utc'],
+            ':source_activity_id' => $row['source_activity_id'],
+        ]);
+        $stored++;
+    }
+
+    return ['matched_activities' => $matchedActivities, 'matched_items' => count($found), 'stored_items' => $stored];
+}
+
+function tracker_build_boss_collection_log(PDO $pdo, int $memberId, int $clanId, string $timezone): array {
+    $definitions = tracker_load_boss_log_definitions();
+    $sync = ['matched_activities' => 0, 'matched_items' => 0, 'stored_items' => 0];
+    $available = true;
+    $error = null;
+
+    try {
+        $sync = tracker_sync_member_boss_collection_log($pdo, $memberId, $clanId, $definitions);
+    } catch (Throwable $e) {
+        $available = false;
+        $error = 'Boss collection log storage is not ready. Run the updated database bootstrap to create member_boss_collection_log.';
+    }
+
+    $stored = [];
+    if ($available) {
+        try {
+            $stmt = $pdo->prepare("\n                SELECT boss_key, item_key, drop_count, first_seen_utc, last_seen_utc, source_activity_id\n                FROM member_boss_collection_log\n                WHERE member_id = :mid\n                  AND member_clan_id = :cid\n            ");
+            $stmt->execute([':mid' => $memberId, ':cid' => $clanId]);
+            foreach (($stmt->fetchAll() ?: []) as $row) {
+                $bossKey = (string)($row['boss_key'] ?? '');
+                $itemKey = (string)($row['item_key'] ?? '');
+                if ($bossKey === '' || $itemKey === '') continue;
+                $stored[$bossKey][$itemKey] = $row;
+            }
+        } catch (Throwable $e) {
+            $available = false;
+            $error = 'Boss collection log storage is not ready. Run the updated database bootstrap to create member_boss_collection_log.';
+        }
+    }
+
+    $bosses = [];
+    $totalItems = 0;
+    $foundItems = 0;
+    $completeBosses = 0;
+
+    foreach (($definitions['bosses'] ?? []) as $boss) {
+        if (!is_array($boss)) continue;
+        $bossKey = (string)($boss['key'] ?? '');
+        $bossFound = 0;
+        $items = [];
+
+        foreach (($boss['items'] ?? []) as $item) {
+            if (!is_array($item)) continue;
+            $itemKey = (string)($item['key'] ?? '');
+            $state = ($bossKey !== '' && $itemKey !== '' && isset($stored[$bossKey][$itemKey])) ? $stored[$bossKey][$itemKey] : null;
+            $isFound = is_array($state) && (int)($state['drop_count'] ?? 0) > 0;
+            $totalItems++;
+            if ($isFound) {
+                $bossFound++;
+                $foundItems++;
+            }
+
+            $firstUtc = $state['first_seen_utc'] ?? null;
+            $lastUtc = $state['last_seen_utc'] ?? null;
+            $items[] = [
+                'key' => $itemKey,
+                'name' => (string)($item['name'] ?? ''),
+                'aliases' => $item['aliases'] ?? [],
+                'found' => $isFound,
+                'drop_count' => $isFound ? (int)($state['drop_count'] ?? 0) : 0,
+                'first_seen_utc' => $firstUtc,
+                'first_seen_local' => $firstUtc ? tracker_to_local((string)$firstUtc, $timezone) : null,
+                'last_seen_utc' => $lastUtc,
+                'last_seen_local' => $lastUtc ? tracker_to_local((string)$lastUtc, $timezone) : null,
+                'source_activity_id' => $state['source_activity_id'] ?? null,
+            ];
+        }
+
+        $bossTotal = count($items);
+        if ($bossTotal > 0 && $bossFound >= $bossTotal) $completeBosses++;
+        $bosses[] = [
+            'key' => $bossKey,
+            'name' => (string)($boss['name'] ?? ''),
+            'found_items' => $bossFound,
+            'total_items' => $bossTotal,
+            'complete' => $bossTotal > 0 && $bossFound >= $bossTotal,
+            'items' => $items,
+        ];
+    }
+
+    return [
+        'available' => $available,
+        'error' => $error,
+        'version' => $definitions['version'] ?? null,
+        'source' => $definitions['source'] ?? null,
+        'sync' => $sync,
+        'summary' => [
+            'total_bosses' => count($bosses),
+            'complete_bosses' => $completeBosses,
+            'found_items' => $foundItems,
+            'total_items' => $totalItems,
+        ],
+        'bosses' => $bosses,
+    ];
+}
+
 
 function tracker_dtmax(array $vals): ?string {
     $best = null;
@@ -1348,6 +1646,7 @@ try {
 
     $xpStats = tracker_build_xp_stats($pdo, $memberId, $xpWindow, (string)$week['timezone']);
     $dropHistory = tracker_build_drop_history($pdo, $memberId, (string)$week['timezone']);
+    $bossCollectionLog = tracker_build_boss_collection_log($pdo, $memberId, $clanId, (string)$week['timezone']);
 
     // Current skills list from latest snapshot
     $currentSkills = [
@@ -1479,6 +1778,7 @@ try {
         'xp' => $xp,
         'xp_stats' => $xpStats,
         'drop_history' => $dropHistory,
+        'boss_collection_log' => $bossCollectionLog,
         'xp_periods' => [
         ['value' => '24h', 'label' => 'Last 24 hours'],
         ['value' => '7d', 'label' => 'Last 7 days'],

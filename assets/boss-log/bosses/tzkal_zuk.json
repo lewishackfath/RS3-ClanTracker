@@ -1,0 +1,38 @@
+{
+  "key": "tzkal_zuk",
+  "name": "TzKal-Zuk",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Obsidian blade",
+      "order": 1
+    },
+    {
+      "name": "Magma core",
+      "order": 2
+    },
+    {
+      "name": "Ancient hilt",
+      "order": 3
+    },
+    {
+      "name": "Igneous stone",
+      "order": 4
+    },
+    {
+      "name": "Magma Tempest ability codex",
+      "order": 5
+    },
+    {
+      "name": "Scripture of Ful",
+      "order": 6
+    },
+    {
+      "name": "Little Zuk",
+      "aliases": [
+        "TzKal-Zuk's armour piece"
+      ],
+      "order": 7
+    }
+  ]
+}

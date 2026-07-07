@@ -1,0 +1,46 @@
+{
+  "key": "sanctum_of_rebirth",
+  "name": "Sanctum of Rebirth",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Roar of Awakening",
+      "order": 1
+    },
+    {
+      "name": "Ode to Deceit",
+      "order": 2
+    },
+    {
+      "name": "Shard of Genesis Essence",
+      "order": 3
+    },
+    {
+      "name": "Scripture of Amascut",
+      "order": 4
+    },
+    {
+      "name": "Divine Rage prayer codex",
+      "order": 5
+    },
+    {
+      "name": "The Brood Mother",
+      "order": 6
+    },
+    {
+      "name": "The Beast of Darkness",
+      "order": 7
+    },
+    {
+      "name": "Death and Devourers",
+      "order": 8
+    },
+    {
+      "name": "Neffie",
+      "aliases": [
+        "Nefthys' Tooth"
+      ],
+      "order": 9
+    }
+  ]
+}

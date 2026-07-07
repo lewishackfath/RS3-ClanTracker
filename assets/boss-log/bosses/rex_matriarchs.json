@@ -1,0 +1,60 @@
+{
+  "key": "rex_matriarchs",
+  "name": "Rex Matriarchs",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Savage spear tip",
+      "order": 1
+    },
+    {
+      "name": "Savage spear shaft",
+      "order": 2
+    },
+    {
+      "name": "Savage spear cap",
+      "order": 3
+    },
+    {
+      "name": "Savage plume",
+      "order": 4
+    },
+    {
+      "name": "Heart of the Archer",
+      "order": 5
+    },
+    {
+      "name": "Heart of the Seer",
+      "order": 6
+    },
+    {
+      "name": "Heart of the Warrior",
+      "order": 7
+    },
+    {
+      "name": "Heart of the Berserker",
+      "order": 8
+    },
+    {
+      "name": "Bagra",
+      "aliases": [
+        "Pristine Bagrada rex egg"
+      ],
+      "order": 9
+    },
+    {
+      "name": "Corbi",
+      "aliases": [
+        "Pristine Corbicula rex egg"
+      ],
+      "order": 10
+    },
+    {
+      "name": "Pavo",
+      "aliases": [
+        "Pristine Pavosaurus rex egg"
+      ],
+      "order": 11
+    }
+  ]
+}

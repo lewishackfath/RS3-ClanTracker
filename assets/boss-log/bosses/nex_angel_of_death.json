@@ -1,0 +1,50 @@
+{
+  "key": "nex_angel_of_death",
+  "name": "Nex: Angel of Death",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Praesul codex",
+      "order": 1
+    },
+    {
+      "name": "Wand of the praesul",
+      "order": 2
+    },
+    {
+      "name": "Imperium core",
+      "order": 3
+    },
+    {
+      "name": "Reeves",
+      "aliases": [
+        "Blood tentacle"
+      ],
+      "order": 4
+    },
+    {
+      "name": "The Praesul",
+      "order": 5
+    },
+    {
+      "name": "The Promised Gift",
+      "order": 6
+    },
+    {
+      "name": "Intricate shadow chest",
+      "order": 7
+    },
+    {
+      "name": "Intricate blood stained chest",
+      "order": 8
+    },
+    {
+      "name": "Intricate ice chest",
+      "order": 9
+    },
+    {
+      "name": "Intricate smoke-shrouded chest",
+      "order": 10
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "key": "arch_glacor",
+  "name": "Arch-Glacor",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Glacor remnants",
+      "order": 1
+    },
+    {
+      "name": "Dark nilas",
+      "order": 2
+    },
+    {
+      "name": "Frozen core of Leng",
+      "order": 3
+    },
+    {
+      "name": "Leng artefact",
+      "order": 4
+    },
+    {
+      "name": "Dark ice shard",
+      "order": 5
+    },
+    {
+      "name": "Dark Shard of Leng",
+      "order": 6
+    },
+    {
+      "name": "Dark ice sliver",
+      "order": 7
+    },
+    {
+      "name": "Dark Sliver of Leng",
+      "order": 8
+    },
+    {
+      "name": "Scripture of Wen",
+      "order": 9
+    },
+    {
+      "name": "Glacor's Adornment",
+      "order": 10
+    },
+    {
+      "name": "Arch-Glacor's Adornment",
+      "order": 11
+    },
+    {
+      "name": "Ur-Glacor's Adornment",
+      "order": 12
+    },
+    {
+      "name": "Gladys",
+      "aliases": [
+        "Glacor core"
+      ],
+      "order": 13
+    }
+  ]
+}

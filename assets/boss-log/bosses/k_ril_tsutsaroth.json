@@ -1,0 +1,90 @@
+{
+  "key": "k_ril_tsutsaroth",
+  "name": "K'ril Tsutsaroth",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Hood of subjugation",
+      "order": 1
+    },
+    {
+      "name": "Garb of subjugation",
+      "order": 2
+    },
+    {
+      "name": "Gown of subjugation",
+      "order": 3
+    },
+    {
+      "name": "Gloves of subjugation",
+      "order": 4
+    },
+    {
+      "name": "Boots of subjugation",
+      "order": 5
+    },
+    {
+      "name": "Zamorak hilt",
+      "order": 6
+    },
+    {
+      "name": "Godsword shard 1",
+      "order": 7
+    },
+    {
+      "name": "Godsword shard 2",
+      "order": 8
+    },
+    {
+      "name": "Godsword shard 3",
+      "order": 9
+    },
+    {
+      "name": "Zamorakian spear",
+      "order": 10
+    },
+    {
+      "name": "Steam battlestaff",
+      "order": 11
+    },
+    {
+      "name": "Ward of subjugation",
+      "order": 12
+    },
+    {
+      "name": "Warpriest of Zamorak helm",
+      "order": 13
+    },
+    {
+      "name": "Warpriest of Zamorak cape",
+      "order": 14
+    },
+    {
+      "name": "Warpriest of Zamorak cuirass",
+      "order": 15
+    },
+    {
+      "name": "Warpriest of Zamorak greaves",
+      "order": 16
+    },
+    {
+      "name": "Warpriest of Zamorak gauntlets",
+      "order": 17
+    },
+    {
+      "name": "Warpriest of Zamorak boots",
+      "order": 18
+    },
+    {
+      "name": "Razulei's Tale",
+      "order": 19
+    },
+    {
+      "name": "K'ril Tinyroth",
+      "aliases": [
+        "Severed hoof"
+      ],
+      "order": 20
+    }
+  ]
+}

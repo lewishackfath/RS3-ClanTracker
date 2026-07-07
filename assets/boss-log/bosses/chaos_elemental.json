@@ -1,0 +1,130 @@
+{
+  "key": "chaos_elemental",
+  "name": "Chaos Elemental",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Dragon 2h sword",
+      "order": 1
+    },
+    {
+      "name": "Corrupt dragon helm",
+      "order": 2
+    },
+    {
+      "name": "Corrupt dragon chainbody",
+      "order": 3
+    },
+    {
+      "name": "Corrupt dragon platelegs",
+      "order": 4
+    },
+    {
+      "name": "Corrupt dragon plateskirt",
+      "order": 5
+    },
+    {
+      "name": "Corrupt dragon battleaxe",
+      "order": 6
+    },
+    {
+      "name": "Corrupt dragon dagger",
+      "order": 7
+    },
+    {
+      "name": "Corrupt dragon longsword",
+      "order": 8
+    },
+    {
+      "name": "Corrupt dragon mace",
+      "order": 9
+    },
+    {
+      "name": "Corrupt dragon scimitar",
+      "order": 10
+    },
+    {
+      "name": "Corrupt dragon spear",
+      "order": 11
+    },
+    {
+      "name": "Corrupt dragon sq shield",
+      "order": 12
+    },
+    {
+      "name": "Statius's full helm",
+      "order": 13
+    },
+    {
+      "name": "Statius's platebody",
+      "order": 14
+    },
+    {
+      "name": "Statius's platelegs",
+      "order": 15
+    },
+    {
+      "name": "Statius's warhammer",
+      "order": 16
+    },
+    {
+      "name": "Vesta's chainbody",
+      "order": 17
+    },
+    {
+      "name": "Vesta's plateskirt",
+      "order": 18
+    },
+    {
+      "name": "Vesta's longsword",
+      "order": 19
+    },
+    {
+      "name": "Vesta's spear",
+      "order": 20
+    },
+    {
+      "name": "Zuriel's hood",
+      "order": 21
+    },
+    {
+      "name": "Zuriel's robe top",
+      "order": 22
+    },
+    {
+      "name": "Zuriel's robe bottom",
+      "order": 23
+    },
+    {
+      "name": "Zuriel's staff",
+      "order": 24
+    },
+    {
+      "name": "Morrigan's coif",
+      "order": 25
+    },
+    {
+      "name": "Morrigan's leather body",
+      "order": 26
+    },
+    {
+      "name": "Morrigan's leather chaps",
+      "order": 27
+    },
+    {
+      "name": "Morrigan's javelin",
+      "order": 28
+    },
+    {
+      "name": "Morrigan's throwing axe",
+      "order": 29
+    },
+    {
+      "name": "Ellie",
+      "aliases": [
+        "Ribs of chaos"
+      ],
+      "order": 30
+    }
+  ]
+}

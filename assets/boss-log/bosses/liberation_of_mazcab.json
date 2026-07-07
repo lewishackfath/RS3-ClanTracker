@@ -1,0 +1,89 @@
+{
+  "key": "liberation_of_mazcab",
+  "name": "Liberation of Mazcab",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Achto Primeval gloves",
+      "order": 1
+    },
+    {
+      "name": "Achto Primeval boots",
+      "order": 2
+    },
+    {
+      "name": "Achto Primeval mask",
+      "order": 3
+    },
+    {
+      "name": "Achto Primeval robe legs",
+      "order": 4
+    },
+    {
+      "name": "Achto Primeval robe top",
+      "order": 5
+    },
+    {
+      "name": "Achto Tempest gloves",
+      "order": 6
+    },
+    {
+      "name": "Achto Tempest boots",
+      "order": 7
+    },
+    {
+      "name": "Achto Tempest cowl",
+      "order": 8
+    },
+    {
+      "name": "Achto Tempest chaps",
+      "order": 9
+    },
+    {
+      "name": "Achto Tempest body",
+      "order": 10
+    },
+    {
+      "name": "Achto Teralith gauntlets",
+      "order": 11
+    },
+    {
+      "name": "Achto Teralith boots",
+      "order": 12
+    },
+    {
+      "name": "Achto Teralith helmet",
+      "order": 13
+    },
+    {
+      "name": "Achto Teralith leggings",
+      "order": 14
+    },
+    {
+      "name": "Achto Teralith cuirass",
+      "order": 15
+    },
+    {
+      "name": "Mazcab ability codex",
+      "order": 16
+    },
+    {
+      "name": "Lil' Tuzzy",
+      "order": 17
+    },
+    {
+      "name": "Diddyzag",
+      "aliases": [
+        "Durzag's helmet"
+      ],
+      "order": 18
+    },
+    {
+      "name": "Yakaminu",
+      "aliases": [
+        "Yakamaru's helmet"
+      ],
+      "order": 19
+    }
+  ]
+}

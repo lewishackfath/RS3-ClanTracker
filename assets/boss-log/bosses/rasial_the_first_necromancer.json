@@ -1,0 +1,42 @@
+{
+  "key": "rasial_the_first_necromancer",
+  "name": "Rasial, the First Necromancer",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Omni guard",
+      "order": 1
+    },
+    {
+      "name": "Soulbound lantern",
+      "order": 2
+    },
+    {
+      "name": "Crown of the First Necromancer",
+      "order": 3
+    },
+    {
+      "name": "Robe top of the First Necromancer",
+      "order": 4
+    },
+    {
+      "name": "Robe bottom of the First Necromancer",
+      "order": 5
+    },
+    {
+      "name": "Hand wrap of the First Necromancer",
+      "order": 6
+    },
+    {
+      "name": "Foot wraps of the First Necromancer",
+      "order": 7
+    },
+    {
+      "name": "Miso",
+      "aliases": [
+        "Miso's collar"
+      ],
+      "order": 8
+    }
+  ]
+}

@@ -1,0 +1,270 @@
+{
+  "version": "2026-07-07",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "bosses": [
+    {
+      "key": "araxxi",
+      "name": "Araxxi",
+      "file": "bosses/araxxi.json",
+      "order": 1
+    },
+    {
+      "key": "arch_glacor",
+      "name": "Arch-Glacor",
+      "file": "bosses/arch_glacor.json",
+      "order": 2
+    },
+    {
+      "key": "barrows",
+      "name": "Barrows",
+      "file": "bosses/barrows.json",
+      "order": 3
+    },
+    {
+      "key": "rise_of_the_six",
+      "name": "Rise of the Six",
+      "file": "bosses/rise_of_the_six.json",
+      "order": 4
+    },
+    {
+      "key": "chaos_elemental",
+      "name": "Chaos Elemental",
+      "file": "bosses/chaos_elemental.json",
+      "order": 5
+    },
+    {
+      "key": "commander_zilyana",
+      "name": "Commander Zilyana",
+      "file": "bosses/commander_zilyana.json",
+      "order": 6
+    },
+    {
+      "key": "corporeal_beast",
+      "name": "Corporeal Beast",
+      "file": "bosses/corporeal_beast.json",
+      "order": 7
+    },
+    {
+      "key": "croesus",
+      "name": "Croesus",
+      "file": "bosses/croesus.json",
+      "order": 8
+    },
+    {
+      "key": "dagannoth_kings",
+      "name": "Dagannoth Kings",
+      "file": "bosses/dagannoth_kings.json",
+      "order": 9
+    },
+    {
+      "key": "dragonkin_laboratory",
+      "name": "Dragonkin Laboratory",
+      "file": "bosses/dragonkin_laboratory.json",
+      "order": 10
+    },
+    {
+      "key": "the_gate_of_elidinis",
+      "name": "The Gate of Elidinis",
+      "file": "bosses/the_gate_of_elidinis.json",
+      "order": 11
+    },
+    {
+      "key": "general_graardor",
+      "name": "General Graardor",
+      "file": "bosses/general_graardor.json",
+      "order": 12
+    },
+    {
+      "key": "giant_mole",
+      "name": "Giant Mole",
+      "file": "bosses/giant_mole.json",
+      "order": 13
+    },
+    {
+      "key": "gregorovic",
+      "name": "Gregorovic",
+      "file": "bosses/gregorovic.json",
+      "order": 14
+    },
+    {
+      "key": "helwyr",
+      "name": "Helwyr",
+      "file": "bosses/helwyr.json",
+      "order": 15
+    },
+    {
+      "key": "hermod_the_spirit_of_war",
+      "name": "Hermod, the Spirit of War",
+      "file": "bosses/hermod_the_spirit_of_war.json",
+      "order": 16
+    },
+    {
+      "key": "kalphite_king",
+      "name": "Kalphite King",
+      "file": "bosses/kalphite_king.json",
+      "order": 17
+    },
+    {
+      "key": "kalphite_queen",
+      "name": "Kalphite Queen",
+      "file": "bosses/kalphite_queen.json",
+      "order": 18
+    },
+    {
+      "key": "kerapac",
+      "name": "Kerapac",
+      "file": "bosses/kerapac.json",
+      "order": 19
+    },
+    {
+      "key": "king_black_dragon",
+      "name": "King Black Dragon",
+      "file": "bosses/king_black_dragon.json",
+      "order": 20
+    },
+    {
+      "key": "kree_arra",
+      "name": "Kree'arra",
+      "file": "bosses/kree_arra.json",
+      "order": 21
+    },
+    {
+      "key": "k_ril_tsutsaroth",
+      "name": "K'ril Tsutsaroth",
+      "file": "bosses/k_ril_tsutsaroth.json",
+      "order": 22
+    },
+    {
+      "key": "legiones",
+      "name": "Legiones",
+      "file": "bosses/legiones.json",
+      "order": 23
+    },
+    {
+      "key": "liberation_of_mazcab",
+      "name": "Liberation of Mazcab",
+      "file": "bosses/liberation_of_mazcab.json",
+      "order": 24
+    },
+    {
+      "key": "the_magister",
+      "name": "The Magister",
+      "file": "bosses/the_magister.json",
+      "order": 25
+    },
+    {
+      "key": "nex",
+      "name": "Nex",
+      "file": "bosses/nex.json",
+      "order": 26
+    },
+    {
+      "key": "nex_angel_of_death",
+      "name": "Nex: Angel of Death",
+      "file": "bosses/nex_angel_of_death.json",
+      "order": 27
+    },
+    {
+      "key": "queen_black_dragon",
+      "name": "Queen Black Dragon",
+      "file": "bosses/queen_black_dragon.json",
+      "order": 28
+    },
+    {
+      "key": "raksha",
+      "name": "Raksha",
+      "file": "bosses/raksha.json",
+      "order": 29
+    },
+    {
+      "key": "rasial_the_first_necromancer",
+      "name": "Rasial, the First Necromancer",
+      "file": "bosses/rasial_the_first_necromancer.json",
+      "order": 30
+    },
+    {
+      "key": "rex_matriarchs",
+      "name": "Rex Matriarchs",
+      "file": "bosses/rex_matriarchs.json",
+      "order": 31
+    },
+    {
+      "key": "rex_matriarch_osseous",
+      "name": "Rex Matriarch: Osseous",
+      "file": "bosses/rex_matriarch_osseous.json",
+      "order": 32
+    },
+    {
+      "key": "sanctum_of_rebirth",
+      "name": "Sanctum of Rebirth",
+      "file": "bosses/sanctum_of_rebirth.json",
+      "order": 33
+    },
+    {
+      "key": "the_shadow_reef",
+      "name": "The Shadow Reef",
+      "file": "bosses/the_shadow_reef.json",
+      "order": 34
+    },
+    {
+      "key": "solak",
+      "name": "Solak",
+      "file": "bosses/solak.json",
+      "order": 35
+    },
+    {
+      "key": "telos",
+      "name": "Telos",
+      "file": "bosses/telos.json",
+      "order": 36
+    },
+    {
+      "key": "temple_of_aminishi",
+      "name": "Temple of Aminishi",
+      "file": "bosses/temple_of_aminishi.json",
+      "order": 37
+    },
+    {
+      "key": "twin_furies",
+      "name": "Twin Furies",
+      "file": "bosses/twin_furies.json",
+      "order": 38
+    },
+    {
+      "key": "tzhaar",
+      "name": "TzHaar",
+      "file": "bosses/tzhaar.json",
+      "order": 39
+    },
+    {
+      "key": "tzkal_zuk",
+      "name": "TzKal-Zuk",
+      "file": "bosses/tzkal_zuk.json",
+      "order": 40
+    },
+    {
+      "key": "vindicta_gorvek",
+      "name": "Vindicta & Gorvek",
+      "file": "bosses/vindicta_gorvek.json",
+      "order": 41
+    },
+    {
+      "key": "vorago",
+      "name": "Vorago",
+      "file": "bosses/vorago.json",
+      "order": 42
+    },
+    {
+      "key": "zamorak_lord_of_chaos",
+      "name": "Zamorak, Lord of Chaos",
+      "file": "bosses/zamorak_lord_of_chaos.json",
+      "order": 43
+    },
+    {
+      "key": "zemouregal_vorkath",
+      "name": "Zemouregal & Vorkath",
+      "file": "bosses/zemouregal_vorkath.json",
+      "order": 44
+    }
+  ]
+}

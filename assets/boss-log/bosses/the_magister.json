@@ -1,0 +1,42 @@
+{
+  "key": "the_magister",
+  "name": "The Magister",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Phylactery",
+      "order": 1
+    },
+    {
+      "name": "Gloves of passage",
+      "order": 2
+    },
+    {
+      "name": "The Minister",
+      "aliases": [
+        "Soul fragment (The Magister)"
+      ],
+      "order": 3
+    },
+    {
+      "name": "The Magister's Journal 1",
+      "order": 4
+    },
+    {
+      "name": "The Magister's Journal 2",
+      "order": 5
+    },
+    {
+      "name": "The Magister's Journal 3",
+      "order": 6
+    },
+    {
+      "name": "The Magister's Journal 4",
+      "order": 7
+    },
+    {
+      "name": "The Magister's Journal 5",
+      "order": 8
+    }
+  ]
+}

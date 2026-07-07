@@ -1,0 +1,38 @@
+{
+  "key": "corporeal_beast",
+  "name": "Corporeal Beast",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Spirit shield",
+      "order": 1
+    },
+    {
+      "name": "Spectral sigil",
+      "order": 2
+    },
+    {
+      "name": "Arcane sigil",
+      "order": 3
+    },
+    {
+      "name": "Elysian sigil",
+      "order": 4
+    },
+    {
+      "name": "Divine sigil",
+      "order": 5
+    },
+    {
+      "name": "Holy elixir",
+      "order": 6
+    },
+    {
+      "name": "Corporeal Puppy",
+      "aliases": [
+        "Corporeal bone"
+      ],
+      "order": 7
+    }
+  ]
+}

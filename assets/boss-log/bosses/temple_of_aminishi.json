@@ -1,0 +1,34 @@
+{
+  "key": "temple_of_aminishi",
+  "name": "Temple of Aminishi",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Fishy treat",
+      "order": 1
+    },
+    {
+      "name": "Crassian Allegiance",
+      "order": 2
+    },
+    {
+      "name": "Masuta's warspear",
+      "order": 3
+    },
+    {
+      "name": "Himiko's Vision",
+      "order": 4
+    },
+    {
+      "name": "Ancient scale",
+      "order": 5
+    },
+    {
+      "name": "Kuroryu",
+      "aliases": [
+        "Chipped black stone crystal"
+      ],
+      "order": 6
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "key": "gregorovic",
+  "name": "Gregorovic",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Crest of Sliske",
+      "order": 1
+    },
+    {
+      "name": "Dormant anima core helm",
+      "order": 2
+    },
+    {
+      "name": "Dormant anima core body",
+      "order": 3
+    },
+    {
+      "name": "Dormant anima core legs",
+      "order": 4
+    },
+    {
+      "name": "Sliskean essence",
+      "order": 5
+    },
+    {
+      "name": "Shadow glaive",
+      "order": 6
+    },
+    {
+      "name": "Off-hand shadow glaive",
+      "order": 7
+    },
+    {
+      "name": "Greg",
+      "aliases": [
+        "Faceless mask"
+      ],
+      "order": 8
+    }
+  ]
+}

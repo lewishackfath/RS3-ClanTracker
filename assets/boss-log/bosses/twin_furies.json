@@ -1,0 +1,49 @@
+{
+  "key": "twin_furies",
+  "name": "Twin Furies",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Crest of Zamorak",
+      "order": 1
+    },
+    {
+      "name": "Dormant anima core helm",
+      "order": 2
+    },
+    {
+      "name": "Dormant anima core body",
+      "order": 3
+    },
+    {
+      "name": "Dormant anima core legs",
+      "order": 4
+    },
+    {
+      "name": "Zamorakian essence",
+      "order": 5
+    },
+    {
+      "name": "Blade of Nymora",
+      "order": 6
+    },
+    {
+      "name": "Blade of Avaryss",
+      "order": 7
+    },
+    {
+      "name": "Nylessa",
+      "aliases": [
+        "Nymora's braid"
+      ],
+      "order": 8
+    },
+    {
+      "name": "Ava",
+      "aliases": [
+        "Avaryss' braid"
+      ],
+      "order": 9
+    }
+  ]
+}

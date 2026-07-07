@@ -1,0 +1,82 @@
+{
+  "key": "kree_arra",
+  "name": "Kree'arra",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Armadyl helmet",
+      "order": 1
+    },
+    {
+      "name": "Armadyl chestplate",
+      "order": 2
+    },
+    {
+      "name": "Armadyl chainskirt",
+      "order": 3
+    },
+    {
+      "name": "Armadyl gloves",
+      "order": 4
+    },
+    {
+      "name": "Armadyl boots",
+      "order": 5
+    },
+    {
+      "name": "Armadyl hilt",
+      "order": 6
+    },
+    {
+      "name": "Godsword shard 1",
+      "order": 7
+    },
+    {
+      "name": "Godsword shard 2",
+      "order": 8
+    },
+    {
+      "name": "Godsword shard 3",
+      "order": 9
+    },
+    {
+      "name": "Armadyl buckler",
+      "order": 10
+    },
+    {
+      "name": "Warpriest of Armadyl helm",
+      "order": 11
+    },
+    {
+      "name": "Warpriest of Armadyl cape",
+      "order": 12
+    },
+    {
+      "name": "Warpriest of Armadyl cuirass",
+      "order": 13
+    },
+    {
+      "name": "Warpriest of Armadyl greaves",
+      "order": 14
+    },
+    {
+      "name": "Warpriest of Armadyl gauntlets",
+      "order": 15
+    },
+    {
+      "name": "Warpriest of Armadyl boots",
+      "order": 16
+    },
+    {
+      "name": "Armadyl's Assault",
+      "order": 17
+    },
+    {
+      "name": "Chick'arra",
+      "aliases": [
+        "Giant feather"
+      ],
+      "order": 18
+    }
+  ]
+}

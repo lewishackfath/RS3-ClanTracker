@@ -1,0 +1,50 @@
+{
+  "key": "croesus",
+  "name": "Croesus",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Cryptbloom helm (incomplete)",
+      "order": 1
+    },
+    {
+      "name": "Cryptbloom top (incomplete)",
+      "order": 2
+    },
+    {
+      "name": "Cryptbloom bottoms (incomplete)",
+      "order": 3
+    },
+    {
+      "name": "Cryptbloom gloves (incomplete)",
+      "order": 4
+    },
+    {
+      "name": "Cryptbloom boots (incomplete)",
+      "order": 5
+    },
+    {
+      "name": "Croesus sporehammer",
+      "order": 6
+    },
+    {
+      "name": "Croesus foultorch",
+      "order": 7
+    },
+    {
+      "name": "Croesus spore sack",
+      "order": 8
+    },
+    {
+      "name": "Scripture of Bik",
+      "order": 9
+    },
+    {
+      "name": "Little Sus",
+      "aliases": [
+        "Croesus's enriched root"
+      ],
+      "order": 10
+    }
+  ]
+}

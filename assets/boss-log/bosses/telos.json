@@ -1,0 +1,42 @@
+{
+  "key": "telos",
+  "name": "Telos",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Orb of pure anima",
+      "order": 1
+    },
+    {
+      "name": "Orb of corrupted anima",
+      "order": 2
+    },
+    {
+      "name": "Orb of volcanic anima",
+      "order": 3
+    },
+    {
+      "name": "Dormant Seren godbow",
+      "order": 4
+    },
+    {
+      "name": "Dormant staff of Sliske",
+      "order": 5
+    },
+    {
+      "name": "Dormant Zaros godsword",
+      "order": 6
+    },
+    {
+      "name": "Reprisal ability codex",
+      "order": 7
+    },
+    {
+      "name": "Tess",
+      "aliases": [
+        "Telos' tendril"
+      ],
+      "order": 8
+    }
+  ]
+}

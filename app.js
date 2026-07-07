@@ -1638,7 +1638,7 @@ function formatShortDateFromUtc(value) {
 }
 
 function setJournalView(view) {
-  selectedJournalView = view === "xpstats" || view === "drops" ? view : "activity";
+  selectedJournalView = ["xpstats", "drops", "bosslog"].includes(view) ? view : "activity";
 
   qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
     const active = btn.getAttribute("data-journal-view") === selectedJournalView;
@@ -1647,11 +1647,18 @@ function setJournalView(view) {
   });
 
   const title = qs("journalTitle");
-  if (title) title.textContent = "Activity Journal";
+  if (title) {
+    title.textContent = selectedJournalView === "xpstats"
+      ? "XP Stats"
+      : (selectedJournalView === "drops"
+        ? "Drop History"
+        : (selectedJournalView === "bosslog" ? "Boss Log" : "Activity Journal"));
+  }
 
   show(qs("activityJournalView"), selectedJournalView === "activity");
   show(qs("xpStatsView"), selectedJournalView === "xpstats");
   show(qs("dropHistoryView"), selectedJournalView === "drops");
+  show(qs("bossCollectionLogView"), selectedJournalView === "bosslog");
 
   const limitWrap = qs("activityLimitWrap");
   if (limitWrap) {
@@ -1660,6 +1667,7 @@ function setJournalView(view) {
 
   if (selectedJournalView === "xpstats") renderXpStats();
   if (selectedJournalView === "drops") renderDropHistory();
+  if (selectedJournalView === "bosslog") renderBossCollectionLog();
 }
 
 function xpSkillSelectionForChart(chartKey) {
@@ -2179,6 +2187,109 @@ function renderDropHistory() {
       </table>
     </div>
   `;
+}
+
+
+function wireBossCollectionLogIcons(root) {
+  if (!root) return;
+
+  const applyIcons = () => {
+    root.querySelectorAll("img.bossLogItemIcon").forEach(img => {
+      const itemName = img.getAttribute("data-item") || "";
+      const candidates = itemName ? dropItemIconCandidates(itemName) : [];
+      candidates.push("assets/activity/default.png");
+      setImgWithFallback(img, candidates, "assets/activity/default.png");
+    });
+  };
+
+  applyIcons();
+  Promise.all([loadItemNameCleanupRules(), loadItemIconAliases()]).then(applyIcons).catch(() => {});
+}
+
+function renderBossCollectionLog() {
+  const el = qs("bossCollectionLogView");
+  if (!el) return;
+
+  const log = playerData?.boss_collection_log || null;
+  if (!log) {
+    el.innerHTML = `<div class="xpStatsEmpty muted">Boss collection log data is not available for this player yet.</div>`;
+    return;
+  }
+
+  const bosses = Array.isArray(log.bosses) ? log.bosses : [];
+  const summary = log.summary || {};
+  const totalItems = Number.isFinite(Number(summary.total_items)) ? Number(summary.total_items) : 0;
+  const foundItems = Number.isFinite(Number(summary.found_items)) ? Number(summary.found_items) : 0;
+  const completeBosses = Number.isFinite(Number(summary.complete_bosses)) ? Number(summary.complete_bosses) : 0;
+  const totalBosses = Number.isFinite(Number(summary.total_bosses)) ? Number(summary.total_bosses) : bosses.length;
+  const percent = totalItems > 0 ? Math.round((foundItems / totalItems) * 100) : 0;
+
+  if (!bosses.length) {
+    el.innerHTML = `<div class="xpStatsEmpty muted">No boss collection log definitions were found.</div>`;
+    return;
+  }
+
+  const notice = log.available === false
+    ? `<div class="bossLogNotice">${escapeHtml(log.error || "Boss collection log storage is not ready. Run the updated database bootstrap, then reload this page.")}</div>`
+    : "";
+
+  el.innerHTML = `
+    <div class="bossLogSummary">
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Log progress</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(foundItems))}/${escapeHtml(formatNumber(totalItems))}</div>
+      </div>
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Completion</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(percent))}%</div>
+      </div>
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Completed bosses</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(completeBosses))}/${escapeHtml(formatNumber(totalBosses))}</div>
+      </div>
+    </div>
+    ${notice}
+    <div class="bossLogGrid">
+      ${bosses.map(boss => {
+        const items = Array.isArray(boss?.items) ? boss.items : [];
+        const found = Number.isFinite(Number(boss?.found_items)) ? Number(boss.found_items) : items.filter(item => item?.found).length;
+        const total = Number.isFinite(Number(boss?.total_items)) ? Number(boss.total_items) : items.length;
+        const bossPercent = total > 0 ? Math.round((found / total) * 100) : 0;
+        return `
+          <section class="bossLogCard" aria-label="${escapeHtml(boss?.name || "Boss collection log")}">
+            <div class="bossLogCardHeader">
+              <div>
+                <h4>${escapeHtml(boss?.name || "Unknown boss")}</h4>
+                <div class="bossLogProgressText">${escapeHtml(formatNumber(found))}/${escapeHtml(formatNumber(total))} collected</div>
+              </div>
+              <div class="bossLogProgressPercent">${escapeHtml(formatNumber(bossPercent))}%</div>
+            </div>
+            <div class="bossLogProgressBar" aria-hidden="true"><span style="width:${Math.max(0, Math.min(100, bossPercent))}%"></span></div>
+            <div class="bossLogItems">
+              ${items.map(item => {
+                const itemName = String(item?.name || "Unknown item");
+                const isFound = Boolean(item?.found);
+                const count = Number.isFinite(Number(item?.drop_count)) ? Number(item.drop_count) : 0;
+                const lastSeen = item?.last_seen_local || item?.last_seen_utc || "";
+                const title = isFound
+                  ? `${itemName}${count > 1 ? ` × ${formatNumber(count)}` : ""}${lastSeen ? ` — last seen ${lastSeen}` : ""}`
+                  : `${itemName} — not yet collected`;
+                return `
+                  <div class="bossLogItem ${isFound ? "found" : "missing"}" title="${escapeHtml(title)}">
+                    <img class="bossLogItemIcon" data-item="${escapeHtml(itemName)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async">
+                    <div class="bossLogItemName">${escapeHtml(itemName)}</div>
+                    ${isFound && count > 1 ? `<div class="bossLogItemCount">×${escapeHtml(formatNumber(count))}</div>` : ""}
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </section>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  wireBossCollectionLogIcons(el);
 }
 
 
@@ -3049,6 +3160,7 @@ async function loadPlayer(rsn, period) {
   if (qs("activityList")) qs("activityList").innerHTML = "";
   if (qs("xpStatsView")) qs("xpStatsView").innerHTML = "";
   if (qs("dropHistoryView")) qs("dropHistoryView").innerHTML = "";
+  if (qs("bossCollectionLogView")) qs("bossCollectionLogView").innerHTML = "";
 
   const activityLimit = normaliseActivityLimit(selectedActivityLimit);
   const url = buildPlayerApiUrl(rsn, period || "7d", activityLimit, true);

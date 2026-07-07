@@ -1,0 +1,163 @@
+{
+  "key": "barrows",
+  "name": "Barrows",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Corruption sigil",
+      "order": 1
+    },
+    {
+      "name": "Ahrim's hood",
+      "order": 2
+    },
+    {
+      "name": "Ahrim's robe top",
+      "order": 3
+    },
+    {
+      "name": "Ahrim's robe skirt",
+      "order": 4
+    },
+    {
+      "name": "Ahrim's staff",
+      "order": 5
+    },
+    {
+      "name": "Ahrim's wand",
+      "order": 6
+    },
+    {
+      "name": "Ahrim's book of magic",
+      "order": 7
+    },
+    {
+      "name": "Akrisae's hood",
+      "order": 8
+    },
+    {
+      "name": "Akrisae's robe top",
+      "order": 9
+    },
+    {
+      "name": "Akrisae's robe skirt",
+      "order": 10
+    },
+    {
+      "name": "Akrisae's war mace",
+      "order": 11
+    },
+    {
+      "name": "Dharok's helm",
+      "order": 12
+    },
+    {
+      "name": "Dharok's platebody",
+      "order": 13
+    },
+    {
+      "name": "Dharok's platelegs",
+      "order": 14
+    },
+    {
+      "name": "Dharok's greataxe",
+      "order": 15
+    },
+    {
+      "name": "Guthan's helm",
+      "order": 16
+    },
+    {
+      "name": "Guthan's platebody",
+      "order": 17
+    },
+    {
+      "name": "Guthan's chainskirt",
+      "order": 18
+    },
+    {
+      "name": "Guthan's warspear",
+      "order": 19
+    },
+    {
+      "name": "Karil's coif",
+      "order": 20
+    },
+    {
+      "name": "Karil's top",
+      "order": 21
+    },
+    {
+      "name": "Karil's skirt",
+      "order": 22
+    },
+    {
+      "name": "Karil's crossbow",
+      "order": 23
+    },
+    {
+      "name": "Karil's pistol crossbow",
+      "order": 24
+    },
+    {
+      "name": "Karil's off-hand pistol crossbow",
+      "order": 25
+    },
+    {
+      "name": "Torag's helm",
+      "order": 26
+    },
+    {
+      "name": "Torag's platebody",
+      "order": 27
+    },
+    {
+      "name": "Torag's platelegs",
+      "order": 28
+    },
+    {
+      "name": "Torag's hammer",
+      "order": 29
+    },
+    {
+      "name": "Verac's helm",
+      "order": 30
+    },
+    {
+      "name": "Verac's brassard",
+      "order": 31
+    },
+    {
+      "name": "Verac's plateskirt",
+      "order": 32
+    },
+    {
+      "name": "Verac's flail",
+      "order": 33
+    },
+    {
+      "name": "Linza's helm",
+      "order": 34
+    },
+    {
+      "name": "Linza's cuirass",
+      "order": 35
+    },
+    {
+      "name": "Linza's greaves",
+      "order": 36
+    },
+    {
+      "name": "Linza's hammer",
+      "order": 37
+    },
+    {
+      "name": "Linza's shield",
+      "order": 38
+    },
+    {
+      "name": "Amulet of the forsaken",
+      "order": 39
+    }
+  ]
+}

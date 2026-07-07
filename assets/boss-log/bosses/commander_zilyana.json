@@ -1,0 +1,82 @@
+{
+  "key": "commander_zilyana",
+  "name": "Commander Zilyana",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Saradomin's hiss",
+      "order": 1
+    },
+    {
+      "name": "Saradomin's murmur",
+      "order": 2
+    },
+    {
+      "name": "Saradomin's whisper",
+      "order": 3
+    },
+    {
+      "name": "Saradomin hilt",
+      "order": 4
+    },
+    {
+      "name": "Godsword shard 1",
+      "order": 5
+    },
+    {
+      "name": "Godsword shard 2",
+      "order": 6
+    },
+    {
+      "name": "Godsword shard 3",
+      "order": 7
+    },
+    {
+      "name": "Saradomin sword",
+      "order": 8
+    },
+    {
+      "name": "Armadyl crossbow",
+      "order": 9
+    },
+    {
+      "name": "Off-hand Armadyl crossbow",
+      "order": 10
+    },
+    {
+      "name": "Warpriest of Saradomin helm",
+      "order": 11
+    },
+    {
+      "name": "Warpriest of Saradomin cape",
+      "order": 12
+    },
+    {
+      "name": "Warpriest of Saradomin cuirass",
+      "order": 13
+    },
+    {
+      "name": "Warpriest of Saradomin greaves",
+      "order": 14
+    },
+    {
+      "name": "Warpriest of Saradomin gauntlets",
+      "order": 15
+    },
+    {
+      "name": "Warpriest of Saradomin boots",
+      "order": 16
+    },
+    {
+      "name": "Zilyana's Notes",
+      "order": 17
+    },
+    {
+      "name": "Commander Miniana",
+      "aliases": [
+        "Auburn lock"
+      ],
+      "order": 18
+    }
+  ]
+}

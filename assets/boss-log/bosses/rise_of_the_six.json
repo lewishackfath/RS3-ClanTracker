@@ -1,0 +1,50 @@
+{
+  "key": "rise_of_the_six",
+  "name": "Rise of the Six",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Malevolent kiteshield",
+      "order": 1
+    },
+    {
+      "name": "Merciless kiteshield",
+      "order": 2
+    },
+    {
+      "name": "Vengeful kiteshield",
+      "order": 3
+    },
+    {
+      "name": "Malevolent energy",
+      "aliases": [
+        "Malevolent energy (unstable)"
+      ],
+      "order": 4
+    },
+    {
+      "name": "Ahrim bobblehead",
+      "order": 5
+    },
+    {
+      "name": "Dharok bobblehead",
+      "order": 6
+    },
+    {
+      "name": "Guthan bobblehead",
+      "order": 7
+    },
+    {
+      "name": "Karil bobblehead",
+      "order": 8
+    },
+    {
+      "name": "Torag bobblehead",
+      "order": 9
+    },
+    {
+      "name": "Verac bobblehead",
+      "order": 10
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "key": "hermod_the_spirit_of_war",
+  "name": "Hermod, the Spirit of War",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Hermodic plate",
+      "order": 1
+    },
+    {
+      "name": "Animated drumsticks",
+      "order": 2
+    },
+    {
+      "name": "Herman",
+      "aliases": [
+        "Hermod's armour spike"
+      ],
+      "order": 3
+    }
+  ]
+}

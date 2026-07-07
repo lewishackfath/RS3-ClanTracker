@@ -187,6 +187,7 @@ include __DIR__ . '/includes/menu.php';
               <button class="segBtn active" type="button" data-journal-view="activity" role="tab" aria-selected="true">Activity Journal</button>
               <button class="segBtn" type="button" data-journal-view="xpstats" role="tab" aria-selected="false">XP Stats</button>
               <button class="segBtn" type="button" data-journal-view="drops" role="tab" aria-selected="false">Drop History</button>
+              <button class="segBtn" type="button" data-journal-view="bosslog" role="tab" aria-selected="false">Boss Log</button>
             </div>
           </div>
           <div id="activityJournalView">
@@ -195,6 +196,7 @@ include __DIR__ . '/includes/menu.php';
           </div>
           <div class="xpStatsPanel hidden" id="xpStatsView" aria-live="polite"></div>
           <div class="dropHistoryPanel hidden" id="dropHistoryView" aria-live="polite"></div>
+          <div class="bossCollectionPanel hidden" id="bossCollectionLogView" aria-live="polite"></div>
         </div>
       </div>
 

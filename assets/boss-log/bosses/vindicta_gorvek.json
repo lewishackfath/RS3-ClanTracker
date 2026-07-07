@@ -1,0 +1,45 @@
+{
+  "key": "vindicta_gorvek",
+  "name": "Vindicta & Gorvek",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Crest of Zaros",
+      "order": 1
+    },
+    {
+      "name": "Dormant anima core helm",
+      "order": 2
+    },
+    {
+      "name": "Dormant anima core body",
+      "order": 3
+    },
+    {
+      "name": "Dormant anima core legs",
+      "order": 4
+    },
+    {
+      "name": "Zarosian essence",
+      "order": 5
+    },
+    {
+      "name": "Dragon Rider lance",
+      "order": 6
+    },
+    {
+      "name": "Vindiddy",
+      "aliases": [
+        "Imbued blade slice"
+      ],
+      "order": 7
+    },
+    {
+      "name": "Rawrvek",
+      "aliases": [
+        "Glimmering scale"
+      ],
+      "order": 8
+    }
+  ]
+}

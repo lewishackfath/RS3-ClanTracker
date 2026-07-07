@@ -1,0 +1,42 @@
+{
+  "key": "helwyr",
+  "name": "Helwyr",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Crest of Seren",
+      "order": 1
+    },
+    {
+      "name": "Dormant anima core helm",
+      "order": 2
+    },
+    {
+      "name": "Dormant anima core body",
+      "order": 3
+    },
+    {
+      "name": "Dormant anima core legs",
+      "order": 4
+    },
+    {
+      "name": "Serenic essence",
+      "order": 5
+    },
+    {
+      "name": "Wand of the Cywir elders",
+      "order": 6
+    },
+    {
+      "name": "Orb of the Cywir elders",
+      "order": 7
+    },
+    {
+      "name": "Lilwyr",
+      "aliases": [
+        "Twisted antler"
+      ],
+      "order": 8
+    }
+  ]
+}

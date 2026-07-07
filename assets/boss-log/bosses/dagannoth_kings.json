@@ -1,0 +1,56 @@
+{
+  "key": "dagannoth_kings",
+  "name": "Dagannoth Kings",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Seers' ring",
+      "order": 1
+    },
+    {
+      "name": "Berserker ring",
+      "order": 2
+    },
+    {
+      "name": "Warrior ring",
+      "order": 3
+    },
+    {
+      "name": "Archers' ring",
+      "order": 4
+    },
+    {
+      "name": "Mud battlestaff",
+      "order": 5
+    },
+    {
+      "name": "Dragon hatchet",
+      "order": 6
+    },
+    {
+      "name": "Seercull",
+      "order": 7
+    },
+    {
+      "name": "Prime hatchling",
+      "aliases": [
+        "Dagannoth egg"
+      ],
+      "order": 8
+    },
+    {
+      "name": "Rex hatchling",
+      "aliases": [
+        "Shrivelled dagannoth claw"
+      ],
+      "order": 9
+    },
+    {
+      "name": "Supreme hatchling",
+      "aliases": [
+        "Dagannoth scale"
+      ],
+      "order": 10
+    }
+  ]
+}

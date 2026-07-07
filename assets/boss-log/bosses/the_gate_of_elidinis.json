@@ -1,0 +1,38 @@
+{
+  "key": "the_gate_of_elidinis",
+  "name": "The Gate of Elidinis",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Runic attuner",
+      "order": 1
+    },
+    {
+      "name": "Memory dowser",
+      "order": 2
+    },
+    {
+      "name": "Scripture of Elidinis",
+      "order": 3
+    },
+    {
+      "name": "Latent Offering",
+      "order": 4
+    },
+    {
+      "name": "After The Flood",
+      "order": 5
+    },
+    {
+      "name": "Eclipsed Soul prayer codex",
+      "order": 6
+    },
+    {
+      "name": "Edie",
+      "aliases": [
+        "Fragment of the Gate"
+      ],
+      "order": 7
+    }
+  ]
+}

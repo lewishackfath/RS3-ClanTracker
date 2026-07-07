@@ -1,0 +1,42 @@
+{
+  "key": "kalphite_king",
+  "name": "Kalphite King",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Drygore longsword",
+      "order": 1
+    },
+    {
+      "name": "Off-hand drygore longsword",
+      "order": 2
+    },
+    {
+      "name": "Drygore mace",
+      "order": 3
+    },
+    {
+      "name": "Off-hand drygore mace",
+      "order": 4
+    },
+    {
+      "name": "Drygore rapier",
+      "order": 5
+    },
+    {
+      "name": "Off-hand drygore rapier",
+      "order": 6
+    },
+    {
+      "name": "Perfect chitin",
+      "order": 7
+    },
+    {
+      "name": "Kalphite Grubling",
+      "aliases": [
+        "Kalphite claw"
+      ],
+      "order": 8
+    }
+  ]
+}

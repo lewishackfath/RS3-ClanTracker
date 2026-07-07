@@ -1,0 +1,38 @@
+{
+  "key": "kerapac",
+  "name": "Kerapac",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Fractured Armadyl symbol",
+      "order": 1
+    },
+    {
+      "name": "Fractured stabilisation gem",
+      "order": 2
+    },
+    {
+      "name": "Staff of Armadyl's fractured shaft",
+      "order": 3
+    },
+    {
+      "name": "Kerapac's wrist wraps",
+      "order": 4
+    },
+    {
+      "name": "Greater Concentrated blast ability codex",
+      "order": 5
+    },
+    {
+      "name": "Scripture of Jas",
+      "order": 6
+    },
+    {
+      "name": "Kerry",
+      "aliases": [
+        "Kerapac's mask piece"
+      ],
+      "order": 7
+    }
+  ]
+}

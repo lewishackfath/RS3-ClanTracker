@@ -1,0 +1,58 @@
+{
+  "key": "queen_black_dragon",
+  "name": "Queen Black Dragon",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Dragon kiteshield",
+      "order": 1
+    },
+    {
+      "name": "Royal bolt stabiliser",
+      "order": 2
+    },
+    {
+      "name": "Royal frame",
+      "order": 3
+    },
+    {
+      "name": "Royal sight",
+      "order": 4
+    },
+    {
+      "name": "Royal torsion spring",
+      "order": 5
+    },
+    {
+      "name": "Draconic visage",
+      "order": 6
+    },
+    {
+      "name": "Dragonbone upgrade kit",
+      "order": 7
+    },
+    {
+      "name": "Queen Black Dragonling",
+      "aliases": [
+        "Queen Black Dragon scale"
+      ],
+      "order": 8
+    },
+    {
+      "name": "First dragonkin journal",
+      "order": 9
+    },
+    {
+      "name": "Second dragonkin journal",
+      "order": 10
+    },
+    {
+      "name": "Third dragonkin journal",
+      "order": 11
+    },
+    {
+      "name": "Fourth dragonkin journal",
+      "order": 12
+    }
+  ]
+}

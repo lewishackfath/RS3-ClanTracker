@@ -1,0 +1,38 @@
+{
+  "key": "solak",
+  "name": "Solak",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Torn grimoire page",
+      "order": 1
+    },
+    {
+      "name": "Blightbound crossbow",
+      "order": 2
+    },
+    {
+      "name": "Off-hand Blightbound crossbow",
+      "order": 3
+    },
+    {
+      "name": "Erethdor's grimoire",
+      "order": 4
+    },
+    {
+      "name": "Purple mushroom",
+      "order": 5
+    },
+    {
+      "name": "Merethiel's stave",
+      "order": 6
+    },
+    {
+      "name": "Solly",
+      "aliases": [
+        "Imbued bark shard"
+      ],
+      "order": 7
+    }
+  ]
+}

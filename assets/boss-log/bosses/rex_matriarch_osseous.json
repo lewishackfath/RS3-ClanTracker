@@ -1,0 +1,42 @@
+{
+  "key": "rex_matriarch_osseous",
+  "name": "Rex Matriarch: Osseous",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Savage spear tip",
+      "order": 1
+    },
+    {
+      "name": "Savage spear shaft",
+      "order": 2
+    },
+    {
+      "name": "Savage spear cap",
+      "order": 3
+    },
+    {
+      "name": "Savage plume",
+      "order": 4
+    },
+    {
+      "name": "Heart of the Berserker",
+      "order": 5
+    },
+    {
+      "name": "Baby Osseous",
+      "aliases": [
+        "Calcified heart"
+      ],
+      "order": 6
+    },
+    {
+      "name": "Jail cell key",
+      "order": 7
+    },
+    {
+      "name": "Occultist's ring",
+      "order": 8
+    }
+  ]
+}

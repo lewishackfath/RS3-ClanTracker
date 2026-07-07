@@ -1,0 +1,42 @@
+{
+  "key": "king_black_dragon",
+  "name": "King Black Dragon",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Dragon Rider gloves",
+      "order": 1
+    },
+    {
+      "name": "Dragon Rider boots",
+      "order": 2
+    },
+    {
+      "name": "Draconic visage",
+      "order": 3
+    },
+    {
+      "name": "King black dragon head",
+      "order": 4
+    },
+    {
+      "name": "Last riders",
+      "order": 5
+    },
+    {
+      "name": "Dragon kite ornament kit (or)",
+      "order": 6
+    },
+    {
+      "name": "Dragon kite ornament kit (sp)",
+      "order": 7
+    },
+    {
+      "name": "King Black Dragonling",
+      "aliases": [
+        "King black dragon scale"
+      ],
+      "order": 8
+    }
+  ]
+}

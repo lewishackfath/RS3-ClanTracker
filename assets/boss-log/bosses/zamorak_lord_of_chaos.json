@@ -1,0 +1,50 @@
+{
+  "key": "zamorak_lord_of_chaos",
+  "name": "Zamorak, Lord of Chaos",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Chaos Roar ability codex",
+      "order": 1
+    },
+    {
+      "name": "Top of the Last Guardian's bow",
+      "order": 2
+    },
+    {
+      "name": "Divine bowstring",
+      "order": 3
+    },
+    {
+      "name": "Bottom of the Last Guardian's bow",
+      "order": 4
+    },
+    {
+      "name": "Vestments of havoc robe top",
+      "order": 5
+    },
+    {
+      "name": "Vestments of havoc robe bottom",
+      "order": 6
+    },
+    {
+      "name": "Vestments of havoc hood",
+      "order": 7
+    },
+    {
+      "name": "Vestments of havoc boots",
+      "order": 8
+    },
+    {
+      "name": "Codex of lost knowledge",
+      "order": 9
+    },
+    {
+      "name": "Zammo the Rak",
+      "aliases": [
+        "Jewels of Zamorak"
+      ],
+      "order": 10
+    }
+  ]
+}

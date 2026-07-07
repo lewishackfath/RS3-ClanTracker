@@ -1,0 +1,85 @@
+{
+  "key": "general_graardor",
+  "name": "General Graardor",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Bandos helmet",
+      "order": 1
+    },
+    {
+      "name": "Bandos chestplate",
+      "order": 2
+    },
+    {
+      "name": "Bandos tassets",
+      "order": 3
+    },
+    {
+      "name": "Bandos gloves",
+      "order": 4
+    },
+    {
+      "name": "Bandos boots",
+      "order": 5
+    },
+    {
+      "name": "Bandos hilt",
+      "order": 6
+    },
+    {
+      "name": "Godsword shard 1",
+      "order": 7
+    },
+    {
+      "name": "Godsword shard 2",
+      "order": 8
+    },
+    {
+      "name": "Godsword shard 3",
+      "order": 9
+    },
+    {
+      "name": "Bandos warshield",
+      "aliases": [
+        "Bandos shield"
+      ],
+      "order": 10
+    },
+    {
+      "name": "Warpriest of Bandos helm",
+      "order": 11
+    },
+    {
+      "name": "Warpriest of Bandos cape",
+      "order": 12
+    },
+    {
+      "name": "Warpriest of Bandos cuirass",
+      "order": 13
+    },
+    {
+      "name": "Warpriest of Bandos greaves",
+      "order": 14
+    },
+    {
+      "name": "Warpriest of Bandos gauntlets",
+      "order": 15
+    },
+    {
+      "name": "Warpriest of Bandos boots",
+      "order": 16
+    },
+    {
+      "name": "The Glory of General Graardor",
+      "order": 17
+    },
+    {
+      "name": "General Awwdor",
+      "aliases": [
+        "Decaying tooth"
+      ],
+      "order": 18
+    }
+  ]
+}

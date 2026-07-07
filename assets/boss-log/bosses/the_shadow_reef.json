@@ -1,0 +1,38 @@
+{
+  "key": "the_shadow_reef",
+  "name": "The Shadow Reef",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Eldritch crossbow limb",
+      "order": 1
+    },
+    {
+      "name": "Eldritch crossbow mechanism",
+      "order": 2
+    },
+    {
+      "name": "Eldritch crossbow stock",
+      "order": 3
+    },
+    {
+      "name": "Black stone heart",
+      "order": 4
+    },
+    {
+      "name": "The Last Offering",
+      "order": 5
+    },
+    {
+      "name": "Kranon's Ancient Journal",
+      "order": 6
+    },
+    {
+      "name": "Ambi",
+      "aliases": [
+        "Umbral urn"
+      ],
+      "order": 7
+    }
+  ]
+}

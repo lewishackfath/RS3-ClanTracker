@@ -1,0 +1,26 @@
+{
+  "key": "kalphite_queen",
+  "name": "Kalphite Queen",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Dragon chainbody",
+      "order": 1
+    },
+    {
+      "name": "Dragon 2h sword",
+      "order": 2
+    },
+    {
+      "name": "Kalphite queen head",
+      "order": 3
+    },
+    {
+      "name": "Kalphite Grublet",
+      "aliases": [
+        "Kalphite egg"
+      ],
+      "order": 4
+    }
+  ]
+}

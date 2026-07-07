@@ -1,0 +1,57 @@
+{
+  "key": "vorago",
+  "name": "Vorago",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Seismic wand",
+      "order": 1
+    },
+    {
+      "name": "Seismic singularity",
+      "order": 2
+    },
+    {
+      "name": "Tectonic energy",
+      "order": 3
+    },
+    {
+      "name": "Omens helm",
+      "order": 4
+    },
+    {
+      "name": "Omens torso",
+      "order": 5
+    },
+    {
+      "name": "Omens legs",
+      "order": 6
+    },
+    {
+      "name": "Omens gloves",
+      "order": 7
+    },
+    {
+      "name": "Omens feet",
+      "order": 8
+    },
+    {
+      "name": "Maul of omens",
+      "order": 9
+    },
+    {
+      "name": "Vitalis",
+      "aliases": [
+        "Ancient summoning stone"
+      ],
+      "order": 10
+    },
+    {
+      "name": "Bombi",
+      "aliases": [
+        "Ancient artefact"
+      ],
+      "order": 11
+    }
+  ]
+}

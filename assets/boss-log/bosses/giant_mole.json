@@ -1,0 +1,22 @@
+{
+  "key": "giant_mole",
+  "name": "Giant Mole",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Dragon 2h sword",
+      "order": 1
+    },
+    {
+      "name": "Clingy mole",
+      "order": 2
+    },
+    {
+      "name": "Molly",
+      "aliases": [
+        "Rotten fang"
+      ],
+      "order": 3
+    }
+  ]
+}

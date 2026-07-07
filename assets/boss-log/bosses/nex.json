@@ -1,0 +1,94 @@
+{
+  "key": "nex",
+  "name": "Nex",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Torva full helm",
+      "order": 1
+    },
+    {
+      "name": "Torva platebody",
+      "order": 2
+    },
+    {
+      "name": "Torva platelegs",
+      "order": 3
+    },
+    {
+      "name": "Torva gloves",
+      "order": 4
+    },
+    {
+      "name": "Torva boots",
+      "order": 5
+    },
+    {
+      "name": "Pernix cowl",
+      "order": 6
+    },
+    {
+      "name": "Pernix body",
+      "order": 7
+    },
+    {
+      "name": "Pernix chaps",
+      "order": 8
+    },
+    {
+      "name": "Pernix gloves",
+      "order": 9
+    },
+    {
+      "name": "Pernix boots",
+      "order": 10
+    },
+    {
+      "name": "Zaryte bow",
+      "order": 11
+    },
+    {
+      "name": "Virtus mask",
+      "order": 12
+    },
+    {
+      "name": "Virtus robe top",
+      "order": 13
+    },
+    {
+      "name": "Virtus robe legs",
+      "order": 14
+    },
+    {
+      "name": "Virtus gloves",
+      "order": 15
+    },
+    {
+      "name": "Virtus boots",
+      "order": 16
+    },
+    {
+      "name": "Virtus wand",
+      "order": 17
+    },
+    {
+      "name": "Virtus book",
+      "order": 18
+    },
+    {
+      "name": "Ancient emblem",
+      "order": 19
+    },
+    {
+      "name": "Nex's Followers",
+      "order": 20
+    },
+    {
+      "name": "Nexterminator",
+      "aliases": [
+        "Blood-soaked feather"
+      ],
+      "order": 21
+    }
+  ]
+}
