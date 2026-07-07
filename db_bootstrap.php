@@ -109,6 +109,7 @@ function dbb_tables_present(PDO $pdo): array {
 
 function dbb_drop_known_tables(PDO $pdo): void {
     $dropOrder = [
+        'member_boss_collection_submissions',
         'member_boss_collection_log',
         'member_poll_state',
         'member_rm_quests',
@@ -251,6 +252,9 @@ function dbb_create_tables(PDO $pdo): void
         `first_seen_utc` DATETIME(3) NULL,
         `last_seen_utc` DATETIME(3) NULL,
         `source_activity_id` {$activityIdType} NULL,
+        `collection_source` VARCHAR(40) NOT NULL DEFAULT 'runemetrics',
+        `source_note` VARCHAR(255) NULL,
+        `manual_updated_at_utc` DATETIME(3) NULL,
         `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
         `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
         PRIMARY KEY (`id`),
@@ -259,6 +263,7 @@ function dbb_create_tables(PDO $pdo): void
         KEY `idx_boss_log_boss` (`boss_key`),
         KEY `idx_boss_log_item` (`item_key`),
         KEY `idx_boss_log_source_activity` (`source_activity_id`),
+        KEY `idx_boss_log_collection_source` (`collection_source`),
         CONSTRAINT `fk_boss_log_member` FOREIGN KEY (`member_id`) REFERENCES `members`(`id`)
             ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT `fk_boss_log_clan` FOREIGN KEY (`member_clan_id`) REFERENCES `clans`(`id`)
@@ -269,7 +274,41 @@ function dbb_create_tables(PDO $pdo): void
 
     dbb_ensure_innodb($pdo, 'member_boss_collection_log');
 
-    // 6) member_xp_snapshots
+    // 6) member_boss_collection_submissions
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `member_boss_collection_submissions` (
+        `id` BIGINT NOT NULL AUTO_INCREMENT,
+        `submission_uuid` CHAR(32) NOT NULL,
+        `member_id` {$memberIdType} NOT NULL,
+        `member_clan_id` {$clanIdType} NOT NULL,
+        `member_rsn` VARCHAR(32) NOT NULL,
+        `boss_key` VARCHAR(96) NOT NULL,
+        `boss_name` VARCHAR(120) NOT NULL,
+        `item_key` VARCHAR(140) NOT NULL,
+        `item_name` VARCHAR(180) NOT NULL,
+        `requested_collected` TINYINT(1) NOT NULL,
+        `current_collected` TINYINT(1) NOT NULL DEFAULT 0,
+        `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+        `submitter_note` VARCHAR(255) NULL,
+        `submitted_at_utc` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        `reviewed_by` VARCHAR(120) NULL,
+        `reviewed_at_utc` DATETIME(3) NULL,
+        `review_note` VARCHAR(255) NULL,
+        `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (`id`),
+        KEY `idx_boss_submission_uuid` (`submission_uuid`),
+        KEY `idx_boss_submission_status` (`status`,`submitted_at_utc`),
+        KEY `idx_boss_submission_member` (`member_clan_id`,`member_id`),
+        KEY `idx_boss_submission_item` (`boss_key`,`item_key`),
+        CONSTRAINT `fk_boss_submission_member` FOREIGN KEY (`member_id`) REFERENCES `members`(`id`)
+            ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT `fk_boss_submission_clan` FOREIGN KEY (`member_clan_id`) REFERENCES `clans`(`id`)
+            ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    dbb_ensure_innodb($pdo, 'member_boss_collection_submissions');
+
+    // 7) member_xp_snapshots
     $pdo->exec("CREATE TABLE IF NOT EXISTS `member_xp_snapshots` (
         `id` BIGINT NOT NULL AUTO_INCREMENT,
         `member_id` {$memberIdType} NOT NULL,
@@ -500,6 +539,99 @@ try {
     if (!$col) {
         $pdo->exec("ALTER TABLE members ADD COLUMN last_promotion_at_utc DATETIME(3) NULL");
     }
+} catch (Throwable $e) {}
+
+
+// Ensure member_boss_collection_log manual/admin metadata exists
+try {
+    $col = $pdo->query("
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'member_boss_collection_log'
+          AND COLUMN_NAME = 'collection_source'
+        LIMIT 1
+    ")->fetch(PDO::FETCH_ASSOC);
+    if (!$col) {
+        $pdo->exec("ALTER TABLE member_boss_collection_log ADD COLUMN collection_source VARCHAR(40) NOT NULL DEFAULT 'runemetrics' AFTER source_activity_id");
+    }
+} catch (Throwable $e) {}
+
+try {
+    $col = $pdo->query("
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'member_boss_collection_log'
+          AND COLUMN_NAME = 'source_note'
+        LIMIT 1
+    ")->fetch(PDO::FETCH_ASSOC);
+    if (!$col) {
+        $pdo->exec("ALTER TABLE member_boss_collection_log ADD COLUMN source_note VARCHAR(255) NULL AFTER collection_source");
+    }
+} catch (Throwable $e) {}
+
+try {
+    $col = $pdo->query("
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'member_boss_collection_log'
+          AND COLUMN_NAME = 'manual_updated_at_utc'
+        LIMIT 1
+    ")->fetch(PDO::FETCH_ASSOC);
+    if (!$col) {
+        $pdo->exec("ALTER TABLE member_boss_collection_log ADD COLUMN manual_updated_at_utc DATETIME(3) NULL AFTER source_note");
+    }
+} catch (Throwable $e) {}
+
+try {
+    $pdo->exec("CREATE INDEX idx_boss_log_collection_source ON member_boss_collection_log (collection_source)");
+} catch (Throwable $e) {}
+
+try {
+    $pdo->exec("UPDATE member_boss_collection_log
+        SET collection_source = CASE
+            WHEN source_activity_id IS NOT NULL THEN 'runemetrics'
+            WHEN collection_source IS NULL OR collection_source = '' THEN 'manual_admin'
+            ELSE collection_source
+        END");
+} catch (Throwable $e) {}
+
+// Ensure member_boss_collection_submissions exists on older installs
+try {
+    $memberIdType = dbb_get_column_type($pdo, 'members', 'id') ?: 'INT';
+    $clanIdType = dbb_get_column_type($pdo, 'clans', 'id') ?: 'INT';
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `member_boss_collection_submissions` (
+        `id` BIGINT NOT NULL AUTO_INCREMENT,
+        `submission_uuid` CHAR(32) NOT NULL,
+        `member_id` {$memberIdType} NOT NULL,
+        `member_clan_id` {$clanIdType} NOT NULL,
+        `member_rsn` VARCHAR(32) NOT NULL,
+        `boss_key` VARCHAR(96) NOT NULL,
+        `boss_name` VARCHAR(120) NOT NULL,
+        `item_key` VARCHAR(140) NOT NULL,
+        `item_name` VARCHAR(180) NOT NULL,
+        `requested_collected` TINYINT(1) NOT NULL,
+        `current_collected` TINYINT(1) NOT NULL DEFAULT 0,
+        `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+        `submitter_note` VARCHAR(255) NULL,
+        `submitted_at_utc` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        `reviewed_by` VARCHAR(120) NULL,
+        `reviewed_at_utc` DATETIME(3) NULL,
+        `review_note` VARCHAR(255) NULL,
+        `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (`id`),
+        KEY `idx_boss_submission_uuid` (`submission_uuid`),
+        KEY `idx_boss_submission_status` (`status`,`submitted_at_utc`),
+        KEY `idx_boss_submission_member` (`member_clan_id`,`member_id`),
+        KEY `idx_boss_submission_item` (`boss_key`,`item_key`),
+        CONSTRAINT `fk_boss_submission_member` FOREIGN KEY (`member_id`) REFERENCES `members`(`id`)
+            ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT `fk_boss_submission_clan` FOREIGN KEY (`member_clan_id`) REFERENCES `clans`(`id`)
+            ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 } catch (Throwable $e) {}
 
 

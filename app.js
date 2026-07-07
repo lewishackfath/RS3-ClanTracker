@@ -6,6 +6,7 @@ const API = {
   clanOverview: "api/clan.php",
   player: "api/player.php",
   refreshPlayerXp: "api/refresh_member_data.php",
+  bossLogCsv: "api/boss_log_csv.php",
 };
 
 const TRACKER_CONFIG = window.TRACKER_CONFIG || {};
@@ -2334,6 +2335,35 @@ function renderBossCollectionLog() {
       }).join("")
     : `<div class="bossLogFilteredEmpty muted">All bosses are currently hidden. Use the boss toggle buttons above to show them again.</div>`;
 
+  const playerName = String(playerData?.member?.rsn || getParams().player || "").trim();
+  const csvDownloadUrl = `${API.bossLogCsv}?action=download&player=${encodeURIComponent(playerName)}`;
+  const csvUpdateHtml = `
+    <details class="bossLogCsvPanel">
+      <summary class="bossLogCsvSummary">
+        <span>Update Drop Log</span>
+        <small>Download, edit, and submit CSV updates for review</small>
+      </summary>
+      <div class="bossLogCsvBody">
+        <p class="muted">Download the current boss drop log CSV, change <strong>Is collected</strong> to yes or no, then upload it here. The CSV is processed into pending changes for admin review and is not stored on the server.</p>
+        <div class="bossLogCsvActions">
+          <a class="bossLogCsvButton" href="${escapeHtml(csvDownloadUrl)}">Download current CSV</a>
+        </div>
+        <form class="bossLogCsvForm" data-boss-log-csv-form enctype="multipart/form-data">
+          <input type="hidden" name="action" value="upload">
+          <input type="hidden" name="player" value="${escapeHtml(playerName)}">
+          <label>Edited CSV file
+            <input type="file" name="drop_log_csv" accept=".csv,text/csv" required>
+          </label>
+          <label>Optional note
+            <input type="text" name="submitter_note" maxlength="255" placeholder="Example: Backfilled old boss drops">
+          </label>
+          <button type="submit">Submit CSV for review</button>
+        </form>
+        <div class="bossLogCsvStatus" data-boss-log-csv-status aria-live="polite"></div>
+      </div>
+    </details>
+  `;
+
   el.innerHTML = `
     <div class="bossLogSummary">
       <div class="xpStatsCard">
@@ -2354,6 +2384,7 @@ function renderBossCollectionLog() {
     <div class="bossLogGrid">
       ${bossCardsHtml}
     </div>
+    ${csvUpdateHtml}
   `;
 
   const filterPanel = el.querySelector(".bossLogFilterPanel");
@@ -2386,6 +2417,59 @@ function renderBossCollectionLog() {
   }
 
   wireBossCollectionLogIcons(el);
+  wireBossLogCsvUpload(el);
+}
+
+function wireBossLogCsvUpload(root) {
+  const form = root?.querySelector?.("[data-boss-log-csv-form]");
+  if (!form) return;
+
+  const statusEl = root.querySelector("[data-boss-log-csv-status]");
+  const button = form.querySelector('button[type="submit"]');
+  const fileInput = form.querySelector('input[type="file"]');
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!fileInput?.files?.length) {
+      if (statusEl) statusEl.textContent = "Choose the edited CSV file first.";
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.className = "bossLogCsvStatus";
+      statusEl.textContent = "Submitting CSV for review…";
+    }
+    if (button) button.disabled = true;
+
+    try {
+      const fd = new FormData(form);
+      const res = await fetch(API.bossLogCsv, { method: "POST", body: fd, cache: "no-store" });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); }
+      catch { data = { ok: false, error: "Invalid JSON response", hint: text.slice(0, 200) }; }
+
+      const warnings = Array.isArray(data?.invalid_rows) && data.invalid_rows.length
+        ? ` Warnings: ${data.invalid_rows.slice(0, 3).join("; ")}${data.invalid_rows.length > 3 ? "…" : ""}`
+        : "";
+      if (!res.ok || !data?.ok) {
+        throw new Error((data?.error || "CSV submission failed") + warnings);
+      }
+
+      if (statusEl) {
+        statusEl.classList.add(data.submitted ? "success" : "info");
+        statusEl.textContent = `${data.message || "CSV processed."}${warnings}`;
+      }
+      if (data.submitted) form.reset();
+    } catch (err) {
+      if (statusEl) {
+        statusEl.classList.add("error");
+        statusEl.textContent = err?.message || "CSV submission failed.";
+      }
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
 }
 
 
