@@ -1,0 +1,22 @@
+{
+  "key": "silverquill",
+  "name": "Silverquill, the Dreadhog",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Silverspines",
+      "order": 1
+    },
+    {
+      "name": "Sanguine Spines",
+      "order": 2
+    },
+    {
+      "name": "Needlemouse",
+      "aliases": [
+        "Silverquill's blood-filled cyst"
+      ],
+      "order": 3
+    }
+  ]
+}

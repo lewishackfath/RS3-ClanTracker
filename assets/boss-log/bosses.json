@@ -219,70 +219,76 @@
       "order": 35
     },
     {
+      "key": "silverquill",
+      "name": "Silverquill, the Dreadhog",
+      "file": "bosses/silverquill.json",
+      "order": 36
+    },
+    {
       "key": "the_shadow_reef",
       "name": "The Shadow Reef",
       "file": "bosses/the_shadow_reef.json",
-      "order": 36
+      "order": 37
     },
     {
       "key": "solak",
       "name": "Solak",
       "file": "bosses/solak.json",
-      "order": 37
+      "order": 38
     },
     {
       "key": "telos",
       "name": "Telos",
       "file": "bosses/telos.json",
-      "order": 38
+      "order": 39
     },
     {
       "key": "temple_of_aminishi",
       "name": "Temple of Aminishi",
       "file": "bosses/temple_of_aminishi.json",
-      "order": 39
+      "order": 40
     },
     {
       "key": "twin_furies",
       "name": "Twin Furies",
       "file": "bosses/twin_furies.json",
-      "order": 40
+      "order": 41
     },
     {
-      "key": "tzhaar",
-      "name": "TzHaar",
+      "key": "tztok-jad_and_har-aken",
+      "name": "TzTok-Jad & Har-Aken",
       "file": "bosses/tzhaar.json",
-      "order": 41
+      "order": 42
     },
     {
       "key": "tzkal_zuk",
       "name": "TzKal-Zuk",
       "file": "bosses/tzkal_zuk.json",
-      "order": 42
+      "order": 43
     },
     {
       "key": "vindicta_gorvek",
       "name": "Vindicta & Gorvek",
       "file": "bosses/vindicta_gorvek.json",
-      "order": 43
+      "order": 44
     },
     {
       "key": "vorago",
       "name": "Vorago",
       "file": "bosses/vorago.json",
-      "order": 44
+      "order": 45
     },
     {
       "key": "zamorak_lord_of_chaos",
       "name": "Zamorak, Lord of Chaos",
       "file": "bosses/zamorak_lord_of_chaos.json",
-      "order": 45
+      "order": 46
     },
     {
       "key": "zemouregal_vorkath",
       "name": "Zemouregal & Vorkath",
       "file": "bosses/zemouregal_vorkath.json",
-      "order": 46
+      "order": 47
     }
   ]
 }
