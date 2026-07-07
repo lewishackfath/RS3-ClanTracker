@@ -1571,12 +1571,58 @@ let playerData = null;
 let selectedXpPeriod = "7d";
 let selectedActivityLimit = 20;
 let selectedSkillView = "current";
-let selectedJournalView = "activity";
+const JOURNAL_VIEW_VALUES = ["activity", "xpstats", "bosslog", "drops"];
+const JOURNAL_VIEW_STORAGE_KEY = "clantracker.playerJournalView";
+let selectedJournalView = getInitialJournalView();
 let hiddenBossLogKeys = new Set();
 let bossLogFilterExpanded = false;
 let selectedXpLineChartSkills = new Set(SKILLS);
 let selectedXpDailyChartSkills = new Set(SKILLS);
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
+
+function normaliseJournalView(value) {
+  const view = String(value || "").trim().toLowerCase();
+  return JOURNAL_VIEW_VALUES.includes(view) ? view : "activity";
+}
+
+function getInitialJournalView() {
+  let queryView = "";
+  try {
+    const params = new URLSearchParams(window.location.search);
+    queryView = params.get("tab") || params.get("journal") || "";
+  } catch {}
+
+  if (queryView) return normaliseJournalView(queryView);
+
+  try {
+    return normaliseJournalView(window.localStorage?.getItem(JOURNAL_VIEW_STORAGE_KEY));
+  } catch {
+    return "activity";
+  }
+}
+
+function persistJournalView(view) {
+  const safeView = normaliseJournalView(view);
+
+  try {
+    window.localStorage?.setItem(JOURNAL_VIEW_STORAGE_KEY, safeView);
+  } catch {}
+
+  try {
+    const params = getParams();
+    if (!params.player) return;
+
+    const url = new URL(window.location.href);
+    if (safeView === "activity") {
+      url.searchParams.delete("tab");
+      url.searchParams.delete("journal");
+    } else {
+      url.searchParams.set("tab", safeView);
+      url.searchParams.delete("journal");
+    }
+    window.history.replaceState({}, "", url);
+  } catch {}
+}
 
 function normaliseActivityLimit(value) {
   const n = Number(value);
@@ -1643,7 +1689,8 @@ function formatShortDateFromUtc(value) {
 }
 
 function setJournalView(view) {
-  selectedJournalView = ["xpstats", "drops", "bosslog"].includes(view) ? view : "activity";
+  selectedJournalView = normaliseJournalView(view);
+  persistJournalView(selectedJournalView);
 
   qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
     const active = btn.getAttribute("data-journal-view") === selectedJournalView;
@@ -1653,11 +1700,13 @@ function setJournalView(view) {
 
   const title = qs("journalTitle");
   if (title) {
-    title.textContent = selectedJournalView === "xpstats"
-      ? "XP Stats"
-      : (selectedJournalView === "drops"
-        ? "Drop History"
-        : (selectedJournalView === "bosslog" ? "Boss Log" : "Activity Journal"));
+    const titleMap = {
+      activity: "Activity Journal",
+      xpstats: "XP Stats",
+      bosslog: "Boss Log",
+      drops: "Drop History",
+    };
+    title.textContent = titleMap[selectedJournalView] || "Activity Journal";
   }
 
   show(qs("activityJournalView"), selectedJournalView === "activity");
