@@ -44,7 +44,8 @@
       "aliases": [
         "Ancient summoning stone"
       ],
-      "order": 10
+      "order": 10,
+      "icon_name": "Vitalis pet"
     },
     {
       "name": "Bombi",
