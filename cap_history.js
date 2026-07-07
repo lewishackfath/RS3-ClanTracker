@@ -24,6 +24,85 @@
     return Number.isFinite(n) ? n.toLocaleString() : "0";
   }
 
+
+  function compactNumber(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return "0";
+    try {
+      return new Intl.NumberFormat("en-AU", {
+        notation: "compact",
+        maximumFractionDigits: n >= 1000 ? 1 : 0,
+      }).format(n);
+    } catch {
+      return number(n);
+    }
+  }
+
+  function renderCapsPerDayChart() {
+    const mount = el("capHistoryCapsChart");
+    const data = state.data;
+    if (!mount) return;
+
+    const rows = Array.isArray(data?.caps_per_day_90d) ? data.caps_per_day_90d : [];
+    if (!rows.length) {
+      mount.innerHTML = '<section class="panel capHistoryChartPanel"><div class="capHistoryChartEmpty">No cap/day history is available yet.</div></section>';
+      return;
+    }
+
+    const total = rows.reduce((sum, row) => sum + Number(row.count || 0), 0);
+    const peak = Math.max(...rows.map(row => Number(row.count || 0)), 0);
+    const maxY = Math.max(peak, 1);
+    const width = 900;
+    const height = 250;
+    const padLeft = 48;
+    const padRight = 18;
+    const padTop = 22;
+    const padBottom = 38;
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+    const bottomY = padTop + plotH;
+    const gap = 2;
+    const step = plotW / Math.max(rows.length, 1);
+    const barW = Math.max(3, step - gap);
+    const midY = padTop + plotH / 2;
+
+    const bars = rows.map((row, index) => {
+      const count = Math.max(0, Number(row.count || 0));
+      const h = count > 0 ? Math.max(2, (count / maxY) * plotH) : 0;
+      const x = padLeft + (index * step) + (gap / 2);
+      const y = bottomY - h;
+      const showLabel = index === 0 || index === rows.length - 1 || index % 15 === 0;
+      const title = `${row.label || row.date || "Day"}: ${number(count)} caps`;
+      return `
+        <rect class="capHistoryChartBar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2">
+          <title>${escapeHtml(title)}</title>
+        </rect>
+        ${showLabel ? `<text class="capHistoryChartAxis" x="${(x + barW / 2).toFixed(1)}" y="${height - 10}" text-anchor="middle">${escapeHtml(row.label || "")}</text>` : ""}
+      `;
+    }).join("");
+
+    mount.innerHTML = `
+      <section class="panel capHistoryChartPanel" aria-label="Caps per day for the last 90 days">
+        <div class="capHistoryChartHeader">
+          <div>
+            <h2 class="h2">Caps/day — last 90 days</h2>
+            <div class="muted">${number(total)} caps logged • Peak ${number(peak)} in one day</div>
+          </div>
+        </div>
+        <div class="capHistoryChartScroll">
+          <svg class="capHistoryCapsChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Caps per day for the last 90 days">
+            <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
+            <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
+            <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
+            <text class="capHistoryChartAxis" x="${padLeft - 8}" y="${padTop + 4}" text-anchor="end">${escapeHtml(compactNumber(maxY))}</text>
+            <text class="capHistoryChartAxis" x="${padLeft - 8}" y="${bottomY + 4}" text-anchor="end">0</text>
+            ${bars}
+          </svg>
+        </div>
+      </section>
+    `;
+  }
+
   function setText(id, value) {
     const node = el(id);
     if (node) node.textContent = value;
@@ -95,6 +174,8 @@
 
     if (!data) {
       container.innerHTML = "";
+      const chart = el("capHistoryCapsChart");
+      if (chart) chart.innerHTML = "";
       return;
     }
 
@@ -104,6 +185,7 @@
     setText("capHistoryTotalVisits", number(data.stats?.total_visits));
     setText("capHistoryTotalCaps", number(data.stats?.total_caps));
     setText("capHistoryGenerated", data.generated_at_utc ? `Generated: ${data.generated_at_utc} UTC` : "");
+    renderCapsPerDayChart();
 
     renderRankFilter();
 
@@ -196,6 +278,8 @@
       if (status) status.textContent = error?.message || "Unable to load cap history.";
       const container = el("capHistoryGroups");
       if (container) container.innerHTML = "";
+      const chart = el("capHistoryCapsChart");
+      if (chart) chart.innerHTML = "";
     }
   }
 

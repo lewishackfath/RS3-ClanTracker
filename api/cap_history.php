@@ -78,6 +78,53 @@ function tracker_ch_rank_icon(?string $rank): string {
     return isset($fileMap[$key]) ? 'assets/ranks/' . $fileMap[$key] . '_Clan_Rank.png' : '';
 }
 
+
+function tracker_ch_caps_per_day_90(PDO $pdo, int $clanId, string $tzName): array {
+    try {
+        $tz = new DateTimeZone($tzName);
+    } catch (Throwable $e) {
+        $tz = new DateTimeZone('UTC');
+    }
+
+    $utc = new DateTimeZone('UTC');
+    $todayLocal = (new DateTimeImmutable('now', $tz))->setTime(0, 0, 0, 0);
+    $startLocal = $todayLocal->modify('-89 days');
+    $endLocalExclusive = $todayLocal->modify('+1 day');
+
+    $days = [];
+    for ($i = 0; $i < 90; $i++) {
+        $day = $startLocal->modify('+' . $i . ' days');
+        $key = $day->format('Y-m-d');
+        $days[$key] = [
+            'date' => $key,
+            'label' => $day->format('j M'),
+            'count' => 0,
+        ];
+    }
+
+    $startUtc = $startLocal->setTimezone($utc)->format('Y-m-d H:i:s');
+    $endUtc = $endLocalExclusive->setTimezone($utc)->format('Y-m-d H:i:s');
+
+    $stmt = $pdo->prepare("\n        SELECT capped_at_utc\n        FROM member_caps\n        WHERE clan_id = :cid\n          AND capped_at_utc >= :start_utc\n          AND capped_at_utc < :end_utc\n        ORDER BY capped_at_utc ASC\n    ");
+    $stmt->execute([
+        ':cid' => $clanId,
+        ':start_utc' => $startUtc,
+        ':end_utc' => $endUtc,
+    ]);
+
+    while ($row = $stmt->fetch()) {
+        $raw = (string)($row['capped_at_utc'] ?? '');
+        if ($raw === '') continue;
+        try {
+            $dt = new DateTimeImmutable($raw, $utc);
+            $key = $dt->setTimezone($tz)->format('Y-m-d');
+            if (isset($days[$key])) $days[$key]['count']++;
+        } catch (Throwable $e) {}
+    }
+
+    return array_values($days);
+}
+
 function tracker_ch_to_local(?string $utcDt, string $tzName): ?string {
     if (!$utcDt) return null;
     try {
@@ -201,6 +248,8 @@ usort($groups, function(array $a, array $b): int {
     return tracker_ch_compare_ranks_desc((string)($a['rank_name'] ?? ''), (string)($b['rank_name'] ?? ''));
 });
 
+$capsPerDay90 = tracker_ch_caps_per_day_90($pdo, $clanId, $tzName);
+
 tracker_json([
     'ok' => true,
     'clan' => [
@@ -213,6 +262,7 @@ tracker_json([
         'total_caps' => $totalCaps,
         'total_visits' => $totalVisits,
     ],
+    'caps_per_day_90d' => $capsPerDay90,
     'members' => $outMembers,
     'rank_groups' => $groups,
     'generated_at_utc' => gmdate('Y-m-d H:i:s'),

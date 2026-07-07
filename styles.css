@@ -1734,6 +1734,71 @@ li { margin: 0 0 10px; }
 }
 
 
+
+.capHistoryChartPanel {
+  margin-top: 14px;
+  padding: 14px;
+  overflow: hidden;
+}
+.capHistoryChartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.capHistoryChartHeader .h2 {
+  margin: 0 0 4px;
+}
+.capHistoryChartScroll {
+  overflow-x: auto;
+  border-radius: 15px;
+  border: 1px solid rgba(83,49,23,0.20);
+  background:
+    radial-gradient(circle at top left, rgba(255,242,206,0.30), transparent 38%),
+    rgba(95,56,28,0.12);
+  padding: 10px;
+}
+.capHistoryCapsChart {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  height: auto;
+}
+.capHistoryChartGrid {
+  stroke: rgba(83,49,23,0.20);
+  stroke-width: 1;
+}
+.capHistoryChartAxis {
+  fill: rgba(61,37,21,0.82);
+  font-size: 12px;
+  font-weight: 850;
+}
+.capHistoryChartBar {
+  fill: rgba(92,52,25,0.72);
+  transition: opacity .12s ease, filter .12s ease;
+}
+.capHistoryChartBar:hover {
+  opacity: 0.84;
+  filter: drop-shadow(0 2px 5px rgba(42,22,8,0.26));
+}
+.capHistoryChartEmpty {
+  padding: 14px;
+  border: 1px dashed rgba(83,49,23,0.28);
+  border-radius: 14px;
+  background: rgba(255,242,206,0.16);
+  color: var(--muted);
+  font-weight: 800;
+}
+@media (max-width: 760px) {
+  .capHistoryChartHeader {
+    flex-direction: column;
+  }
+  .capHistoryCapsChart {
+    min-width: 620px;
+  }
+}
+
 /* Activity Journal tabs and XP Stats */
 .activityJournalHeader {
   align-items: center;
@@ -2109,7 +2174,7 @@ li { margin: 0 0 10px; }
     inset 0 1px 0 rgba(255,255,255,0.08),
     0 8px 20px rgba(18,8,3,0.18);
   padding: 14px;
-  overflow: visible;
+  overflow: hidden;
 }
 .bossLogCardHeader {
   display: flex;
@@ -2154,8 +2219,8 @@ li { margin: 0 0 10px; }
 .bossLogItems {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(116px, 116px));
-  gap: 18px 12px;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 92px));
+  gap: 14px 12px;
   align-items: start;
 }
 .bossLogItem {
@@ -2163,8 +2228,8 @@ li { margin: 0 0 10px; }
   justify-items: center;
   align-content: start;
   gap: 7px;
-  width: 116px;
-  min-width: 116px;
+  width: 92px;
+  min-width: 92px;
   color: #fff8dc;
   transition: transform .15s ease, opacity .15s ease;
 }
@@ -2210,18 +2275,18 @@ li { margin: 0 0 10px; }
   filter: grayscale(1) opacity(0.62);
 }
 .bossLogItemName {
-  width: 116px;
-  min-height: 0;
+  width: 92px;
+  min-height: 31px;
   color: #fff8dc;
   font-size: 0.72rem;
   font-weight: 850;
-  line-height: 1.18;
+  line-height: 1.15;
   text-align: center;
   overflow: visible;
   display: block;
   white-space: normal;
   overflow-wrap: anywhere;
-  text-wrap: balance;
+  word-break: normal;
   text-shadow: 0 1px 2px rgba(0,0,0,0.45);
 }
 .bossLogItem.missing .bossLogItemName {
@@ -2243,6 +2308,20 @@ li { margin: 0 0 10px; }
 }
 
 @media (max-width: 760px) {
+  .xpStatsSummary {
+    grid-template-columns: 1fr;
+  }
+  .activityJournalHeader {
+    align-items: stretch;
+  }
+  .activityJournalTitleLine {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .journalTabs,
+  .journalTabs .segBtn {
+    width: 100%;
+  }
   .dropHistoryRow {
     grid-template-columns: 44px minmax(0, 1fr) auto;
     gap: 9px;
@@ -2277,12 +2356,12 @@ li { margin: 0 0 10px; }
     grid-template-columns: 1fr;
   }
   .bossLogItems {
-    grid-template-columns: repeat(auto-fill, minmax(96px, 96px));
-    gap: 16px 9px;
+    grid-template-columns: repeat(auto-fill, minmax(82px, 82px));
+    gap: 12px 9px;
   }
   .bossLogItem {
-    width: 96px;
-    min-width: 96px;
+    width: 82px;
+    min-width: 82px;
   }
   .bossLogItemTile {
     width: 62px;
@@ -2295,12 +2374,303 @@ li { margin: 0 0 10px; }
     max-height: 44px;
   }
   .bossLogItemName {
-    width: 96px;
+    width: 82px;
     font-size: 0.68rem;
   }
 }
 
 
+
+.xpStatsSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.xpStatsCard,
+.xpChartCard,
+.xpSkillBars {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px 13px 18px 14px;
+  border: 1px solid rgba(246, 222, 159, 0.26);
+  background:
+    radial-gradient(circle at top left, rgba(246,222,159,0.18), transparent 34%),
+    linear-gradient(180deg, rgba(89,55,31,0.96), rgba(47,27,17,0.96));
+  color: #fff2c5;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 0 0 1px rgba(42,23,15,0.55),
+    0 12px 26px rgba(18,8,3,0.24);
+}
+.xpStatsCard {
+  padding: 12px;
+  min-height: 78px;
+}
+.xpStatsCard.wide {
+  grid-column: span 1;
+}
+.xpStatsLabel,
+.xpStatsSectionTitle,
+.xpChartTitle {
+  color: #f4d58a;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+}
+.xpStatsLabel {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+.xpStatsValue {
+  margin-top: 6px;
+  font-size: 1.32rem;
+  font-weight: 950;
+  color: #fff8dc;
+}
+.xpStatsValue.small {
+  font-size: 1rem;
+}
+.xpFavouriteSkill {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+.xpFavouriteSkillName {
+  color: #fff8dc;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xpFavouriteSkillValue {
+  margin-top: 2px;
+  color: #f4d58a;
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+.xpStatsWindow {
+  margin-top: 8px;
+  color: #f7e7b2;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.xpChartCard {
+  padding: 12px;
+}
+.xpLineChart,
+.xpDailyChart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+}
+.xpChartGrid {
+  stroke: rgba(246, 222, 159, 0.18);
+  stroke-width: 1;
+}
+.xpChartAxis {
+  fill: rgba(255, 248, 220, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+}
+.xpChartLine,
+.xpSkillChartLine {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.62;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.28));
+}
+.xpSkillChartLine {
+  transition: opacity .16s ease, stroke-width .16s ease, filter .16s ease;
+}
+.xpSkillLineGroup:hover .xpSkillChartLine,
+.xpSkillLineGroup:focus-within .xpSkillChartLine {
+  opacity: 1;
+  stroke-width: 5;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.42));
+}
+.xpLineChart circle,
+.xpSkillChartPoint {
+  stroke: #2b170f;
+  stroke-width: 1.5;
+  opacity: 0.82;
+}
+.xpSkillLineGroup:hover .xpSkillChartPoint {
+  opacity: 1;
+}
+
+.xpSkillChartHitLine {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 34;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: stroke;
+}
+.xpSkillChartPointHit {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+  cursor: help;
+}
+.xpDailyChartSegment {
+  pointer-events: none;
+  transition: opacity .12s ease, filter .12s ease;
+}
+.xpDailyChartHitSegment {
+  fill: #000;
+  opacity: 0;
+  pointer-events: all;
+  cursor: help;
+}
+.xpDailyChartHitSegment:hover + .xpDailyChartSegment,
+.xpDailyChartSegment:hover {
+  opacity: 0.88;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.36));
+}
+.chartLocalTooltip {
+  position: absolute;
+  z-index: 80;
+  max-width: min(320px, calc(100% - 24px));
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(246,222,159,0.38);
+  background: linear-gradient(180deg, rgba(39, 21, 12, 0.98), rgba(24, 11, 6, 0.98));
+  box-shadow: 0 14px 28px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.11);
+  color: var(--tile-text-muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(14px, 14px);
+  will-change: left, top;
+}
+.chartLocalTooltip::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid rgba(246,222,159,0.28);
+  border-top: 1px solid rgba(246,222,159,0.28);
+  background: rgba(39, 21, 12, 0.98);
+  transform: rotate(45deg);
+}
+.chartLocalTooltip.hidden {
+  display: none;
+}
+.chartHoverTitle {
+  margin-bottom: 3px;
+  color: var(--tile-text);
+  font-weight: 950;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.xpStatsSectionTitle {
+  margin-top: 2px;
+  font-size: 1rem;
+}
+.xpDailyLegend {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.xpDailyLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff2c5;
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+.xpDailyLegendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,248,220,0.35);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.xpSkillBars {
+  padding: 10px;
+  display: grid;
+  gap: 9px;
+}
+.xpSkillBars.compact {
+  gap: 7px;
+}
+.xpSkillBarRow {
+  display: grid;
+  grid-template-columns: 28px 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+.xpSkillRank {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(246,222,159,0.30);
+  background: rgba(30,14,8,0.34);
+  color: #f4d58a;
+  font-weight: 950;
+}
+.xpSkillIcon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border-radius: 10px;
+  padding: 3px;
+  background: rgba(255,248,220,0.10);
+  border: 1px solid rgba(246,222,159,0.20);
+}
+.xpSkillBarMain {
+  min-width: 0;
+}
+.xpSkillBarMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #fff8dc;
+  font-weight: 850;
+  font-size: 0.92rem;
+}
+.xpSkillBarMeta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xpSkillBarMeta strong {
+  flex: 0 0 auto;
+  color: #f4d58a;
+}
+.xpSkillBarTrack {
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: rgba(20,10,6,0.48);
+  overflow: hidden;
+  border: 1px solid rgba(246,222,159,0.14);
+}
+.xpSkillBarFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8b5d2c, #e4b65b, #fff2c5);
+  box-shadow: 0 0 12px rgba(228,182,91,0.35);
+}
+.xpStatsEmpty {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,248,220,0.12);
+  border: 1px dashed rgba(246,222,159,0.26);
+  color: #f7e7b2;
+}
 
 /* Keep XP chart hover cards readable near graph edges. */
 #viewPlayer #activityPanel,
@@ -2485,5 +2855,12 @@ li { margin: 0 0 10px; }
 @media (max-width: 760px) {
   #viewPlayer .skillsGrid {
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  }
+}
+
+/* Final responsive repair for restored XP stat tiles. */
+@media (max-width: 760px) {
+  .xpStatsSummary {
+    grid-template-columns: 1fr;
   }
 }

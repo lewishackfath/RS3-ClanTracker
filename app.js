@@ -185,6 +185,7 @@ function getParams() {
   return {
     clan: (p.get("clan") || "").trim(),
     player: (p.get("player") || "").trim(),
+    tab: (p.get("tab") || "").trim(),
     configuredClan: getConfiguredClanId(),
   };
 }
@@ -204,6 +205,7 @@ function clearQuery() {
   const url = new URL(window.location.href);
   url.searchParams.delete("clan");
   url.searchParams.delete("player");
+  url.searchParams.delete("tab");
   window.history.pushState({}, "", url);
   render();
 }
@@ -1571,58 +1573,54 @@ let playerData = null;
 let selectedXpPeriod = "7d";
 let selectedActivityLimit = 20;
 let selectedSkillView = "current";
-const JOURNAL_VIEW_VALUES = ["activity", "xpstats", "bosslog", "drops"];
-const JOURNAL_VIEW_STORAGE_KEY = "clantracker.playerJournalView";
-let selectedJournalView = getInitialJournalView();
+let selectedJournalView = "activity";
 let hiddenBossLogKeys = new Set();
 let bossLogFilterExpanded = false;
 let selectedXpLineChartSkills = new Set(SKILLS);
 let selectedXpDailyChartSkills = new Set(SKILLS);
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
+const JOURNAL_VIEW_OPTIONS = ["activity", "xpstats", "bosslog", "drops"];
+const PLAYER_JOURNAL_VIEW_STORAGE_KEY = "clanTracker.playerJournalView";
 
 function normaliseJournalView(value) {
-  const view = String(value || "").trim().toLowerCase();
-  return JOURNAL_VIEW_VALUES.includes(view) ? view : "activity";
+  const key = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+
+  if (key === "xp" || key === "xpstat" || key === "xpstats") return "xpstats";
+  if (key === "drop" || key === "drops" || key === "drophistory") return "drops";
+  if (key === "boss" || key === "bosslog" || key === "bosscollection" || key === "bosscollectionlog") return "bosslog";
+  return "activity";
 }
 
-function getInitialJournalView() {
-  let queryView = "";
+function readSavedJournalView() {
   try {
-    const params = new URLSearchParams(window.location.search);
-    queryView = params.get("tab") || params.get("journal") || "";
-  } catch {}
-
-  if (queryView) return normaliseJournalView(queryView);
-
-  try {
-    return normaliseJournalView(window.localStorage?.getItem(JOURNAL_VIEW_STORAGE_KEY));
+    const saved = window.localStorage?.getItem(PLAYER_JOURNAL_VIEW_STORAGE_KEY) || "";
+    return normaliseJournalView(saved);
   } catch {
     return "activity";
   }
 }
 
-function persistJournalView(view) {
-  const safeView = normaliseJournalView(view);
-
+function saveJournalView(view) {
   try {
-    window.localStorage?.setItem(JOURNAL_VIEW_STORAGE_KEY, safeView);
-  } catch {}
-
-  try {
-    const params = getParams();
-    if (!params.player) return;
-
-    const url = new URL(window.location.href);
-    if (safeView === "activity") {
-      url.searchParams.delete("tab");
-      url.searchParams.delete("journal");
-    } else {
-      url.searchParams.set("tab", safeView);
-      url.searchParams.delete("journal");
-    }
-    window.history.replaceState({}, "", url);
+    window.localStorage?.setItem(PLAYER_JOURNAL_VIEW_STORAGE_KEY, normaliseJournalView(view));
   } catch {}
 }
+
+function syncJournalViewUrl(view) {
+  if (!isIndexViewAvailable()) return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.get("player")) return;
+
+  const normalised = normaliseJournalView(view);
+  if (normalised === "activity") url.searchParams.delete("tab");
+  else url.searchParams.set("tab", normalised);
+
+  window.history.replaceState({}, "", url);
+}
+
 
 function normaliseActivityLimit(value) {
   const n = Number(value);
@@ -1688,9 +1686,10 @@ function formatShortDateFromUtc(value) {
   }
 }
 
-function setJournalView(view) {
+function setJournalView(view, options = {}) {
   selectedJournalView = normaliseJournalView(view);
-  persistJournalView(selectedJournalView);
+  if (options.persist !== false) saveJournalView(selectedJournalView);
+  if (options.updateUrl !== false) syncJournalViewUrl(selectedJournalView);
 
   qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
     const active = btn.getAttribute("data-journal-view") === selectedJournalView;
@@ -1700,13 +1699,11 @@ function setJournalView(view) {
 
   const title = qs("journalTitle");
   if (title) {
-    const titleMap = {
-      activity: "Activity Journal",
-      xpstats: "XP Stats",
-      bosslog: "Boss Log",
-      drops: "Drop History",
-    };
-    title.textContent = titleMap[selectedJournalView] || "Activity Journal";
+    title.textContent = selectedJournalView === "xpstats"
+      ? "XP Stats"
+      : (selectedJournalView === "drops"
+        ? "Drop History"
+        : (selectedJournalView === "bosslog" ? "Boss Log" : "Activity Journal"));
   }
 
   show(qs("activityJournalView"), selectedJournalView === "activity");
@@ -3332,7 +3329,7 @@ async function loadPlayer(rsn, period) {
 
 /* ---------------- Render views ---------------- */
 function render() {
-  const { clan, player, configuredClan } = getParams();
+  const { clan, player, configuredClan, tab } = getParams();
 
   const landing = qs("landingCard");
   const viewClan = qs("viewClan");
@@ -3348,6 +3345,7 @@ function render() {
   }
 
   if (player) {
+    selectedJournalView = normaliseJournalView(tab || readSavedJournalView() || selectedJournalView);
     clearClanResetCountdown();
     show(landing, false);
     show(viewClan, false);
