@@ -4,39 +4,31 @@
   "source": "https://runescape.wiki/w/Boss_collection_log",
   "items": [
     {
-      "name": "Laceration boots",
+      "name": "Fleeting boots",
       "order": 1
     },
     {
-      "name": "Blast diffusion boots",
+      "name": "Shadow spike",
       "order": 2
     },
     {
-      "name": "Fleeting boots",
+      "name": "Greater Ricochet ability codex",
       "order": 3
     },
     {
-      "name": "Shadow spike",
+      "name": "Greater Chain ability codex",
       "order": 4
     },
     {
-      "name": "Greater Ricochet ability codex",
-      "order": 5
-    },
-    {
-      "name": "Greater Chain ability codex",
-      "order": 6
-    },
-    {
       "name": "Divert ability codex",
-      "order": 7
+      "order": 5
     },
     {
       "name": "Raklette",
       "aliases": [
         "Broken shackle"
       ],
-      "order": 8
+      "order": 6
     }
   ]
 }
