@@ -217,6 +217,16 @@ function tracker_cc_skill_level_from_xp(int $xp, string $skill): int {
     return min($cap, max(1, $best));
 }
 
+function compareSkillsByIdAscendingForComparison(array $a, array $b): int {
+    $order = array_flip(array_map('tracker_cc_skill_key', tracker_cc_skill_order()));
+    $ak = tracker_cc_skill_key((string)($a['skill'] ?? ''));
+    $bk = tracker_cc_skill_key((string)($b['skill'] ?? ''));
+    $ai = array_key_exists($ak, $order) ? (int)$order[$ak] : 9999;
+    $bi = array_key_exists($bk, $order) ? (int)$order[$bk] : 9999;
+    if ($ai !== $bi) return $ai <=> $bi;
+    return strcasecmp((string)($a['skill'] ?? ''), (string)($b['skill'] ?? ''));
+}
+
 function tracker_cc_display_level(?int $reportedLevel, ?int $xp, string $skill): ?int {
     $cap = tracker_cc_skill_level_cap($skill);
     $real = is_numeric($reportedLevel) ? max(1, min($cap, (int)$reportedLevel)) : null;
@@ -271,28 +281,41 @@ function tracker_cc_skill_summary(?string $skillsJson, ?int $totalXp): array {
     if ($totalLevel === null) $totalLevel = $sumLevel > 0 ? min($maxTotalLevel, $sumLevel) : null;
     if ($xpTotal === null) $xpTotal = $sumXp > 0 ? $sumXp : null;
 
-    $highest = null;
-    $lowest = null;
+    $highestXp = null;
+    $lowestXp = null;
+    $highestSkills = [];
+    $lowestSkills = [];
+
     foreach ($skillRows as $row) {
-        if (!is_numeric($row['display_level'])) continue;
-        if ($highest === null
-            || (int)$row['display_level'] > (int)$highest['display_level']
-            || ((int)$row['display_level'] === (int)$highest['display_level'] && (int)($row['xp'] ?? 0) > (int)($highest['xp'] ?? 0))) {
-            $highest = $row;
+        if (!is_numeric($row['xp'])) continue;
+        $xp = (int)$row['xp'];
+
+        if ($highestXp === null || $xp > $highestXp) {
+            $highestXp = $xp;
+            $highestSkills = [$row];
+        } elseif ($xp === $highestXp) {
+            $highestSkills[] = $row;
         }
-        if ($lowest === null
-            || (int)$row['display_level'] < (int)$lowest['display_level']
-            || ((int)$row['display_level'] === (int)$lowest['display_level'] && (int)($row['xp'] ?? 0) < (int)($lowest['xp'] ?? 0))) {
-            $lowest = $row;
+
+        if ($lowestXp === null || $xp < $lowestXp) {
+            $lowestXp = $xp;
+            $lowestSkills = [$row];
+        } elseif ($xp === $lowestXp) {
+            $lowestSkills[] = $row;
         }
     }
+
+    usort($highestSkills, static fn(array $a, array $b): int => compareSkillsByIdAscendingForComparison($a, $b));
+    usort($lowestSkills, static fn(array $a, array $b): int => compareSkillsByIdAscendingForComparison($a, $b));
 
     return [
         'has_data' => !empty($stats),
         'total_level' => $totalLevel,
         'total_xp' => $xpTotal,
-        'highest_skill' => $highest,
-        'lowest_skill' => $lowest,
+        'highest_skill' => $highestSkills[0] ?? null,
+        'lowest_skill' => $lowestSkills[0] ?? null,
+        'highest_skills' => $highestSkills,
+        'lowest_skills' => $lowestSkills,
     ];
 }
 
@@ -386,6 +409,8 @@ foreach ($rows as $row) {
         'total_xp' => $skillSummary['total_xp'],
         'highest_skill' => $skillSummary['highest_skill'],
         'lowest_skill' => $skillSummary['lowest_skill'],
+        'highest_skills' => $skillSummary['highest_skills'] ?? [],
+        'lowest_skills' => $skillSummary['lowest_skills'] ?? [],
         'runescore' => $runescore,
         'quest_points' => $questPoints,
         'clue_total' => $cluesTotal,

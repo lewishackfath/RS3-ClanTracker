@@ -69,10 +69,50 @@
     return Number.isFinite(cap) && cap > 0 ? Math.min(cap, fallback) : fallback;
   }
 
-  function skillSummary(skill) {
-    if (!skill || typeof skill !== "object") return "—";
-    const level = number(cappedSkillDisplayLevel(skill));
-    return `<span class="comparisonSkillSummary">${skillIcon(skill)} <strong>${escapeHtml(level)}</strong></span>`;
+  function compactXp(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return "—";
+    try {
+      return `${new Intl.NumberFormat("en-AU", {
+        notation: "compact",
+        maximumFractionDigits: n >= 1_000_000 ? 1 : 0,
+      }).format(n)} XP`;
+    } catch (e) {
+      return `${number(n)} XP`;
+    }
+  }
+
+  function skillTieTitle(skills) {
+    return skills.map(skill => {
+      const name = String(skill?.skill || skill?.name || "Skill");
+      const xp = Number(skill?.xp);
+      const level = cappedSkillDisplayLevel(skill);
+      const xpText = Number.isFinite(xp) ? `${number(xp)} XP` : "XP unknown";
+      const levelText = Number.isFinite(Number(level)) ? `level ${level}` : "level unknown";
+      return `${name}: ${xpText}, ${levelText}`;
+    }).join("\n");
+  }
+
+  function normaliseSkillGroup(skills, fallback) {
+    if (Array.isArray(skills) && skills.length) return skills.filter(skill => skill && typeof skill === "object");
+    if (fallback && typeof fallback === "object") return [fallback];
+    return [];
+  }
+
+  function skillGroupSummary(skills, fallback) {
+    const list = normaliseSkillGroup(skills, fallback);
+    if (!list.length) return "—";
+
+    const primary = list[0];
+    const level = cappedSkillDisplayLevel(primary);
+    const levelText = Number.isFinite(Number(level)) ? `Level ${level}` : "Level —";
+    const xp = Number(primary?.xp);
+    const xpText = Number.isFinite(xp) ? compactXp(xp) : "XP —";
+    const more = list.length > 1
+      ? `<span class="comparisonSkillMore" title="${escapeHtml(skillTieTitle(list))}">+${escapeHtml(String(list.length - 1))} more</span>`
+      : "";
+
+    return `<span class="comparisonSkillSummary${list.length > 1 ? " hasTie" : ""}" title="${escapeHtml(skillTieTitle(list))}">${skillIcon(primary)} <span class="comparisonSkillMetrics"><strong>${escapeHtml(xpText)}</strong><small>${escapeHtml(levelText)}</small></span>${more}</span>`;
   }
 
   function renderRankFilter() {
@@ -95,11 +135,13 @@
     return data.members.filter(member => {
       if (wantedRank !== "all" && String(member.rank_name || "") !== wantedRank) return false;
       if (!needle) return true;
+      const highestSkillNames = normaliseSkillGroup(member.highest_skills, member.highest_skill).map(skill => skill?.skill || skill?.name);
+      const lowestSkillNames = normaliseSkillGroup(member.lowest_skills, member.lowest_skill).map(skill => skill?.skill || skill?.name);
       const haystack = [
         member.rsn,
         member.rank_name,
-        member.highest_skill?.skill,
-        member.lowest_skill?.skill,
+        ...highestSkillNames,
+        ...lowestSkillNames,
       ].map(v => String(v || "").toLowerCase()).join(" ");
       return haystack.includes(needle);
     });
@@ -139,8 +181,8 @@
               <th>Rank</th>
               <th class="num">Total Level</th>
               <th class="num">Total XP</th>
-              <th>Highest Skill</th>
-              <th>Lowest Skill</th>
+              <th>Highest XP Skill</th>
+              <th>Lowest XP Skill</th>
               <th class="num">RuneScore</th>
               <th class="num">Quest Points</th>
               <th class="num">Clues</th>
@@ -158,8 +200,8 @@
                   <td><span class="comparisonRankCell">${icon}<span>${escapeHtml(member.rank_name || "—")}</span></span></td>
                   <td class="num">${number(member.total_level)}</td>
                   <td class="num">${number(member.total_xp)}</td>
-                  <td>${skillSummary(member.highest_skill)}</td>
-                  <td>${skillSummary(member.lowest_skill)}</td>
+                  <td>${skillGroupSummary(member.highest_skills, member.highest_skill)}</td>
+                  <td>${skillGroupSummary(member.lowest_skills, member.lowest_skill)}</td>
                   <td class="num">${number(member.runescore)}</td>
                   <td class="num">${number(member.quest_points)}</td>
                   <td class="num">${number(member.clue_total)}</td>

@@ -2511,6 +2511,36 @@ li { margin: 0 0 10px; }
   gap: 7px;
   white-space: nowrap;
 }
+
+.comparisonSkillMetrics {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.05;
+  gap: 2px;
+}
+.comparisonSkillMetrics strong {
+  color: #352011;
+  font-size: 0.88rem;
+}
+.comparisonSkillMetrics small {
+  color: rgba(59,36,21,0.72);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.comparisonSkillMore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 2px 7px;
+  border: 1px solid rgba(83,49,23,0.24);
+  border-radius: 999px;
+  background: rgba(255,244,208,0.26);
+  color: #4a2d19;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
 .comparisonRankIcon {
   width: 30px;
   height: 30px;
@@ -2579,6 +2609,14 @@ li { margin: 0 0 10px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.skillExtremeNote {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 2px 7px;
+}
+
 
 /* More compact current Skills/XP tiles */
 #viewPlayer .skillsGrid {

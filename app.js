@@ -2639,30 +2639,39 @@ function renderSkillExtremes() {
 
   const rows = (playerData?.current_skills?.skills || [])
     .filter(row => row && !row.__is_total)
-    .map(row => ({ ...row, _displayLevel: displaySkillLevelForRow(row), _xp: Number(row?.xp || 0) }))
-    .filter(row => Number.isFinite(row._displayLevel));
+    .map(row => ({ ...row, _displayLevel: displaySkillLevelForRow(row), _xp: Number(row?.xp) }))
+    .filter(row => Number.isFinite(row._xp));
 
   if (!rows.length) {
-    container.innerHTML = `<div class="muted">No skill level data available yet.</div>`;
+    container.innerHTML = `<div class="muted">No skill XP data available yet.</div>`;
     return;
   }
 
-  const highest = [...rows]
-    .sort((a, b) => (b._displayLevel - a._displayLevel) || (b._xp - a._xp) || compareSkillsByIdAscending(a, b))
-    .slice(0, 5);
-
-  const lowest = [...rows]
-    .sort((a, b) => (a._displayLevel - b._displayLevel) || (a._xp - b._xp) || compareSkillsByIdAscending(a, b))
-    .slice(0, 5);
+  const highestSorted = [...rows].sort((a, b) => (b._xp - a._xp) || compareSkillsByIdAscending(a, b));
+  const lowestSorted = [...rows].sort((a, b) => (a._xp - b._xp) || compareSkillsByIdAscending(a, b));
+  const highestXp = highestSorted[0]?._xp;
+  const lowestXp = lowestSorted[0]?._xp;
+  const highestTies = highestSorted.filter(row => row._xp === highestXp);
+  const lowestTies = lowestSorted.filter(row => row._xp === lowestXp);
+  const highest = highestTies.slice(0, 5);
+  const lowest = lowestTies.slice(0, 5);
+  const highestMore = Math.max(0, highestTies.length - highest.length);
+  const lowestMore = Math.max(0, lowestTies.length - lowest.length);
 
   container.innerHTML = `
     <div class="skillExtremeColumn">
-      <div class="skillExtremeHeading">Highest</div>
-      <div class="skillExtremeList">${highest.map(skillExtremeItemHtml).join("")}</div>
+      <div class="skillExtremeHeading">Highest XP</div>
+      <div class="skillExtremeList">
+        ${highest.map(skillExtremeItemHtml).join("")}
+        ${highestMore ? `<div class="skillExtremeNote">+${formatNumber(highestMore)} more tied at ${formatNumber(highestXp)} XP</div>` : ""}
+      </div>
     </div>
     <div class="skillExtremeColumn">
-      <div class="skillExtremeHeading">Lowest</div>
-      <div class="skillExtremeList">${lowest.map(skillExtremeItemHtml).join("")}</div>
+      <div class="skillExtremeHeading">Lowest XP</div>
+      <div class="skillExtremeList">
+        ${lowest.map(skillExtremeItemHtml).join("")}
+        ${lowestMore ? `<div class="skillExtremeNote">+${formatNumber(lowestMore)} more tied at ${formatNumber(lowestXp)} XP</div>` : ""}
+      </div>
     </div>
   `;
 
