@@ -20,7 +20,7 @@ function menu_btn_class(string $key, string $active): string {
 
 $links = [
   'home' => ['label' => 'Clan Overview', 'href' => 'index', 'target' => ''],
-  'clan_comparison' => ['label' => 'Clan Comparison', 'href' => 'clan_comparison', 'target' => ''],
+  'clan_comparison' => ['label' => 'Member Comparison', 'href' => 'clan_comparison', 'target' => ''],
   'cap_history' => ['label' => 'Cap History', 'href' => 'cap_history', 'target' => ''],
   'help' => ['label' => 'Help', 'href' => 'help', 'target' => '_blank'],
 ];

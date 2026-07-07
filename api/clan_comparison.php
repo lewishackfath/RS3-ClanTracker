@@ -114,13 +114,118 @@ function tracker_cc_extract_skill_stats(array $skills): array {
     return $out;
 }
 
-function tracker_cc_virtual_level_from_xp(int $xp, string $skill): int {
-    // Lightweight server-side fallback. The UI can still use the exact frontend helper,
-    // but this keeps comparison rows useful without requiring client-side recalculation.
-    if ($xp >= 200000000) return 126;
-    if ($xp >= 104273167) return 120;
-    if ($xp >= 13034431) return 99;
-    return 0;
+function tracker_cc_skill_config(): array {
+    static $config = null;
+    if ($config !== null) return $config;
+
+    $config = [];
+    $path = dirname(__DIR__) . '/config/skills.js';
+    if (is_file($path) && is_readable($path)) {
+        $js = (string)file_get_contents($path);
+        if (preg_match_all('/\{\s*name:\s*"([^"]+)"\s*,\s*isElite:\s*(true|false)\s*,\s*levelCap:\s*(\d+)\s*\}/', $js, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $m) {
+                $name = (string)$m[1];
+                $config[tracker_cc_skill_key($name)] = [
+                    'name' => $name,
+                    'is_elite' => strtolower((string)$m[2]) === 'true',
+                    'level_cap' => max(1, (int)$m[3]),
+                ];
+            }
+        }
+    }
+
+    if (!$config) {
+        foreach (tracker_cc_skill_order() as $name) {
+            $config[tracker_cc_skill_key($name)] = [
+                'name' => $name,
+                'is_elite' => ($name === 'Invention'),
+                'level_cap' => ($name === 'Invention') ? 150 : 120,
+            ];
+        }
+    }
+
+    return $config;
+}
+
+function tracker_cc_skill_cfg(string $skill): array {
+    $key = tracker_cc_skill_key($skill);
+    $config = tracker_cc_skill_config();
+    return $config[$key] ?? [
+        'name' => $skill,
+        'is_elite' => false,
+        'level_cap' => 120,
+    ];
+}
+
+function tracker_cc_skill_level_cap(string $skill): int {
+    $cfg = tracker_cc_skill_cfg($skill);
+    return max(1, (int)($cfg['level_cap'] ?? 120));
+}
+
+function tracker_cc_skill_total_cap(): int {
+    $total = 0;
+    foreach (tracker_cc_skill_order() as $name) {
+        $total += tracker_cc_skill_level_cap($name);
+    }
+    return $total > 0 ? $total : 3510;
+}
+
+function tracker_cc_parse_xp_table(string $constName): array {
+    static $cache = [];
+    if (array_key_exists($constName, $cache)) return $cache[$constName];
+
+    $cache[$constName] = [];
+    $path = dirname(__DIR__) . '/config/skills.js';
+    if (!is_file($path) || !is_readable($path)) return $cache[$constName];
+
+    $js = (string)file_get_contents($path);
+    $pattern = '/const\s+' . preg_quote($constName, '/') . '\s*=\s*\{(.*?)\};/s';
+    if (!preg_match($pattern, $js, $match)) return $cache[$constName];
+
+    if (preg_match_all('/(\d+)\s*:\s*(\d+)/', (string)$match[1], $rows, PREG_SET_ORDER)) {
+        foreach ($rows as $row) {
+            $cache[$constName][(int)$row[1]] = (int)$row[2];
+        }
+        ksort($cache[$constName], SORT_NUMERIC);
+    }
+
+    return $cache[$constName];
+}
+
+function tracker_cc_skill_level_from_xp(int $xp, string $skill): int {
+    if ($xp <= 0) return 0;
+
+    $cfg = tracker_cc_skill_cfg($skill);
+    $table = !empty($cfg['is_elite'])
+        ? tracker_cc_parse_xp_table('ELITE_XP')
+        : tracker_cc_parse_xp_table('NON_ELITE_XP');
+
+    if (!$table) return 0;
+
+    $cap = tracker_cc_skill_level_cap($skill);
+    $best = 1;
+    foreach ($table as $level => $requiredXp) {
+        $level = (int)$level;
+        if ($level > $cap) break;
+        if ($xp >= (int)$requiredXp) {
+            $best = $level;
+        } else {
+            break;
+        }
+    }
+
+    return min($cap, max(1, $best));
+}
+
+function tracker_cc_display_level(?int $reportedLevel, ?int $xp, string $skill): ?int {
+    $cap = tracker_cc_skill_level_cap($skill);
+    $real = is_numeric($reportedLevel) ? max(1, min($cap, (int)$reportedLevel)) : null;
+    $xpLevel = is_numeric($xp) ? tracker_cc_skill_level_from_xp((int)$xp, $skill) : 0;
+
+    $display = max((int)($real ?? 0), (int)$xpLevel);
+    if ($display <= 0) return null;
+
+    return min($cap, $display);
 }
 
 function tracker_cc_skill_summary(?string $skillsJson, ?int $totalXp): array {
@@ -142,14 +247,15 @@ function tracker_cc_skill_summary(?string $skillsJson, ?int $totalXp): array {
         $row = $stats[$name] ?? ['level' => null, 'xp' => null];
         $level = $row['level'];
         $xp = $row['xp'];
-        if (is_numeric($level)) $sumLevel += (int)$level;
+        $cappedLevel = is_numeric($level) ? min(tracker_cc_skill_level_cap($name), max(1, (int)$level)) : null;
+        if (is_numeric($cappedLevel)) $sumLevel += (int)$cappedLevel;
         if (is_numeric($xp)) $sumXp += (int)$xp;
 
-        $displayLevel = is_numeric($level) ? (int)$level : null;
-        if (is_numeric($xp)) {
-            $virtual = tracker_cc_virtual_level_from_xp((int)$xp, $name);
-            if ($virtual > 0) $displayLevel = max((int)($displayLevel ?? 0), $virtual);
-        }
+        $displayLevel = tracker_cc_display_level(
+            is_numeric($level) ? (int)$level : null,
+            is_numeric($xp) ? (int)$xp : null,
+            $name
+        );
 
         $skillRows[] = [
             'skill' => $name,
@@ -160,7 +266,9 @@ function tracker_cc_skill_summary(?string $skillsJson, ?int $totalXp): array {
         ];
     }
 
-    if ($totalLevel === null) $totalLevel = $sumLevel > 0 ? $sumLevel : null;
+    $maxTotalLevel = tracker_cc_skill_total_cap();
+    if ($totalLevel !== null) $totalLevel = min($maxTotalLevel, max(1, (int)$totalLevel));
+    if ($totalLevel === null) $totalLevel = $sumLevel > 0 ? min($maxTotalLevel, $sumLevel) : null;
     if ($xpTotal === null) $xpTotal = $sumXp > 0 ? $sumXp : null;
 
     $highest = null;

@@ -44,9 +44,34 @@
     return `<img class="miniIcon comparisonSkillIcon" src="assets/skills/${escapeHtml(key)}.png" alt="" loading="lazy" onerror="this.src='assets/skills/_default.png'" /> <span>${escapeHtml(name)}</span>`;
   }
 
+  function cappedSkillDisplayLevel(skill) {
+    if (!skill || typeof skill !== "object") return null;
+    const name = String(skill.skill || skill.name || "Skill");
+    const reported = Number(skill.level);
+    const xp = Number(skill.xp);
+
+    if (window.TrackerSkills && typeof window.TrackerSkills.getDisplayLevel === "function") {
+      const result = window.TrackerSkills.getDisplayLevel(name, reported, xp);
+      if (result && Number.isFinite(Number(result.displayLevel))) {
+        const cap = typeof window.TrackerSkills.maxVirtualLevelForSkill === "function"
+          ? Number(window.TrackerSkills.maxVirtualLevelForSkill(name))
+          : null;
+        const display = Number(result.displayLevel);
+        return Number.isFinite(cap) && cap > 0 ? Math.min(cap, display) : display;
+      }
+    }
+
+    const fallback = Number(skill.display_level ?? skill.level);
+    if (!Number.isFinite(fallback)) return null;
+    const cap = window.TrackerSkills && typeof window.TrackerSkills.maxVirtualLevelForSkill === "function"
+      ? Number(window.TrackerSkills.maxVirtualLevelForSkill(name))
+      : null;
+    return Number.isFinite(cap) && cap > 0 ? Math.min(cap, fallback) : fallback;
+  }
+
   function skillSummary(skill) {
     if (!skill || typeof skill !== "object") return "—";
-    const level = number(skill.display_level ?? skill.level);
+    const level = number(cappedSkillDisplayLevel(skill));
     return `<span class="comparisonSkillSummary">${skillIcon(skill)} <strong>${escapeHtml(level)}</strong></span>`;
   }
 
@@ -90,7 +115,7 @@
       return;
     }
 
-    setText("clanComparisonSubheading", `${data.clan?.name || "Clan"} active clan member overview sorted by rank.`);
+    setText("clanComparisonSubheading", `${data.clan?.name || "Clan"} active member overview sorted by rank.`);
     setText("comparisonActiveMembers", number(data.stats?.active_members));
     setText("comparisonPrivateProfiles", number(data.stats?.private_profiles));
     setText("comparisonGenerated", data.generated_at_utc ? `Generated: ${data.generated_at_utc} UTC` : "");
@@ -129,7 +154,7 @@
               const privatePill = member.is_private ? '<span class="pill private">Private</span>' : "";
               return `
                 <tr>
-                  <td class="comparisonMemberCell"><a href="${escapeHtml(playerUrl(member.rsn))}" class="leaderLink">${escapeHtml(member.rsn)}</a> ${privatePill}</td>
+                  <td class="comparisonMemberCell"><a href="${escapeHtml(playerUrl(member.rsn))}" class="leaderLink comparisonMemberLink">${escapeHtml(member.rsn)}</a> ${privatePill}</td>
                   <td><span class="comparisonRankCell">${icon}<span>${escapeHtml(member.rank_name || "—")}</span></span></td>
                   <td class="num">${number(member.total_level)}</td>
                   <td class="num">${number(member.total_xp)}</td>
@@ -149,7 +174,7 @@
 
   async function loadComparison() {
     const status = el("comparisonStatus");
-    if (status) status.textContent = "Loading clan comparison…";
+    if (status) status.textContent = "Loading member comparison…";
 
     try {
       const params = new URLSearchParams();
@@ -162,13 +187,13 @@
 
       const data = await response.json();
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || `Unable to load clan comparison (${response.status})`);
+        throw new Error(data.error || `Unable to load member comparison (${response.status})`);
       }
 
       state.data = data;
       render();
     } catch (error) {
-      if (status) status.textContent = error?.message || "Unable to load clan comparison.";
+      if (status) status.textContent = error?.message || "Unable to load member comparison.";
       const wrap = el("comparisonTableWrap");
       if (wrap) wrap.innerHTML = "";
     }

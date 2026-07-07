@@ -2619,3 +2619,20 @@ li { margin: 0 0 10px; }
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   }
 }
+
+/* Member comparison readability fixes */
+.comparisonTable .comparisonMemberCell .comparisonMemberLink,
+.comparisonTable .comparisonMemberCell .leaderLink {
+  color: #3d2515 !important;
+  text-shadow: none !important;
+  text-decoration-color: rgba(83,49,23,0.48) !important;
+}
+.comparisonTable .comparisonMemberCell .comparisonMemberLink:hover,
+.comparisonTable .comparisonMemberCell .leaderLink:hover {
+  color: #7a4b1f !important;
+  text-decoration-color: rgba(122,75,31,0.82) !important;
+}
+.comparisonTable .comparisonMemberCell .pill.private {
+  vertical-align: middle;
+  margin-left: 7px;
+}

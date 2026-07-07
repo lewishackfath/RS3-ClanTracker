@@ -2418,14 +2418,29 @@ function displaySkillLevelForRow(skillRow) {
   const name = String(skillRow?.skill || skillRow?.name || "").trim();
   const levelRaw = (skillRow?.level === null || skillRow?.level === undefined) ? null : Number(skillRow.level);
   const xp = (skillRow?.xp === null || skillRow?.xp === undefined) ? null : Number(skillRow.xp);
-  let displayLevel = Number.isFinite(levelRaw) && levelRaw > 0 ? levelRaw : null;
 
+  const maxLevel = (window.TrackerSkills && typeof window.TrackerSkills.maxVirtualLevelForSkill === "function")
+    ? Number(window.TrackerSkills.maxVirtualLevelForSkill(name))
+    : 120;
+
+  if (window.TrackerSkills && typeof window.TrackerSkills.getDisplayLevel === "function") {
+    const result = window.TrackerSkills.getDisplayLevel(name, levelRaw, xp);
+    const display = Number(result?.displayLevel);
+    if (Number.isFinite(display) && display > 0) {
+      return Number.isFinite(maxLevel) && maxLevel > 0 ? Math.min(maxLevel, display) : display;
+    }
+  }
+
+  const real = Number.isFinite(levelRaw) && levelRaw > 0 ? levelRaw : null;
   const vLevel = (window.TrackerSkills && typeof window.TrackerSkills.virtualLevelFromXp === "function")
     ? window.TrackerSkills.virtualLevelFromXp(Number(xp || 0), name)
-    : displayLevel;
+    : real;
 
-  displayLevel = Math.max(Number(displayLevel || 0), Number(vLevel || 0)) || null;
-  return Number.isFinite(Number(displayLevel)) && Number(displayLevel) > 0 ? Number(displayLevel) : null;
+  let displayLevel = Math.max(Number(real || 0), Number(vLevel || 0)) || null;
+  if (Number.isFinite(Number(displayLevel)) && Number(displayLevel) > 0) {
+    return Number.isFinite(maxLevel) && maxLevel > 0 ? Math.min(maxLevel, Number(displayLevel)) : Number(displayLevel);
+  }
+  return null;
 }
 
 function renderCurrentSkills() {

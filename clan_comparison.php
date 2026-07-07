@@ -2,7 +2,7 @@
 require_once __DIR__ . '/includes/config.php';
 $brand = tracker_brand_config();
 $publicConfig = tracker_public_js_config();
-$pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] . ' Clan Comparison' : 'Clan Tracker Clan Comparison';
+$pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] . ' Member Comparison' : 'Clan Tracker Member Comparison';
 ?>
 <!doctype html>
 <html lang="en-AU">
@@ -10,12 +10,12 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] . ' Cl
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607020401" />
+  <link rel="stylesheet" href="./styles.css?v=202607070501" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
 $menu_title = $brand['name'];
-$menu_subtitle = 'Clan member comparison';
+$menu_subtitle = 'Member comparison';
 $menu_active = 'clan_comparison';
 include __DIR__ . '/includes/menu.php';
 ?>
@@ -24,7 +24,7 @@ include __DIR__ . '/includes/menu.php';
     <section class="card clanComparisonPage" id="clanComparisonPage">
       <div class="row capHistoryHeaderRow">
         <div>
-          <h1 class="h1">Clan Comparison</h1>
+          <h1 class="h1">Member Comparison</h1>
           <p class="muted" id="clanComparisonSubheading">Single-page overview of active clan members by rank.</p>
         </div>
         <a class="navA" href="index">
@@ -32,7 +32,7 @@ include __DIR__ . '/includes/menu.php';
         </a>
       </div>
 
-      <div class="statsGrid capHistoryStatsGrid" aria-label="Clan comparison summary">
+      <div class="statsGrid capHistoryStatsGrid" aria-label="Member comparison summary">
         <div class="statCard summaryStatCard">
           <div class="statLabel">Active Members</div>
           <div class="statValue" id="comparisonActiveMembers">—</div>
@@ -50,7 +50,7 @@ include __DIR__ . '/includes/menu.php';
         </select>
       </div>
 
-      <div class="muted" id="comparisonStatus" style="margin-top:10px;">Loading clan comparison…</div>
+      <div class="muted" id="comparisonStatus" style="margin-top:10px;">Loading member comparison…</div>
       <div class="comparisonTableWrap" id="comparisonTableWrap"></div>
       <div class="lastPull muted" id="comparisonGenerated"></div>
     </section>
@@ -61,8 +61,8 @@ include __DIR__ . '/includes/menu.php';
   <script>
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
-  <script src="./config/skills.js?v=202606050001"></script>
-  <script src="./app.js?v=202607020401"></script>
-  <script src="./clan_comparison.js?v=202607020401"></script>
+  <script src="./config/skills.js?v=202607070501"></script>
+  <script src="./app.js?v=202607070501"></script>
+  <script src="./clan_comparison.js?v=202607070501"></script>
 </body>
 </html>
