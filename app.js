@@ -2380,11 +2380,11 @@ function renderBossCollectionLog() {
       </div>
     </div>
     ${toggleHtml}
+    ${csvUpdateHtml}
     ${notice}
     <div class="bossLogGrid">
       ${bossCardsHtml}
     </div>
-    ${csvUpdateHtml}
   `;
 
   const filterPanel = el.querySelector(".bossLogFilterPanel");
