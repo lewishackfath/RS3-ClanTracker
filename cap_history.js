@@ -21,9 +21,8 @@
 
   function number(value) {
     const n = Number(value || 0);
-    return Number.isFinite(n) ? n.toLocaleString() : "0";
+    return Number.isFinite(n) ? n.toLocaleString("en-AU") : "0";
   }
-
 
   function compactNumber(value) {
     const n = Number(value || 0);
@@ -38,59 +37,129 @@
     }
   }
 
-  function renderCapsPerCapWeekChart() {
+  function wireChartTooltip(mount) {
+    const panel = mount.querySelector(".capHistoryChartPanel");
+    const tooltip = mount.querySelector(".capHistoryChartTip");
+    if (!panel || !tooltip) return;
+
+    function moveTooltip(event, text) {
+      const rect = panel.getBoundingClientRect();
+      const clientX = Number.isFinite(event.clientX) ? event.clientX : (rect.left + rect.width / 2);
+      const clientY = Number.isFinite(event.clientY) ? event.clientY : (rect.top + 48);
+
+      tooltip.textContent = text;
+      tooltip.classList.add("visible");
+
+      const tipRect = tooltip.getBoundingClientRect();
+      const x = clientX - rect.left + 12;
+      const y = clientY - rect.top + 12;
+      const maxX = Math.max(8, rect.width - tipRect.width - 8);
+      tooltip.style.left = `${Math.min(Math.max(8, x), maxX)}px`;
+      tooltip.style.top = `${Math.max(8, y)}px`;
+    }
+
+    mount.querySelectorAll("[data-chart-tooltip]").forEach(node => {
+      node.addEventListener("mouseenter", event => {
+        moveTooltip(event, String(node.getAttribute("data-chart-tooltip") || ""));
+      });
+      node.addEventListener("mousemove", event => {
+        moveTooltip(event, String(node.getAttribute("data-chart-tooltip") || ""));
+      });
+      node.addEventListener("mouseleave", () => {
+        tooltip.classList.remove("visible");
+      });
+      node.addEventListener("focus", event => {
+        moveTooltip(event, String(node.getAttribute("data-chart-tooltip") || ""));
+      });
+      node.addEventListener("blur", () => {
+        tooltip.classList.remove("visible");
+      });
+    });
+  }
+
+  function renderCitadelPerCapWeekChart() {
     const mount = el("capHistoryCapsChart");
     const data = state.data;
     if (!mount) return;
 
-    const rows = Array.isArray(data?.caps_per_cap_week_1y) ? data.caps_per_cap_week_1y : [];
+    const rows = Array.isArray(data?.citadel_per_cap_week_1y)
+      ? data.citadel_per_cap_week_1y
+      : (Array.isArray(data?.caps_per_cap_week_1y) ? data.caps_per_cap_week_1y : []);
+
     if (!rows.length) {
       mount.innerHTML = '<section class="panel capHistoryChartPanel"><div class="capHistoryChartEmpty">No cap-week history is available yet.</div></section>';
       return;
     }
 
-    const total = rows.reduce((sum, row) => sum + Number(row.count || 0), 0);
-    const peak = Math.max(...rows.map(row => Number(row.count || 0)), 0);
-    const maxY = Math.max(peak, 1);
-    const width = 900;
-    const height = 250;
-    const padLeft = 48;
+    const normalisedRows = rows.map(row => {
+      const caps = Math.max(0, Number(row.cap_count ?? row.count ?? 0));
+      const visits = Math.max(0, Number(row.visit_count ?? 0));
+      return {
+        ...row,
+        cap_count: caps,
+        visit_count: visits,
+      };
+    });
+
+    const totalCaps = normalisedRows.reduce((sum, row) => sum + row.cap_count, 0);
+    const totalVisits = normalisedRows.reduce((sum, row) => sum + row.visit_count, 0);
+    const peakCaps = Math.max(...normalisedRows.map(row => row.cap_count), 0);
+    const peakVisits = Math.max(...normalisedRows.map(row => row.visit_count), 0);
+    const maxY = Math.max(peakCaps, peakVisits, 1);
+    const width = 940;
+    const height = 270;
+    const padLeft = 50;
     const padRight = 18;
-    const padTop = 22;
-    const padBottom = 38;
+    const padTop = 24;
+    const padBottom = 42;
     const plotW = width - padLeft - padRight;
     const plotH = height - padTop - padBottom;
     const bottomY = padTop + plotH;
-    const gap = 2;
-    const step = plotW / Math.max(rows.length, 1);
-    const barW = Math.max(3, step - gap);
+    const groupGap = 3;
+    const barGap = 2;
+    const step = plotW / Math.max(normalisedRows.length, 1);
+    const groupW = Math.max(8, step - groupGap);
+    const barW = Math.max(3, (groupW - barGap) / 2);
     const midY = padTop + plotH / 2;
 
-    const bars = rows.map((row, index) => {
-      const count = Math.max(0, Number(row.count || 0));
-      const h = count > 0 ? Math.max(2, (count / maxY) * plotH) : 0;
-      const x = padLeft + (index * step) + (gap / 2);
-      const y = bottomY - h;
-      const showLabel = index === 0 || index === rows.length - 1 || index % 4 === 0;
-      const title = `Cap week starting ${row.label || row.date || "week"}: ${number(count)} caps`;
+    const bars = normalisedRows.map((row, index) => {
+      const visits = row.visit_count;
+      const caps = row.cap_count;
+      const visitH = visits > 0 ? Math.max(2, (visits / maxY) * plotH) : 0;
+      const capH = caps > 0 ? Math.max(2, (caps / maxY) * plotH) : 0;
+      const x = padLeft + (index * step) + (groupGap / 2);
+      const visitX = x;
+      const capX = x + barW + barGap;
+      const visitY = bottomY - visitH;
+      const capY = bottomY - capH;
+      const showLabel = index === 0 || index === normalisedRows.length - 1 || index % 4 === 0;
+      const label = row.label || row.date || "week";
+      const tooltip = `Cap week starting ${label}: ${number(visits)} visits • ${number(caps)} caps`;
       return `
-        <rect class="capHistoryChartBar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2">
-          <title>${escapeHtml(title)}</title>
-        </rect>
-        ${showLabel ? `<text class="capHistoryChartAxis" x="${(x + barW / 2).toFixed(1)}" y="${height - 10}" text-anchor="middle">${escapeHtml(row.label || "")}</text>` : ""}
+        <g class="capHistoryChartWeek" tabindex="0" data-chart-tooltip="${escapeHtml(tooltip)}">
+          <title>${escapeHtml(tooltip)}</title>
+          <rect class="capHistoryChartBar capHistoryChartBarVisits" x="${visitX.toFixed(1)}" y="${visitY.toFixed(1)}" width="${barW.toFixed(1)}" height="${visitH.toFixed(1)}" rx="2"></rect>
+          <rect class="capHistoryChartBar capHistoryChartBarCaps" x="${capX.toFixed(1)}" y="${capY.toFixed(1)}" width="${barW.toFixed(1)}" height="${capH.toFixed(1)}" rx="2"></rect>
+          <rect class="capHistoryChartHoverZone" x="${x.toFixed(1)}" y="${padTop}" width="${groupW.toFixed(1)}" height="${plotH}" rx="2"></rect>
+        </g>
+        ${showLabel ? `<text class="capHistoryChartAxis" x="${(x + groupW / 2).toFixed(1)}" y="${height - 10}" text-anchor="middle">${escapeHtml(label)}</text>` : ""}
       `;
     }).join("");
 
     mount.innerHTML = `
-      <section class="panel capHistoryChartPanel" aria-label="Caps per cap week for the last year">
+      <section class="panel capHistoryChartPanel" aria-label="Visits and caps per cap week for the last year">
         <div class="capHistoryChartHeader">
           <div>
-            <h2 class="h2">Caps/cap week — last year</h2>
-            <div class="muted">${number(total)} caps logged • Peak ${number(peak)} in one cap week</div>
+            <h2 class="h2">Visits and caps/cap week — last year</h2>
+            <div class="muted">${number(totalVisits)} visits • ${number(totalCaps)} caps • Peak ${number(Math.max(peakVisits, peakCaps))} in one cap week</div>
+          </div>
+          <div class="capHistoryChartLegend" aria-label="Chart legend">
+            <span><i class="capHistoryLegendDot capHistoryLegendVisits"></i> Visits</span>
+            <span><i class="capHistoryLegendDot capHistoryLegendCaps"></i> Caps</span>
           </div>
         </div>
         <div class="capHistoryChartScroll">
-          <svg class="capHistoryCapsChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Caps per cap week for the last year">
+          <svg class="capHistoryCapsChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Visits and caps per cap week for the last year">
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
@@ -99,8 +168,11 @@
             ${bars}
           </svg>
         </div>
+        <div class="capHistoryChartTip" role="status" aria-live="polite"></div>
       </section>
     `;
+
+    wireChartTooltip(mount);
   }
 
   function setText(id, value) {
@@ -185,7 +257,7 @@
     setText("capHistoryTotalVisits", number(data.stats?.total_visits));
     setText("capHistoryTotalCaps", number(data.stats?.total_caps));
     setText("capHistoryGenerated", data.generated_at_utc ? `Generated: ${data.generated_at_utc} UTC` : "");
-    renderCapsPerCapWeekChart();
+    renderCitadelPerCapWeekChart();
 
     renderRankFilter();
 

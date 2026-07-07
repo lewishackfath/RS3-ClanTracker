@@ -185,7 +185,6 @@ function getParams() {
   return {
     clan: (p.get("clan") || "").trim(),
     player: (p.get("player") || "").trim(),
-    tab: (p.get("tab") || "").trim(),
     configuredClan: getConfiguredClanId(),
   };
 }
@@ -205,7 +204,6 @@ function clearQuery() {
   const url = new URL(window.location.href);
   url.searchParams.delete("clan");
   url.searchParams.delete("player");
-  url.searchParams.delete("tab");
   window.history.pushState({}, "", url);
   render();
 }
@@ -1579,48 +1577,6 @@ let bossLogFilterExpanded = false;
 let selectedXpLineChartSkills = new Set(SKILLS);
 let selectedXpDailyChartSkills = new Set(SKILLS);
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
-const JOURNAL_VIEW_OPTIONS = ["activity", "xpstats", "bosslog", "drops"];
-const PLAYER_JOURNAL_VIEW_STORAGE_KEY = "clanTracker.playerJournalView";
-
-function normaliseJournalView(value) {
-  const key = String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, "");
-
-  if (key === "xp" || key === "xpstat" || key === "xpstats") return "xpstats";
-  if (key === "drop" || key === "drops" || key === "drophistory") return "drops";
-  if (key === "boss" || key === "bosslog" || key === "bosscollection" || key === "bosscollectionlog") return "bosslog";
-  return "activity";
-}
-
-function readSavedJournalView() {
-  try {
-    const saved = window.localStorage?.getItem(PLAYER_JOURNAL_VIEW_STORAGE_KEY) || "";
-    return normaliseJournalView(saved);
-  } catch {
-    return "activity";
-  }
-}
-
-function saveJournalView(view) {
-  try {
-    window.localStorage?.setItem(PLAYER_JOURNAL_VIEW_STORAGE_KEY, normaliseJournalView(view));
-  } catch {}
-}
-
-function syncJournalViewUrl(view) {
-  if (!isIndexViewAvailable()) return;
-  const url = new URL(window.location.href);
-  if (!url.searchParams.get("player")) return;
-
-  const normalised = normaliseJournalView(view);
-  if (normalised === "activity") url.searchParams.delete("tab");
-  else url.searchParams.set("tab", normalised);
-
-  window.history.replaceState({}, "", url);
-}
-
 
 function normaliseActivityLimit(value) {
   const n = Number(value);
@@ -1686,10 +1642,8 @@ function formatShortDateFromUtc(value) {
   }
 }
 
-function setJournalView(view, options = {}) {
-  selectedJournalView = normaliseJournalView(view);
-  if (options.persist !== false) saveJournalView(selectedJournalView);
-  if (options.updateUrl !== false) syncJournalViewUrl(selectedJournalView);
+function setJournalView(view) {
+  selectedJournalView = ["xpstats", "drops", "bosslog"].includes(view) ? view : "activity";
 
   qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
     const active = btn.getAttribute("data-journal-view") === selectedJournalView;
@@ -3329,7 +3283,7 @@ async function loadPlayer(rsn, period) {
 
 /* ---------------- Render views ---------------- */
 function render() {
-  const { clan, player, configuredClan, tab } = getParams();
+  const { clan, player, configuredClan } = getParams();
 
   const landing = qs("landingCard");
   const viewClan = qs("viewClan");
@@ -3345,7 +3299,6 @@ function render() {
   }
 
   if (player) {
-    selectedJournalView = normaliseJournalView(tab || readSavedJournalView() || selectedJournalView);
     clearClanResetCountdown();
     show(landing, false);
     show(viewClan, false);

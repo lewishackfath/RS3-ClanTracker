@@ -108,7 +108,7 @@ function tracker_ch_current_cap_week_start_local(array $clan): DateTimeImmutable
     return $candidate;
 }
 
-function tracker_ch_caps_per_cap_week_52(PDO $pdo, int $clanId, array $clan): array {
+function tracker_ch_citadel_per_cap_week_52(PDO $pdo, int $clanId, array $clan): array {
     $tzName = (string)($clan['timezone'] ?? 'UTC');
     try {
         $tz = new DateTimeZone($tzName);
@@ -136,6 +136,9 @@ function tracker_ch_caps_per_cap_week_52(PDO $pdo, int $clanId, array $clan): ar
             'week_end_local' => $weekEndLocal->format('Y-m-d H:i:s'),
             'date' => $weekStartLocal->format('Y-m-d'),
             'label' => $weekStartLocal->format('j M'),
+            'visit_count' => 0,
+            'cap_count' => 0,
+            // Backwards-compatible alias for any older frontend code that expected caps in `count`.
             'count' => 0,
         ];
     }
@@ -143,20 +146,56 @@ function tracker_ch_caps_per_cap_week_52(PDO $pdo, int $clanId, array $clan): ar
     $startUtc = $firstWeekStartLocal->setTimezone($utc)->format('Y-m-d H:i:s');
     $endUtc = $lastWeekEndLocal->setTimezone($utc)->format('Y-m-d H:i:s');
 
-    $stmt = $pdo->prepare("\n        SELECT cap_week_start_utc, COUNT(*) AS cap_count\n        FROM member_caps\n        WHERE clan_id = :cid\n          AND cap_week_start_utc >= :start_utc\n          AND cap_week_start_utc < :end_utc\n        GROUP BY cap_week_start_utc\n        ORDER BY cap_week_start_utc ASC\n    ");
-    $stmt->execute([
+    $capStmt = $pdo->prepare("
+        SELECT cap_week_start_utc, COUNT(*) AS cap_count
+        FROM member_caps
+        WHERE clan_id = :cid
+          AND cap_week_start_utc >= :start_utc
+          AND cap_week_start_utc < :end_utc
+        GROUP BY cap_week_start_utc
+        ORDER BY cap_week_start_utc ASC
+    ");
+    $capStmt->execute([
         ':cid' => $clanId,
         ':start_utc' => $startUtc,
         ':end_utc' => $endUtc,
     ]);
 
-    while ($row = $stmt->fetch()) {
+    while ($row = $capStmt->fetch()) {
         $raw = (string)($row['cap_week_start_utc'] ?? '');
         if ($raw === '') continue;
         try {
             $key = (new DateTimeImmutable($raw, $utc))->format('Y-m-d H:i:s');
             if (isset($weeks[$key])) {
-                $weeks[$key]['count'] = (int)($row['cap_count'] ?? 0);
+                $count = (int)($row['cap_count'] ?? 0);
+                $weeks[$key]['cap_count'] = $count;
+                $weeks[$key]['count'] = $count;
+            }
+        } catch (Throwable $e) {}
+    }
+
+    $visitStmt = $pdo->prepare("
+        SELECT cap_week_start_utc, COUNT(*) AS visit_count
+        FROM member_citadel_visits
+        WHERE clan_id = :cid
+          AND cap_week_start_utc >= :start_utc
+          AND cap_week_start_utc < :end_utc
+        GROUP BY cap_week_start_utc
+        ORDER BY cap_week_start_utc ASC
+    ");
+    $visitStmt->execute([
+        ':cid' => $clanId,
+        ':start_utc' => $startUtc,
+        ':end_utc' => $endUtc,
+    ]);
+
+    while ($row = $visitStmt->fetch()) {
+        $raw = (string)($row['cap_week_start_utc'] ?? '');
+        if ($raw === '') continue;
+        try {
+            $key = (new DateTimeImmutable($raw, $utc))->format('Y-m-d H:i:s');
+            if (isset($weeks[$key])) {
+                $weeks[$key]['visit_count'] = (int)($row['visit_count'] ?? 0);
             }
         } catch (Throwable $e) {}
     }
@@ -287,7 +326,7 @@ usort($groups, function(array $a, array $b): int {
     return tracker_ch_compare_ranks_desc((string)($a['rank_name'] ?? ''), (string)($b['rank_name'] ?? ''));
 });
 
-$capsPerCapWeek52 = tracker_ch_caps_per_cap_week_52($pdo, $clanId, $clan);
+$citadelPerCapWeek52 = tracker_ch_citadel_per_cap_week_52($pdo, $clanId, $clan);
 
 tracker_json([
     'ok' => true,
@@ -301,7 +340,8 @@ tracker_json([
         'total_caps' => $totalCaps,
         'total_visits' => $totalVisits,
     ],
-    'caps_per_cap_week_1y' => $capsPerCapWeek52,
+    'citadel_per_cap_week_1y' => $citadelPerCapWeek52,
+    'caps_per_cap_week_1y' => $citadelPerCapWeek52,
     'members' => $outMembers,
     'rank_groups' => $groups,
     'generated_at_utc' => gmdate('Y-m-d H:i:s'),
