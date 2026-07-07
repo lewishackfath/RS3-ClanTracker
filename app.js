@@ -1569,6 +1569,7 @@ let selectedXpPeriod = "7d";
 let selectedActivityLimit = 20;
 let selectedSkillView = "current";
 let selectedJournalView = "activity";
+let hiddenBossLogKeys = new Set();
 let selectedXpLineChartSkills = new Set(SKILLS);
 let selectedXpDailyChartSkills = new Set(SKILLS);
 const ACTIVITY_LIMIT_OPTIONS = [20, 50, 100, 200];
@@ -2206,6 +2207,22 @@ function wireBossCollectionLogIcons(root) {
   Promise.all([loadItemNameCleanupRules(), loadItemIconAliases()]).then(applyIcons).catch(() => {});
 }
 
+function bossLogKeyFor(boss) {
+  return String(boss?.key || boss?.name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function sortBossLogBossesAlphabetically(bosses) {
+  return [...bosses].sort((a, b) => {
+    const nameA = String(a?.name || "");
+    const nameB = String(b?.name || "");
+    return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
+  });
+}
+
 function renderBossCollectionLog() {
   const el = qs("bossCollectionLogView");
   if (!el) return;
@@ -2216,7 +2233,10 @@ function renderBossCollectionLog() {
     return;
   }
 
-  const bosses = Array.isArray(log.bosses) ? log.bosses : [];
+  const bosses = sortBossLogBossesAlphabetically(Array.isArray(log.bosses) ? log.bosses : []);
+  const validBossKeys = new Set(bosses.map(bossLogKeyFor).filter(Boolean));
+  hiddenBossLogKeys = new Set([...hiddenBossLogKeys].filter(key => validBossKeys.has(key)));
+
   const summary = log.summary || {};
   const totalItems = Number.isFinite(Number(summary.total_items)) ? Number(summary.total_items) : 0;
   const foundItems = Number.isFinite(Number(summary.found_items)) ? Number(summary.found_items) : 0;
@@ -2229,28 +2249,31 @@ function renderBossCollectionLog() {
     return;
   }
 
+  const visibleBosses = bosses.filter(boss => !hiddenBossLogKeys.has(bossLogKeyFor(boss)));
   const notice = log.available === false
     ? `<div class="bossLogNotice">${escapeHtml(log.error || "Boss collection log storage is not ready. Run the updated database bootstrap, then reload this page.")}</div>`
     : "";
 
-  el.innerHTML = `
-    <div class="bossLogSummary">
-      <div class="xpStatsCard">
-        <div class="xpStatsLabel">Log progress</div>
-        <div class="xpStatsValue">${escapeHtml(formatNumber(foundItems))}/${escapeHtml(formatNumber(totalItems))}</div>
-      </div>
-      <div class="xpStatsCard">
-        <div class="xpStatsLabel">Completion</div>
-        <div class="xpStatsValue">${escapeHtml(formatNumber(percent))}%</div>
-      </div>
-      <div class="xpStatsCard">
-        <div class="xpStatsLabel">Completed bosses</div>
-        <div class="xpStatsValue">${escapeHtml(formatNumber(completeBosses))}/${escapeHtml(formatNumber(totalBosses))}</div>
-      </div>
-    </div>
-    ${notice}
-    <div class="bossLogGrid">
+  const toggleHtml = `
+    <div class="bossLogToggleBar" role="group" aria-label="Show or hide bosses">
       ${bosses.map(boss => {
+        const key = bossLogKeyFor(boss);
+        const items = Array.isArray(boss?.items) ? boss.items : [];
+        const found = Number.isFinite(Number(boss?.found_items)) ? Number(boss.found_items) : items.filter(item => item?.found).length;
+        const total = Number.isFinite(Number(boss?.total_items)) ? Number(boss.total_items) : items.length;
+        const isVisible = !hiddenBossLogKeys.has(key);
+        return `
+          <button class="bossLogToggle ${isVisible ? "active" : ""}" type="button" data-boss-log-toggle="${escapeHtml(key)}" aria-pressed="${isVisible ? "true" : "false"}">
+            <span>${escapeHtml(boss?.name || "Unknown boss")}</span>
+            <small>${escapeHtml(formatNumber(found))}/${escapeHtml(formatNumber(total))}</small>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  const bossCardsHtml = visibleBosses.length
+    ? visibleBosses.map(boss => {
         const items = Array.isArray(boss?.items) ? boss.items : [];
         const found = Number.isFinite(Number(boss?.found_items)) ? Number(boss.found_items) : items.filter(item => item?.found).length;
         const total = Number.isFinite(Number(boss?.total_items)) ? Number(boss.total_items) : items.length;
@@ -2285,9 +2308,40 @@ function renderBossCollectionLog() {
             </div>
           </section>
         `;
-      }).join("")}
+      }).join("")
+    : `<div class="bossLogFilteredEmpty muted">All bosses are currently hidden. Use the boss toggle buttons above to show them again.</div>`;
+
+  el.innerHTML = `
+    <div class="bossLogSummary">
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Log progress</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(foundItems))}/${escapeHtml(formatNumber(totalItems))}</div>
+      </div>
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Completion</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(percent))}%</div>
+      </div>
+      <div class="xpStatsCard">
+        <div class="xpStatsLabel">Completed bosses</div>
+        <div class="xpStatsValue">${escapeHtml(formatNumber(completeBosses))}/${escapeHtml(formatNumber(totalBosses))}</div>
+      </div>
+    </div>
+    ${toggleHtml}
+    ${notice}
+    <div class="bossLogGrid">
+      ${bossCardsHtml}
     </div>
   `;
+
+  el.querySelectorAll("[data-boss-log-toggle]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-boss-log-toggle") || "";
+      if (!key) return;
+      if (hiddenBossLogKeys.has(key)) hiddenBossLogKeys.delete(key);
+      else hiddenBossLogKeys.add(key);
+      renderBossCollectionLog();
+    });
+  });
 
   wireBossCollectionLogIcons(el);
 }

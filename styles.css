@@ -1934,11 +1934,64 @@ li { margin: 0 0 10px; }
   padding: 10px 12px;
   font-weight: 750;
 }
+.bossLogToggleBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(246,222,159,0.22);
+  background: rgba(38, 20, 12, 0.34);
+}
+.bossLogToggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(246,222,159,0.26);
+  border-radius: 999px;
+  background: rgba(24,12,7,0.44);
+  color: #d6c8a0;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: transform .15s ease, opacity .15s ease, border-color .15s ease, background .15s ease, color .15s ease;
+}
+.bossLogToggle small {
+  color: inherit;
+  opacity: 0.82;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+.bossLogToggle.active {
+  border-color: rgba(246,222,159,0.54);
+  background: rgba(246,222,159,0.14);
+  color: #fff8dc;
+}
+.bossLogToggle:hover,
+.bossLogToggle:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(246,222,159,0.60);
+  background: rgba(246,222,159,0.18);
+  color: #fff8dc;
+  outline: none;
+}
 .bossLogGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+}
+.bossLogFilteredEmpty {
+  border-radius: 16px;
+  border: 1px dashed rgba(246,222,159,0.34);
+  background: rgba(24,12,7,0.28);
+  padding: 16px;
+  text-align: center;
+  font-weight: 800;
 }
 .bossLogCard {
   border-radius: 18px 13px 18px 14px;
@@ -2395,6 +2448,13 @@ li { margin: 0 0 10px; }
   }
   .bossLogSummary {
     grid-template-columns: 1fr;
+  }
+  .bossLogToggleBar {
+    padding: 8px;
+  }
+  .bossLogToggle {
+    max-width: 100%;
+    font-size: 0.78rem;
   }
   .bossLogGrid {
     grid-template-columns: 1fr;

@@ -665,6 +665,108 @@ function tracker_build_drop_history(PDO $pdo, int $memberId, string $timezone): 
     ];
 }
 
+function tracker_boss_log_default_item_aliases(): array {
+    return [
+        'Bandos shield' => 'Bandos warshield',
+        'Hiss of Saradomin' => "Saradomin's hiss",
+        'Bill (pet)' => 'Bill',
+    ];
+}
+
+function tracker_load_item_icon_alias_pairs(): array {
+    static $cache = null;
+    if (is_array($cache)) return $cache;
+
+    $pairs = [];
+    $addPair = static function($from, $to) use (&$pairs): void {
+        $from = tracker_clean_drop_item_name(is_scalar($from) ? (string)$from : null) ?? '';
+        $to = tracker_clean_drop_item_name(is_scalar($to) ? (string)$to : null) ?? '';
+        if ($from === '' || $to === '') return;
+        $pairs[] = ['from' => $from, 'to' => $to];
+    };
+
+    foreach (tracker_boss_log_default_item_aliases() as $from => $to) {
+        $addPair($from, $to);
+    }
+
+    $path = __DIR__ . '/../assets/activity/item_icon_alias.json';
+    if (is_file($path)) {
+        $raw = @file_get_contents($path);
+        $json = is_string($raw) ? json_decode($raw, true) : null;
+
+        if (is_array($json)) {
+            $sourceObject = (isset($json['aliases']) && is_array($json['aliases']) && array_keys($json['aliases']) !== range(0, count($json['aliases']) - 1))
+                ? $json['aliases']
+                : $json;
+
+            if (is_array($sourceObject)) {
+                foreach ($sourceObject as $from => $to) {
+                    if (is_string($to)) $addPair($from, $to);
+                }
+            }
+
+            if (isset($json['aliases']) && is_array($json['aliases'])) {
+                foreach ($json['aliases'] as $row) {
+                    if (!is_array($row)) continue;
+                    $addPair(
+                        $row['from'] ?? $row['source'] ?? $row['runemetrics'] ?? $row['activity_name'] ?? null,
+                        $row['to'] ?? $row['target'] ?? $row['wiki'] ?? $row['item_name'] ?? null
+                    );
+                }
+            }
+        }
+    }
+
+    $deduped = [];
+    $seen = [];
+    foreach ($pairs as $pair) {
+        $fromKey = tracker_boss_log_item_key($pair['from'] ?? '');
+        $toKey = tracker_boss_log_item_key($pair['to'] ?? '');
+        if ($fromKey === '' || $toKey === '' || $fromKey === $toKey) continue;
+        $dedupeKey = $fromKey . '|' . $toKey;
+        if (isset($seen[$dedupeKey])) continue;
+        $seen[$dedupeKey] = true;
+        $deduped[] = [
+            'from' => (string)$pair['from'],
+            'to' => (string)$pair['to'],
+            'from_key' => $fromKey,
+            'to_key' => $toKey,
+        ];
+    }
+
+    $cache = $deduped;
+    return $cache;
+}
+
+function tracker_boss_log_alias_names_for_item(string $itemName): array {
+    $itemKey = tracker_boss_log_item_key($itemName);
+    if ($itemKey === '') return [];
+
+    $aliases = [];
+    foreach (tracker_load_item_icon_alias_pairs() as $pair) {
+        $fromKey = (string)($pair['from_key'] ?? '');
+        $toKey = (string)($pair['to_key'] ?? '');
+        if ($fromKey === $itemKey && !empty($pair['to'])) {
+            $aliases[] = (string)$pair['to'];
+        }
+        if ($toKey === $itemKey && !empty($pair['from'])) {
+            $aliases[] = (string)$pair['from'];
+        }
+    }
+
+    $out = [];
+    $seen = [$itemKey => true];
+    foreach ($aliases as $alias) {
+        $alias = tracker_clean_drop_item_name($alias) ?? trim($alias);
+        $aliasKey = tracker_boss_log_item_key($alias);
+        if ($alias === '' || $aliasKey === '' || isset($seen[$aliasKey])) continue;
+        $seen[$aliasKey] = true;
+        $out[] = $alias;
+    }
+
+    return $out;
+}
+
 function tracker_boss_log_item_key(?string $value): string {
     $s = tracker_clean_drop_item_name($value) ?? trim((string)($value ?? ''));
     if ($s === '') return '';
@@ -742,13 +844,27 @@ function tracker_load_boss_log_definitions(): array {
             }
 
             if ($itemName === '') continue;
+            foreach (tracker_boss_log_alias_names_for_item($itemName) as $alias) {
+                $aliases[] = $alias;
+            }
+
             $itemKey = tracker_boss_log_item_key($itemName);
             if ($itemKey === '') continue;
+
+            $dedupedAliases = [];
+            $seenAliases = [$itemKey => true];
+            foreach ($aliases as $alias) {
+                $alias = tracker_clean_drop_item_name((string)$alias) ?? trim((string)$alias);
+                $aliasKey = tracker_boss_log_item_key($alias);
+                if ($alias === '' || $aliasKey === '' || isset($seenAliases[$aliasKey])) continue;
+                $seenAliases[$aliasKey] = true;
+                $dedupedAliases[] = $alias;
+            }
 
             $items[] = [
                 'key' => $itemKey,
                 'name' => $itemName,
-                'aliases' => array_values(array_unique($aliases)),
+                'aliases' => $dedupedAliases,
                 'order' => $order,
             ];
         }
@@ -764,7 +880,9 @@ function tracker_load_boss_log_definitions(): array {
         ];
     }
 
-    usort($out['bosses'], static fn(array $a, array $b): int => ((int)($a['order'] ?? 0)) <=> ((int)($b['order'] ?? 0)));
+    usort($out['bosses'], static function(array $a, array $b): int {
+        return strcasecmp((string)($a['name'] ?? ''), (string)($b['name'] ?? ''));
+    });
     $cache = $out;
     return $cache;
 }
