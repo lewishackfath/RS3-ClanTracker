@@ -1,0 +1,60 @@
+{
+  "key": "amascut",
+  "name": "Amascut, the Devourer",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Devourer's Guard",
+      "aliases": [
+        "Devourer's Armguard"
+      ],
+      "order": 1
+    },
+    {
+      "name": "Tumeken's Light",
+      "order": 2
+    },
+    {
+      "name": "Mask of Tumeken's resplendence",
+      "order": 3
+    },
+    {
+      "name": "Robe top of Tumeken's resplendence",
+      "order": 4
+    },
+    {
+      "name": "Robt bottom of Tumeken's resplendence",
+      "order": 5
+    },
+    {
+      "name": "Gloves of Tumeken's resplendence",
+      "order": 6
+    },
+    {
+      "name": "Boots of Tumeken's resplendence",
+      "order": 7
+    },
+    {
+      "name": "The Devourer's Nexus",
+      "aliases": [
+        "The Devourer's Nexus (unattuned)"
+      ],
+      "order": 8
+    },
+    {
+      "name": "Shard of Genesis Essene",
+      "order": 9
+    },
+    {
+      "name": "Memoirs of the Devourer",
+      "order": 10
+    },
+    {
+      "name": "Amaskitty",
+      "aliases": [
+        "Amascut's promise"
+      ],
+      "order": 11
+    }
+  ]
+}

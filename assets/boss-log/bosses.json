@@ -3,6 +3,12 @@
   "source": "https://runescape.wiki/w/Boss_collection_log",
   "bosses": [
     {
+      "key": "amascut",
+      "name": "Amascut, the Devourer",
+      "file": "bosses/amascut.json",
+      "order": 0
+    },
+    {
       "key": "araxxi",
       "name": "Araxxi",
       "file": "bosses/araxxi.json",
@@ -63,46 +69,58 @@
       "order": 10
     },
     {
+      "key": "flesh-hatcher_mhekarnahz",
+      "name": "Flesh-hatcher Mhekarnahz",
+      "file": "bosses/flesh-hatcher_mhekarnahz.json",
+      "order": 11
+    },
+    {
       "key": "the_gate_of_elidinis",
       "name": "The Gate of Elidinis",
       "file": "bosses/the_gate_of_elidinis.json",
-      "order": 11
+      "order": 12
     },
     {
       "key": "general_graardor",
       "name": "General Graardor",
       "file": "bosses/general_graardor.json",
-      "order": 12
+      "order": 13
     },
     {
       "key": "giant_mole",
       "name": "Giant Mole",
       "file": "bosses/giant_mole.json",
-      "order": 13
+      "order": 14
     },
     {
       "key": "gregorovic",
       "name": "Gregorovic",
       "file": "bosses/gregorovic.json",
-      "order": 14
+      "order": 15
     },
     {
       "key": "helwyr",
       "name": "Helwyr",
       "file": "bosses/helwyr.json",
-      "order": 15
+      "order": 16
     },
     {
       "key": "hermod_the_spirit_of_war",
       "name": "Hermod, the Spirit of War",
       "file": "bosses/hermod_the_spirit_of_war.json",
-      "order": 16
+      "order": 17
+    },
+    {
+      "key": "ivar",
+      "name": "Ivar, King of Bones",
+      "file": "bosses/ivar.json",
+      "order": 18
     },
     {
       "key": "kalphite_king",
       "name": "Kalphite King",
       "file": "bosses/kalphite_king.json",
-      "order": 17
+      "order": 19
     },
     {
       "key": "kalphite_queen",

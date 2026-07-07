@@ -1,0 +1,22 @@
+{
+  "key": "flesh-hatcher_mhekarnahz",
+  "name": "Flesh-hatcher Mhekarnahz",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Stalker's charm",
+      "order": 1
+    },
+    {
+      "name": "Dagon harpoon",
+      "order": 2
+    },
+    {
+      "name": "Flesh-hatchling Mhekarnahz",
+      "aliases": [
+        "Mhekarnahz's eye"
+      ],
+      "order": 3
+    }
+  ]
+}

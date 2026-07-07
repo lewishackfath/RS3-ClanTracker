@@ -1,0 +1,26 @@
+{
+  "key": "ivar",
+  "name": "Ivar, King of Bones",
+  "source": "https://runescape.wiki/w/Boss_collection_log",
+  "items": [
+    {
+      "name": "Bonecrusher maul",
+      "order": 1
+    },
+    {
+      "name": "Magic skull mask",
+      "order": 2
+    },
+    {
+      "name": "Colossal bone",
+      "order": 3
+    },
+    {
+      "name": "Ivarsson",
+      "aliases": [
+        "Ivar's loincloth"
+      ],
+      "order": 4
+    }
+  ]
+}
