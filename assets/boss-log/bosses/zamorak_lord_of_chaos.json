@@ -44,7 +44,8 @@
       "aliases": [
         "Jewels of Zamorak"
       ],
-      "order": 10
+      "order": 10,
+      "icon_name": "Zammo the Rak pet"
     }
   ]
 }
