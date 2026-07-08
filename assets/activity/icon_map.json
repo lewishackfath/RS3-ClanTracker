@@ -25,5 +25,15 @@
     "icon": "assets/activity/case.png",
     "activity_regex": "^Summoned for a case involving .+\\.$",
     "regex_flags": "i"
+  },
+  "DungeonFloorReached": {
+  "icon": "assets/skills/dungeoneering.png",
+  "activity_regex": "^Dungeon floor\\s+\\d+\\s+reached\\.\\s*$",
+  "regex_flags": "i"
+  },
+  "DaemonheimHistory": {
+    "icon": "assets/skills/dungeoneering.png",
+    "activity_regex": "^Daemonheim's history uncovered,\\s+\\d+\\s+volumes found\\.\\s*$",
+    "regex_flags": "i"
   }
 }
