@@ -17,13 +17,13 @@
     "regex_flags": "i"
   },
   "CaseWon": {
-  "icon": "assets/activity/case.png",
-  "activity_regex": "^Won a case involving [^.]+\\.$",
-  "regex_flags": "i"
+    "icon": "assets/activity/case.png",
+    "activity_regex": "^Won a case involving .+\\.$",
+    "regex_flags": "i"
   },
   "CaseSummoned": {
     "icon": "assets/activity/case.png",
-    "activity_regex": "^Summoned for a case involving [^.]+\\.$",
+    "activity_regex": "^Summoned for a case involving .+\\.$",
     "regex_flags": "i"
   }
 }
