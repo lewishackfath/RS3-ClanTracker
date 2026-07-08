@@ -3,6 +3,12 @@
   "description": "First-line RuneMetrics activity patterns that should be treated as boss kill/defeat rows. Keep boss/icon aliases in assets/activity/monsters/icon_map.json.",
   "patterns": [
     {
+      "name": "Killed a boss",
+      "activity_regex": "^I killed\\s+a\\s+(?<boss>.+?)(?:\\.\\s*)?$",
+      "regex_flags": "i",
+      "boss_group": "boss"
+    },
+    {
       "name": "Killed many boss target",
       "activity_regex": "^I killed\\s+many\\s+(?<boss>.+?)(?:\\.\\s*)?$",
       "regex_flags": "i",
