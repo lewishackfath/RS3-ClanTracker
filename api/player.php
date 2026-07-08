@@ -608,12 +608,12 @@ function tracker_clean_drop_item_name(?string $value): ?string {
 
 function tracker_extract_drop_item_name(?string $activityText, ?string $activityDetails): ?string {
     $text = trim((string)($activityText ?? ''));
-    if ($text !== '' && preg_match('/^I\s+found\s+(?:an?|some)\s+(.+?)(?:\.\s*)?$/i', $text, $m)) {
+    if ($text !== '' && preg_match('/^I\s+found\s+(?:(?:an?|some)\s+)?(.+?)(?:\.\s*)?$/i', $text, $m)) {
         return tracker_clean_drop_item_name($m[1] ?? null);
     }
 
     $details = trim((string)($activityDetails ?? ''));
-    if ($details !== '' && preg_match('/\bdropped\s+(?:an?|some)\s+(.+?)(?:\.\s*|$)/i', $details, $m)) {
+    if ($details !== '' && preg_match('/\bdropped\s+(?:(?:an?|some)\s+)?(.+?)(?:\.\s*|$)/i', $details, $m)) {
         return tracker_clean_drop_item_name($m[1] ?? null);
     }
 
@@ -621,7 +621,7 @@ function tracker_extract_drop_item_name(?string $activityText, ?string $activity
 }
 
 function tracker_build_drop_history(PDO $pdo, int $memberId, string $timezone): array {
-    $stmt = $pdo->prepare("\n        SELECT activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found a %'\n            OR activity_text LIKE 'I found an %'\n            OR activity_text LIKE 'I found some %'\n            OR activity_details LIKE '%dropped a %'\n            OR activity_details LIKE '%dropped an %'\n            OR activity_details LIKE '%dropped some %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) DESC\n        LIMIT 10000\n    ");
+    $stmt = $pdo->prepare("\n        SELECT activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found %'\n            OR activity_details LIKE '%dropped %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) DESC\n        LIMIT 10000\n    ");
     $stmt->execute([':mid' => $memberId]);
     $rows = $stmt->fetchAll() ?: [];
 
@@ -920,7 +920,7 @@ function tracker_sync_member_boss_collection_log(PDO $pdo, int $memberId, int $c
 
     if (!$index) return ['matched_activities' => 0, 'matched_items' => 0, 'stored_items' => 0];
 
-    $stmt = $pdo->prepare("\n        SELECT id, activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found a %'\n            OR activity_text LIKE 'I found an %'\n            OR activity_text LIKE 'I found some %'\n            OR activity_details LIKE '%dropped a %'\n            OR activity_details LIKE '%dropped an %'\n            OR activity_details LIKE '%dropped some %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) ASC\n        LIMIT 50000\n    ");
+    $stmt = $pdo->prepare("\n        SELECT id, activity_date_utc, announced_at, activity_text, activity_details\n        FROM member_activities\n        WHERE member_id = :mid\n          AND (\n            activity_text LIKE 'I found %'\n            OR activity_details LIKE '%dropped %'\n          )\n        ORDER BY COALESCE(activity_date_utc, announced_at) ASC\n        LIMIT 50000\n    ");
     $stmt->execute([':mid' => $memberId]);
     $rows = $stmt->fetchAll() ?: [];
 

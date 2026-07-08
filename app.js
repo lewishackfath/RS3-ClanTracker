@@ -1100,13 +1100,13 @@ loadItemIconAliases();
 
 function extractDropItemNameFromText(activityText) {
   const t = String(activityText || "").trim();
-  const m = t.match(/^I found\s+(?:an?|some)\s+(.+?)(?:\.\s*)?$/i);
+  const m = t.match(/^I found\s+(?:(?:an?|some)\s+)?(.+?)(?:\.\s*)?$/i);
   return (m && m[1]) ? cleanDropItemNameForLookup(m[1]) : null;
 }
 
 function extractDropItemNameFromDetails(details) {
   const d = String(details || "").trim();
-  const m = d.match(/\bdropped\s+(?:an?|some)\s+(.+?)(?:\.\s*|$)/i);
+  const m = d.match(/\bdropped\s+(?:(?:an?|some)\s+)?(.+?)(?:\.\s*|$)/i);
   return (m && m[1]) ? cleanDropItemNameForLookup(m[1]) : null;
 }
 

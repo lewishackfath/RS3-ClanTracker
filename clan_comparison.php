@@ -62,7 +62,7 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202607070620"></script>
-  <script src="./app.js?v=202607070620"></script>
+  <script src="./app.js?v=202607081152"></script>
   <script src="./clan_comparison.js?v=202607070620"></script>
 </body>
 </html>
