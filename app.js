@@ -558,23 +558,19 @@ function findMappedActivityIcon(activity, iconMap) {
 // Start fetching early (non-blocking)
 loadActivityIconMap();
 
-/* ---------------- Boss kill icon map ----------------
-   Boss kill activities are expected in one of these formats:
-   - I killed 12 Kalphite Kings.
-   - I killed Kalphite King
+/* ---------------- Boss kill activity parsing + icon map ----------------
+   First-line boss activity phrases are configured in:
+   - assets/activity/monsters/activity_phrases.json
 
-   Add mappings in:
+   Boss/icon name mappings remain configured in:
    - assets/activity/monsters/icon_map.json
 
-   Example:
-   {
-     "Kalphite King": "kalphite_king.png"
-   }
+   Keep these separate: activity_phrases.json defines how RuneMetrics phrases
+   extract a boss name/count; icon_map.json defines which icon that boss uses.
 -------------------------------------------------------------------------- */
 
 const BOSS_ICON_MAP_URLS = [
   "assets/activity/monsters/icon_map.json",
-  "assets/activity/monsters/boss_icon_map.json",
 ];
 
 let _bossIconMapPromise = null;
@@ -602,6 +598,105 @@ function loadBossIconMap() {
   })();
 
   return _bossIconMapPromise;
+}
+
+
+const BOSS_ACTIVITY_PHRASES_URL = "assets/activity/monsters/activity_phrases.json";
+
+const DEFAULT_BOSS_ACTIVITY_PHRASES = [
+  {
+    name: "Killed many boss target",
+    activity_regex: "^I killed\\s+many\\s+(?<boss>.+?)(?:\\.\\s*)?$",
+    regex_flags: "i",
+    boss_group: "boss"
+  },
+  {
+    name: "Killed boss with optional count",
+    activity_regex: "^I killed\\s+(?:(?<count>\\d[\\d,]*)\\s+)?(?<boss>.+?)(?:\\.\\s*)?$",
+    regex_flags: "i",
+    boss_group: "boss",
+    count_group: "count"
+  },
+  {
+    name: "Have killed boss with optional count",
+    activity_regex: "^I have killed\\s+(?:(?<count>\\d[\\d,]*)\\s+)?(?<boss>.+?)(?:\\.\\s*)?$",
+    regex_flags: "i",
+    boss_group: "boss",
+    count_group: "count"
+  },
+  {
+    name: "Defeated boss times",
+    activity_regex: "^I defeated\\s+(?<boss>.+?)\\s+(?<count>\\d[\\d,]*)\\s+times(?:\\b.*)?(?:\\.\\s*)?$",
+    regex_flags: "i",
+    boss_group: "boss",
+    count_group: "count"
+  },
+  {
+    name: "Defeated boss",
+    activity_regex: "^I defeated\\s+(?<boss>.+?)(?:\\.\\s*)?$",
+    regex_flags: "i",
+    boss_group: "boss"
+  }
+];
+
+let _bossActivityPhrases = DEFAULT_BOSS_ACTIVITY_PHRASES.slice();
+let _bossActivityPhrasesPromise = null;
+
+function normaliseBossActivityPhraseRules(raw) {
+  const rows = Array.isArray(raw) ? raw : (Array.isArray(raw?.patterns) ? raw.patterns : []);
+  const out = [];
+
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const activityRegex = String(row.activity_regex || row.regex || "").trim();
+    if (!activityRegex) continue;
+
+    out.push({
+      name: String(row.name || "Boss activity phrase").trim(),
+      activity_regex: activityRegex,
+      regex_flags: String(row.regex_flags || row.flags || "i").trim() || "i",
+      boss_group: row.boss_group ?? row.bossGroup ?? "boss",
+      count_group: row.count_group ?? row.countGroup ?? "count"
+    });
+  }
+
+  return out.length ? out : DEFAULT_BOSS_ACTIVITY_PHRASES.slice();
+}
+
+function loadBossActivityPhrases() {
+  if (_bossActivityPhrasesPromise) return _bossActivityPhrasesPromise;
+
+  _bossActivityPhrasesPromise = (async () => {
+    try {
+      const r = await fetch(BOSS_ACTIVITY_PHRASES_URL, { cache: "no-store" });
+      if (r.ok) {
+        const txt = await r.text();
+        const obj = JSON.parse(_relaxJson(txt));
+        _bossActivityPhrases = normaliseBossActivityPhraseRules(obj);
+      }
+    } catch {
+      _bossActivityPhrases = DEFAULT_BOSS_ACTIVITY_PHRASES.slice();
+    }
+
+    return _bossActivityPhrases;
+  })();
+
+  return _bossActivityPhrasesPromise;
+}
+
+function getRegexGroup(match, groupRef) {
+  if (!match) return "";
+
+  if (typeof groupRef === "number" || /^\d+$/.test(String(groupRef || ""))) {
+    return match[Number(groupRef)] || "";
+  }
+
+  const name = String(groupRef || "").trim();
+  if (name && match.groups && Object.prototype.hasOwnProperty.call(match.groups, name)) {
+    return match.groups[name] || "";
+  }
+
+  return "";
 }
 
 function cleanBossNameForIcons(name) {
@@ -639,6 +734,11 @@ function bossNameVariants(name) {
   const raw = cleanBossNameForIcons(name);
   const variants = new Set();
   addBossNameVariant(variants, raw);
+
+  // RuneMetrics sometimes includes a leading article that the icon map does
+  // not use, e.g. "the Queen Black Dragon" vs "Queen Black Dragon".
+  const articleFree = raw.replace(/^The\s+/i, "").trim();
+  if (articleFree && articleFree !== raw) addBossNameVariant(variants, articleFree);
 
   // Some boss activity lines add flavour text after a comma, e.g.
   // "I killed 12 General Graardors, all huge war chiefs."
@@ -706,6 +806,7 @@ function findMappedBossIcon(bossName, bossIconMap) {
 
 // Start fetching early (non-blocking)
 loadBossIconMap();
+loadBossActivityPhrases();
 
 function setImgWithFallback(imgEl, candidates, finalFallback) {
   if (!imgEl) return;
@@ -1045,14 +1146,39 @@ function extractDropItemNameFromDetails(details) {
 
 function extractBossKillFromText(activityText) {
   const t = String(activityText || "").replace(/\s+/g, " ").trim();
-  const m = t.match(/^I killed\s+(?:(\d[\d,]*)\s+)?(.+?)(?:\.\s*)?$/i);
-  if (!m || !m[2]) return null;
+  if (!t) return null;
 
-  const bossName = cleanBossNameForIcons(m[2]);
-  if (!bossName) return null;
+  const rules = Array.isArray(_bossActivityPhrases) && _bossActivityPhrases.length
+    ? _bossActivityPhrases
+    : DEFAULT_BOSS_ACTIVITY_PHRASES;
 
-  const bossCount = m[1] ? Number(String(m[1]).replace(/,/g, "")) : null;
-  return { bossName, bossCount: Number.isFinite(bossCount) ? bossCount : null };
+  for (const rule of rules) {
+    if (!rule || !rule.activity_regex) continue;
+
+    let re;
+    try {
+      re = new RegExp(rule.activity_regex, rule.regex_flags || "i");
+    } catch {
+      continue;
+    }
+
+    const m = re.exec(t);
+    if (!m) continue;
+
+    const bossRaw = getRegexGroup(m, rule.boss_group ?? "boss");
+    const bossName = cleanBossNameForIcons(bossRaw);
+    if (!bossName) continue;
+
+    const countRaw = getRegexGroup(m, rule.count_group ?? "count");
+    const bossCount = countRaw ? Number(String(countRaw).replace(/,/g, "")) : null;
+
+    return {
+      bossName,
+      bossCount: Number.isFinite(bossCount) ? bossCount : null
+    };
+  }
+
+  return null;
 }
 
 function classifyActivity(text, details) {
@@ -3225,19 +3351,33 @@ function renderPlayer() {
       });
     });
 
-    // Apply boss icon mappings from assets/activity/monsters/icon_map.json.
-    loadBossIconMap().then(bossIconMap => {
-      if (!bossIconMap) return;
-      activityList.querySelectorAll('img.miniIcon[data-kind="boss"]').forEach(img => {
-        const bossName = cleanBossNameForIcons(img.getAttribute("data-boss") || "");
+    // Apply boss phrase parsing and icon mappings from JSON once both have loaded.
+    Promise.all([loadBossActivityPhrases(), loadBossIconMap()]).then(([, bossIconMap]) => {
+      const list = playerData?.recent_activity || [];
+
+      activityList.querySelectorAll("img.miniIcon").forEach(img => {
+        const idx = Number(img.getAttribute("data-idx") || "NaN");
+        if (!Number.isFinite(idx)) return;
+
+        const a = list[idx];
+        const info = classifyActivity(a?.text || "", a?.details || "");
+        if (info.kind !== "boss") return;
+
+        const bossName = cleanBossNameForIcons(info.bossName || "");
+        if (!bossName) return;
+
+        img.setAttribute("data-kind", "boss");
+        img.setAttribute("data-boss", bossName);
+
+        const row = img.closest(".activityRow");
+        if (row) row.classList.add("activity-boss");
+
         const mapped = findMappedBossIcon(bossName, bossIconMap);
-        if (mapped) {
-          setImgWithFallback(
-            img,
-            [...bossMappedIconCandidates(mapped), ...bossIconCandidatesFromName(bossName)],
-            "assets/activity/default.png"
-          );
-        }
+        const candidates = mapped
+          ? [...bossMappedIconCandidates(mapped), ...bossIconCandidatesFromName(bossName)]
+          : bossIconCandidatesFromName(bossName);
+        candidates.push("assets/activity/default.png");
+        setImgWithFallback(img, candidates, "assets/activity/default.png");
       });
     });
 
