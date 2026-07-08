@@ -16,4 +16,14 @@
     "activity_regex": "^(Capped|Visited) (at )?my Clan Citadel\\.$",
     "regex_flags": "i"
   },
+  "CaseWon": {
+  "icon": "assets/activity/case.png",
+  "activity_regex": "^Won a case involving [^.]+\\.$",
+  "regex_flags": "i"
+  },
+  "CaseSummoned": {
+    "icon": "assets/activity/case.png",
+    "activity_regex": "^Summoned for a case involving [^.]+\\.$",
+    "regex_flags": "i"
+  }
 }
