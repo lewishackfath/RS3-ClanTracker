@@ -603,43 +603,7 @@ function loadBossIconMap() {
 
 const BOSS_ACTIVITY_PHRASES_URL = "assets/activity/monsters/activity_phrases.json";
 
-const DEFAULT_BOSS_ACTIVITY_PHRASES = [
-  {
-    name: "Killed many boss target",
-    activity_regex: "^I killed\\s+many\\s+(?<boss>.+?)(?:\\.\\s*)?$",
-    regex_flags: "i",
-    boss_group: "boss"
-  },
-  {
-    name: "Killed boss with optional count",
-    activity_regex: "^I killed\\s+(?:(?<count>\\d[\\d,]*)\\s+)?(?<boss>.+?)(?:\\.\\s*)?$",
-    regex_flags: "i",
-    boss_group: "boss",
-    count_group: "count"
-  },
-  {
-    name: "Have killed boss with optional count",
-    activity_regex: "^I have killed\\s+(?:(?<count>\\d[\\d,]*)\\s+)?(?<boss>.+?)(?:\\.\\s*)?$",
-    regex_flags: "i",
-    boss_group: "boss",
-    count_group: "count"
-  },
-  {
-    name: "Defeated boss times",
-    activity_regex: "^I defeated\\s+(?<boss>.+?)\\s+(?<count>\\d[\\d,]*)\\s+times(?:\\b.*)?(?:\\.\\s*)?$",
-    regex_flags: "i",
-    boss_group: "boss",
-    count_group: "count"
-  },
-  {
-    name: "Defeated boss",
-    activity_regex: "^I defeated\\s+(?<boss>.+?)(?:\\.\\s*)?$",
-    regex_flags: "i",
-    boss_group: "boss"
-  }
-];
-
-let _bossActivityPhrases = DEFAULT_BOSS_ACTIVITY_PHRASES.slice();
+let _bossActivityPhrases = [];
 let _bossActivityPhrasesPromise = null;
 
 function normaliseBossActivityPhraseRules(raw) {
@@ -660,7 +624,7 @@ function normaliseBossActivityPhraseRules(raw) {
     });
   }
 
-  return out.length ? out : DEFAULT_BOSS_ACTIVITY_PHRASES.slice();
+  return out;
 }
 
 function loadBossActivityPhrases() {
@@ -675,7 +639,7 @@ function loadBossActivityPhrases() {
         _bossActivityPhrases = normaliseBossActivityPhraseRules(obj);
       }
     } catch {
-      _bossActivityPhrases = DEFAULT_BOSS_ACTIVITY_PHRASES.slice();
+      _bossActivityPhrases = [];
     }
 
     return _bossActivityPhrases;
@@ -740,10 +704,9 @@ function bossNameVariants(name) {
   const articleFree = raw.replace(/^The\s+/i, "").trim();
   if (articleFree && articleFree !== raw) addBossNameVariant(variants, articleFree);
 
-  // Some boss activity lines add flavour text after a comma, e.g.
-  // "I killed 12 General Graardors, all huge war chiefs."
-  // Keep the full value first for comma-containing boss names, but also try the
-  // segment before the comma as a fallback.
+  // Some boss activity lines add flavour text after a comma. Keep the full
+  // value first for comma-containing boss names, but also try the segment
+  // before the comma as a fallback.
   const commaBase = raw.split(",")[0]?.trim() || "";
   if (commaBase && commaBase !== raw) addBossNameVariant(variants, commaBase);
 
@@ -1129,7 +1092,7 @@ function dropItemIconCandidates(itemName) {
   return Array.from(new Set(candidates));
 }
 
-// Start fetching early; default aliases are used immediately until the JSON arrives.
+// Start fetching early; default item aliases are used immediately until the JSON arrives.
 loadItemIconAliases();
 
 function extractDropItemNameFromText(activityText) {
@@ -1148,9 +1111,7 @@ function extractBossKillFromText(activityText) {
   const t = String(activityText || "").replace(/\s+/g, " ").trim();
   if (!t) return null;
 
-  const rules = Array.isArray(_bossActivityPhrases) && _bossActivityPhrases.length
-    ? _bossActivityPhrases
-    : DEFAULT_BOSS_ACTIVITY_PHRASES;
+  const rules = Array.isArray(_bossActivityPhrases) ? _bossActivityPhrases : [];
 
   for (const rule of rules) {
     if (!rule || !rule.activity_regex) continue;
