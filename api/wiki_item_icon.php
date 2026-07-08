@@ -22,6 +22,7 @@ function param(string $k, int $maxLen = 120): string {
 
 function normalise_item(string $item): string {
     $item = trim($item);
+    $item = str_replace(["’", "‘", "`"], "'", $item);
     $item = preg_replace('/\s+/', ' ', $item) ?? $item;
     return $item;
 }

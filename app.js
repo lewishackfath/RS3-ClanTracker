@@ -893,8 +893,9 @@ function findSkillInText(text) {
 function cleanItemNameForIcons(name) {
   let s = String(name || "");
   if (s.normalize) s = s.normalize("NFKC");
+  s = s.replace(/[‘’`]/g, "'");
   s = s.replace(/ /g, " ").replace(/\s+/g, " ").trim();
-  s = s.replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim();
+  s = s.replace(/^["'“”]+|["'“”]+$/g, "").trim();
   s = s.replace(/\.\s*$/, "").trim();
   return s;
 }
@@ -996,6 +997,8 @@ const DEFAULT_ITEM_ICON_ALIASES = {
   "Bill (pet)": "Bill (pet) pet",
   "Vitalis": "Vitalis (pet)",
   "Zammo the Rak": "Zammo the Rak pet",
+  "Clawdias shell clippings": "Clawdia's shell clippings",
+  "Clawdia’s shell clippings": "Clawdia's shell clippings",
 };
 
 let _itemIconAliases = DEFAULT_ITEM_ICON_ALIASES;
