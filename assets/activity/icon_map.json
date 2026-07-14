@@ -27,13 +27,18 @@
     "regex_flags": "i"
   },
   "DungeonFloorReached": {
-  "icon": "assets/skills/dungeoneering.png",
-  "activity_regex": "^Dungeon floor\\s+\\d+\\s+reached\\.\\s*$",
-  "regex_flags": "i"
+    "icon": "assets/skills/dungeoneering.png",
+    "activity_regex": "^Dungeon floor\\s+\\d+\\s+reached\\.\\s*$",
+    "regex_flags": "i"
   },
   "DaemonheimHistory": {
     "icon": "assets/skills/dungeoneering.png",
     "activity_regex": "^Daemonheim's history uncovered,\\s+\\d+\\s+volumes found\\.\\s*$",
+    "regex_flags": "i"
+  },
+  "MusicUnlocked": {
+    "icon": "assets/activity/Music_icon.webp",
+    "activity_regex": "^(?:\\d{1,3}(?:,\\d{3})+|\\d+)\\s+songs unlocked\\.?\\s*$",
     "regex_flags": "i"
   }
 }
