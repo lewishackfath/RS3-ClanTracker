@@ -1889,6 +1889,7 @@ li { margin: 0 0 10px; }
 }
 #activityJournalView.hidden,
 #xpStatsView.hidden,
+#skillLevelingView.hidden,
 #dropHistoryView.hidden,
 #bossCollectionLogView.hidden {
   display: none !important;
@@ -3120,4 +3121,247 @@ li { margin: 0 0 10px; }
   .bossLogCsvSummary { align-items: flex-start; flex-direction: column; }
   .bossLogCsvSummary span { margin-right: 0; }
   .bossLogCsvForm { grid-template-columns: 1fr; }
+}
+
+/* Skill levelling tab */
+#skillLevelingView.hidden,
+.skillLevelingPanel.hidden {
+  display: none !important;
+}
+
+.skillLevelingPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.skillLevelingIntro,
+.skillLevelingRow {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px 13px 18px 14px;
+  border: 1px solid rgba(246, 222, 159, 0.26);
+  background:
+    radial-gradient(circle at top left, rgba(246,222,159,0.18), transparent 34%),
+    linear-gradient(180deg, rgba(89,55,31,0.96), rgba(47,27,17,0.96));
+  color: #fff2c5;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 0 0 1px rgba(42,23,15,0.55),
+    0 12px 26px rgba(18,8,3,0.24);
+}
+
+.skillLevelingIntro {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.skillLevelingIntro h4,
+.skillLevelingSkillText h4 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  color: #fff8dc;
+  font-size: 1.02rem;
+}
+
+.skillLevelingIntro p {
+  margin: 5px 0 0;
+  color: #f1dca7;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.skillLevelingIntroStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.skillLevelingIntroStats div,
+.skillLevelingStats div {
+  border: 1px solid rgba(246,222,159,0.20);
+  border-radius: 13px;
+  background: rgba(24, 11, 6, 0.30);
+  padding: 8px 10px;
+}
+
+.skillLevelingIntroStats span,
+.skillLevelingStats span {
+  display: block;
+  color: #f4d58a;
+  font-size: 0.74rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.skillLevelingIntroStats strong,
+.skillLevelingStats strong {
+  display: block;
+  margin-top: 3px;
+  color: #fff8dc;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.skillLevelingList {
+  display: grid;
+  gap: 10px;
+}
+
+.skillLevelingRow {
+  display: grid;
+  grid-template-columns: minmax(170px, 220px) minmax(260px, 1fr) minmax(235px, 300px);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+}
+
+.skillLevelingRow.elite {
+  border-color: rgba(126, 90, 166, 0.55);
+}
+
+.skillLevelingSkillBlock {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.skillLevelingIcon {
+  width: 44px;
+  height: 44px;
+}
+
+.skillLevelingSkillText {
+  min-width: 0;
+}
+
+.skillLevelingSkillText h4 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skillLevelingSubline {
+  margin-top: 3px;
+  color: #f1dca7;
+  font-weight: 850;
+  font-size: 0.82rem;
+}
+
+.skillLevelingBarBlock {
+  min-width: 0;
+}
+
+.skillLevelingBarMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #f1dca7;
+  font-weight: 850;
+  font-size: 0.84rem;
+}
+
+.skillLevelingBarMeta span {
+  min-width: 0;
+}
+
+.skillLevelingBarMeta strong {
+  color: #fff8dc;
+}
+
+.skillLevelingTrack {
+  position: relative;
+  height: 28px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(246,222,159,0.20);
+  background: rgba(20,10,6,0.52);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.28);
+}
+
+.skillLevelingFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8b5d2c, #e4b65b, #fff2c5);
+  box-shadow: 0 0 12px rgba(228,182,91,0.30);
+}
+
+.skillLevelingTick {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transform: translateX(-50%);
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.skillLevelingTickLine {
+  display: block;
+  width: 2px;
+  height: 100%;
+  margin: 0 auto;
+  background: rgba(255,248,220,0.70);
+  box-shadow: 0 0 5px rgba(0,0,0,0.40);
+}
+
+.skillLevelingTickLabel {
+  position: absolute;
+  top: 31px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f4d58a;
+  font-size: 0.68rem;
+  font-weight: 950;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+}
+
+.skillLevelingTick:first-child .skillLevelingTickLabel {
+  transform: translateX(0);
+}
+
+.skillLevelingTick.completion .skillLevelingTickLabel {
+  transform: translateX(-100%);
+}
+
+.skillLevelingStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.skillLevelingStats strong {
+  font-size: 0.92rem;
+}
+
+@media (max-width: 1120px) {
+  .skillLevelingRow {
+    grid-template-columns: minmax(170px, 220px) minmax(260px, 1fr);
+  }
+  .skillLevelingStats {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .skillLevelingIntro,
+  .skillLevelingRow {
+    grid-template-columns: 1fr;
+  }
+  .skillLevelingIntroStats,
+  .skillLevelingStats {
+    grid-template-columns: 1fr;
+  }
+  .skillLevelingBarMeta {
+    flex-direction: column;
+    gap: 3px;
+  }
 }

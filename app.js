@@ -1734,7 +1734,7 @@ function formatShortDateFromUtc(value) {
 }
 
 function setJournalView(view) {
-  selectedJournalView = ["xpstats", "drops", "bosslog"].includes(view) ? view : "activity";
+  selectedJournalView = ["xpstats", "skilleveling", "drops", "bosslog"].includes(view) ? view : "activity";
 
   qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
     const active = btn.getAttribute("data-journal-view") === selectedJournalView;
@@ -1746,13 +1746,16 @@ function setJournalView(view) {
   if (title) {
     title.textContent = selectedJournalView === "xpstats"
       ? "XP Stats"
-      : (selectedJournalView === "drops"
-        ? "Drop History"
-        : (selectedJournalView === "bosslog" ? "Boss Log" : "Activity Journal"));
+      : (selectedJournalView === "skilleveling"
+        ? "Skill Levelling"
+        : (selectedJournalView === "drops"
+          ? "Drop History"
+          : (selectedJournalView === "bosslog" ? "Boss Log" : "Activity Journal")));
   }
 
   show(qs("activityJournalView"), selectedJournalView === "activity");
   show(qs("xpStatsView"), selectedJournalView === "xpstats");
+  show(qs("skillLevelingView"), selectedJournalView === "skilleveling");
   show(qs("dropHistoryView"), selectedJournalView === "drops");
   show(qs("bossCollectionLogView"), selectedJournalView === "bosslog");
 
@@ -1762,6 +1765,7 @@ function setJournalView(view) {
   }
 
   if (selectedJournalView === "xpstats") renderXpStats();
+  if (selectedJournalView === "skilleveling") renderSkillLeveling();
   if (selectedJournalView === "drops") renderDropHistory();
   if (selectedJournalView === "bosslog") renderBossCollectionLog();
 }
@@ -2230,6 +2234,195 @@ function renderXpStats() {
 
   wireSkillIconFallbacks(el);
   wireXpSkillFilters(el);
+}
+
+
+const SKILL_COMPLETION_XP = 200_000_000;
+
+function skillLevelingConfigFor(skillName) {
+  const cfg = (window.TrackerSkills && typeof window.TrackerSkills.getSkillConfig === "function")
+    ? window.TrackerSkills.getSkillConfig(skillName)
+    : null;
+
+  return {
+    isElite: Boolean(cfg?.isElite),
+    levelCap: Number.isFinite(Number(cfg?.levelCap)) ? Number(cfg.levelCap) : 120,
+  };
+}
+
+function skillLevelingXpForLevel(skillName, level) {
+  const cfg = skillLevelingConfigFor(skillName);
+  const table = cfg.isElite ? window.TrackerSkills?.ELITE_XP : window.TrackerSkills?.NON_ELITE_XP;
+  if (window.TrackerSkills && typeof window.TrackerSkills.xpForLevel === "function" && table) {
+    const xp = Number(window.TrackerSkills.xpForLevel(table, level));
+    return Number.isFinite(xp) ? xp : null;
+  }
+  return null;
+}
+
+function skillLevelingMilestones(skillName) {
+  const cfg = skillLevelingConfigFor(skillName);
+  const levels = cfg.isElite ? [0, 99, 110, 120, 150] : [0, 99, 110, 120];
+  const milestones = [];
+
+  for (const level of levels) {
+    if (level === 0) {
+      milestones.push({ label: "0", level: 0, xp: 0, isCompletion: false });
+      continue;
+    }
+
+    const xp = skillLevelingXpForLevel(skillName, level);
+    if (Number.isFinite(Number(xp))) {
+      milestones.push({ label: String(level), level, xp: Number(xp), isCompletion: false });
+    }
+  }
+
+  milestones.push({ label: "200m", level: null, xp: SKILL_COMPLETION_XP, isCompletion: true });
+
+  const seen = new Set();
+  return milestones
+    .filter(row => {
+      const key = `${row.label}|${row.xp}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => Number(a.xp || 0) - Number(b.xp || 0));
+}
+
+function skillLevelingNextMilestone(milestones, currentXp) {
+  const xp = Math.max(0, Math.min(SKILL_COMPLETION_XP, Number(currentXp || 0)));
+  return milestones.find(row => Number(row.xp || 0) > xp) || milestones[milestones.length - 1] || null;
+}
+
+function skillLevelingPreviousMilestone(milestones, currentXp) {
+  const xp = Math.max(0, Math.min(SKILL_COMPLETION_XP, Number(currentXp || 0)));
+  let previous = milestones[0] || null;
+  for (const row of milestones) {
+    if (Number(row.xp || 0) <= xp) previous = row;
+    else break;
+  }
+  return previous;
+}
+
+function formatSkillLevelingPercent(value, digits = 1) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  const capped = Math.max(0, Math.min(100, n));
+  return `${capped.toFixed(digits).replace(/\.0$/, "")}%`;
+}
+
+function renderSkillLevelingMilestoneTicks(milestones) {
+  return milestones.map(row => {
+    const pct = Math.max(0, Math.min(100, (Number(row.xp || 0) / SKILL_COMPLETION_XP) * 100));
+    return `
+      <span class="skillLevelingTick ${row.isCompletion ? "completion" : ""}" style="left:${pct}%" title="${escapeHtml(row.label)} • ${escapeHtml(formatNumber(row.xp || 0))} XP">
+        <span class="skillLevelingTickLine"></span>
+        <span class="skillLevelingTickLabel">${escapeHtml(row.label)}</span>
+      </span>
+    `;
+  }).join("");
+}
+
+function renderSkillLevelingRow(row) {
+  const skill = String(row?.skill || "Skill");
+  const key = String(row?.skill_key || skill);
+  const level = displaySkillLevelForRow(row);
+  const xpRaw = Number(row?.xp);
+  const currentXp = Number.isFinite(xpRaw) ? Math.max(0, Math.min(SKILL_COMPLETION_XP, xpRaw)) : 0;
+  const milestones = skillLevelingMilestones(skill);
+  const next = skillLevelingNextMilestone(milestones, currentXp);
+  const previous = skillLevelingPreviousMilestone(milestones, currentXp);
+  const nextXp = Number(next?.xp ?? SKILL_COMPLETION_XP);
+  const previousXp = Number(previous?.xp ?? 0);
+  const xpRemaining = Math.max(0, nextXp - currentXp);
+  const completionPercent = SKILL_COMPLETION_XP > 0 ? (currentXp / SKILL_COMPLETION_XP) * 100 : 0;
+  const segmentSize = Math.max(1, nextXp - previousXp);
+  const segmentPercent = currentXp >= SKILL_COMPLETION_XP ? 100 : ((currentXp - previousXp) / segmentSize) * 100;
+  const levelText = Number.isFinite(Number(level)) ? String(level) : "—";
+  const nextLabel = currentXp >= SKILL_COMPLETION_XP ? "Complete" : (next?.isCompletion ? "200m XP" : `Level ${next?.label || "—"}`);
+  const cfg = skillLevelingConfigFor(skill);
+
+  return `
+    <article class="skillLevelingRow ${cfg.isElite ? "elite" : ""}">
+      <div class="skillLevelingSkillBlock">
+        <img class="xpSkillIcon skillLevelingIcon" data-skill="${escapeHtml(skill)}" data-skillkey="${escapeHtml(key)}" alt="${escapeHtml(skill)}" />
+        <div class="skillLevelingSkillText">
+          <h4>${escapeHtml(skill)}</h4>
+          <div class="skillLevelingSubline">Level ${escapeHtml(levelText)}${cfg.isElite ? " • Elite skill" : ""}</div>
+        </div>
+      </div>
+
+      <div class="skillLevelingBarBlock">
+        <div class="skillLevelingBarMeta">
+          <span>Current XP: <strong>${escapeHtml(formatNumber(currentXp))}</strong></span>
+          <span>Next: <strong>${escapeHtml(nextLabel)}</strong></span>
+        </div>
+        <div class="skillLevelingTrack" aria-label="${escapeHtml(skill)} progress to 200 million XP">
+          <div class="skillLevelingFill" style="width:${Math.max(0, Math.min(100, completionPercent))}%"></div>
+          ${renderSkillLevelingMilestoneTicks(milestones)}
+        </div>
+      </div>
+
+      <div class="skillLevelingStats">
+        <div>
+          <span>XP remaining</span>
+          <strong>${escapeHtml(formatNumber(xpRemaining))}</strong>
+        </div>
+        <div>
+          <span>To next milestone</span>
+          <strong>${escapeHtml(formatSkillLevelingPercent(segmentPercent))}</strong>
+        </div>
+        <div>
+          <span>Completion</span>
+          <strong>${escapeHtml(formatSkillLevelingPercent(completionPercent))}</strong>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderSkillLeveling() {
+  const el = qs("skillLevelingView");
+  if (!el) return;
+
+  const cs = playerData?.current_skills;
+  if (!cs || !cs.has_data) {
+    el.innerHTML = `<div class="xpStatsEmpty muted">No skill snapshot data yet.</div>`;
+    return;
+  }
+
+  const skills = (cs.skills || [])
+    .filter(row => row && !row.__is_total)
+    .sort(compareSkillsByIdAscending);
+
+  if (!skills.length) {
+    el.innerHTML = `<div class="xpStatsEmpty muted">No skill data is available for this player.</div>`;
+    return;
+  }
+
+  const completed = skills.filter(row => Number(row?.xp || 0) >= SKILL_COMPLETION_XP).length;
+  const totalXp = skills.reduce((sum, row) => sum + Math.max(0, Math.min(SKILL_COMPLETION_XP, Number(row?.xp || 0) || 0)), 0);
+  const possibleXp = skills.length * SKILL_COMPLETION_XP;
+  const overallPercent = possibleXp > 0 ? (totalXp / possibleXp) * 100 : 0;
+
+  el.innerHTML = `
+    <div class="skillLevelingIntro">
+      <div>
+        <h4>Skill Levelling Progress</h4>
+        <p>Milestones are 0, 99, 110, 120, 200m XP, with level 150 included for elite skills.</p>
+      </div>
+      <div class="skillLevelingIntroStats">
+        <div><span>200m skills</span><strong>${escapeHtml(formatNumber(completed))}/${escapeHtml(formatNumber(skills.length))}</strong></div>
+        <div><span>Overall completion</span><strong>${escapeHtml(formatSkillLevelingPercent(overallPercent))}</strong></div>
+      </div>
+    </div>
+    <div class="skillLevelingList">
+      ${skills.map(renderSkillLevelingRow).join("")}
+    </div>
+  `;
+
+  wireSkillIconFallbacks(el);
 }
 
 function renderDropHistory() {
