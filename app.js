@@ -2313,10 +2313,11 @@ function formatSkillLevelingPercent(value, digits = 1) {
 }
 
 function renderSkillLevelingMilestoneTicks(milestones) {
-  return milestones.map(row => {
+  return milestones.map((row, index) => {
     const pct = Math.max(0, Math.min(100, (Number(row.xp || 0) / SKILL_COMPLETION_XP) * 100));
+    const sideClass = index % 2 === 0 ? "top" : "bottom";
     return `
-      <span class="skillLevelingTick ${row.isCompletion ? "completion" : ""}" style="left:${pct}%" title="${escapeHtml(row.label)} • ${escapeHtml(formatNumber(row.xp || 0))} XP">
+      <span class="skillLevelingTick ${sideClass} ${row.isCompletion ? "completion" : ""}" style="left:${pct}%" title="${escapeHtml(row.label)} • ${escapeHtml(formatNumber(row.xp || 0))} XP">
         <span class="skillLevelingTickLine"></span>
         <span class="skillLevelingTickLabel">${escapeHtml(row.label)}</span>
       </span>
@@ -2340,8 +2341,8 @@ function renderSkillLevelingRow(row) {
   const segmentSize = Math.max(1, nextXp - previousXp);
   const segmentPercent = currentXp >= SKILL_COMPLETION_XP ? 100 : ((currentXp - previousXp) / segmentSize) * 100;
   const levelText = Number.isFinite(Number(level)) ? String(level) : "—";
-  const nextLabel = currentXp >= SKILL_COMPLETION_XP ? "Complete" : (next?.isCompletion ? "200m XP" : `Level ${next?.label || "—"}`);
   const cfg = skillLevelingConfigFor(skill);
+  const hoverText = `${skill}: ${formatNumber(currentXp)} XP • ${formatNumber(xpRemaining)} XP remaining to ${currentXp >= SKILL_COMPLETION_XP ? "completion" : (next?.isCompletion ? "200m XP" : `level ${next?.label || "—"}`)}`;
 
   return `
     <article class="skillLevelingRow ${cfg.isElite ? "elite" : ""}">
@@ -2355,26 +2356,25 @@ function renderSkillLevelingRow(row) {
 
       <div class="skillLevelingBarBlock">
         <div class="skillLevelingBarMeta">
-          <span>Current XP: <strong>${escapeHtml(formatNumber(currentXp))}</strong></span>
-          <span>Next: <strong>${escapeHtml(nextLabel)}</strong></span>
+          <span>Current XP <strong>${escapeHtml(formatNumber(currentXp))}</strong></span>
         </div>
-        <div class="skillLevelingTrack" aria-label="${escapeHtml(skill)} progress to 200 million XP">
+        <div class="skillLevelingTrack" aria-label="${escapeHtml(skill)} progress to 200 million XP" title="${escapeHtml(hoverText)}">
           <div class="skillLevelingFill" style="width:${Math.max(0, Math.min(100, completionPercent))}%"></div>
           ${renderSkillLevelingMilestoneTicks(milestones)}
         </div>
       </div>
 
-      <div class="skillLevelingStats">
-        <div>
-          <span>XP remaining</span>
+      <div class="skillLevelingStats compact">
+        <div title="XP remaining to the next milestone">
+          <span>Remaining</span>
           <strong>${escapeHtml(formatNumber(xpRemaining))}</strong>
         </div>
-        <div>
-          <span>To next milestone</span>
+        <div title="Progress from the previous milestone to the next milestone">
+          <span>Next %</span>
           <strong>${escapeHtml(formatSkillLevelingPercent(segmentPercent))}</strong>
         </div>
-        <div>
-          <span>Completion</span>
+        <div title="Progress towards 200m XP">
+          <span>200m %</span>
           <strong>${escapeHtml(formatSkillLevelingPercent(completionPercent))}</strong>
         </div>
       </div>
@@ -2401,20 +2401,27 @@ function renderSkillLeveling() {
     return;
   }
 
+  const countAtMilestone = (level) => skills.filter(row => {
+    const skill = String(row?.skill || "");
+    const xpNeeded = Number(skillLevelingXpForLevel(skill, level));
+    const xp = Number(row?.xp || 0);
+    return Number.isFinite(xpNeeded) && Number.isFinite(xp) && xp >= xpNeeded;
+  }).length;
   const completed = skills.filter(row => Number(row?.xp || 0) >= SKILL_COMPLETION_XP).length;
-  const totalXp = skills.reduce((sum, row) => sum + Math.max(0, Math.min(SKILL_COMPLETION_XP, Number(row?.xp || 0) || 0)), 0);
-  const possibleXp = skills.length * SKILL_COMPLETION_XP;
-  const overallPercent = possibleXp > 0 ? (totalXp / possibleXp) * 100 : 0;
+  const level99Count = countAtMilestone(99);
+  const level110Count = countAtMilestone(110);
+  const level120Count = countAtMilestone(120);
 
   el.innerHTML = `
     <div class="skillLevelingIntro">
       <div>
         <h4>Skill Levelling Progress</h4>
-        <p>Milestones are 0, 99, 110, 120, 200m XP, with level 150 included for elite skills.</p>
       </div>
       <div class="skillLevelingIntroStats">
-        <div><span>200m skills</span><strong>${escapeHtml(formatNumber(completed))}/${escapeHtml(formatNumber(skills.length))}</strong></div>
-        <div><span>Overall completion</span><strong>${escapeHtml(formatSkillLevelingPercent(overallPercent))}</strong></div>
+        <div><span>Skills at 99</span><strong>${escapeHtml(formatNumber(level99Count))}/${escapeHtml(formatNumber(skills.length))}</strong></div>
+        <div><span>Skills at 110</span><strong>${escapeHtml(formatNumber(level110Count))}/${escapeHtml(formatNumber(skills.length))}</strong></div>
+        <div><span>Skills at 120</span><strong>${escapeHtml(formatNumber(level120Count))}/${escapeHtml(formatNumber(skills.length))}</strong></div>
+        <div><span>Skills at 200m</span><strong>${escapeHtml(formatNumber(completed))}/${escapeHtml(formatNumber(skills.length))}</strong></div>
       </div>
     </div>
     <div class="skillLevelingList">

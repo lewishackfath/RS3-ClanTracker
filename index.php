@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=202607081330" />
+  <link rel="stylesheet" href="./styles.css?v=202607081345" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -214,6 +214,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202607070620"></script>
-  <script src="./app.js?v=202607081330"></script>
+  <script src="./app.js?v=202607081345"></script>
 </body>
 </html>

@@ -3153,7 +3153,7 @@ li { margin: 0 0 10px; }
 .skillLevelingIntro {
   padding: 14px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(180px, 0.75fr) minmax(0, 1.25fr);
   gap: 14px;
   align-items: center;
 }
@@ -3175,8 +3175,8 @@ li { margin: 0 0 10px; }
 
 .skillLevelingIntroStats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(110px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(100px, 1fr));
+  gap: 7px;
 }
 
 .skillLevelingIntroStats div,
@@ -3213,8 +3213,8 @@ li { margin: 0 0 10px; }
 
 .skillLevelingRow {
   display: grid;
-  grid-template-columns: minmax(170px, 220px) minmax(260px, 1fr) minmax(235px, 300px);
-  gap: 14px;
+  grid-template-columns: minmax(170px, 220px) minmax(260px, 1fr) minmax(190px, 240px);
+  gap: 12px;
   align-items: center;
   padding: 12px;
 }
@@ -3277,8 +3277,8 @@ li { margin: 0 0 10px; }
 .skillLevelingTrack {
   position: relative;
   height: 28px;
-  margin-top: 10px;
-  margin-bottom: 20px;
+  margin-top: 26px;
+  margin-bottom: 24px;
   border-radius: 999px;
   border: 1px solid rgba(246,222,159,0.20);
   background: rgba(20,10,6,0.52);
@@ -3314,7 +3314,6 @@ li { margin: 0 0 10px; }
 
 .skillLevelingTickLabel {
   position: absolute;
-  top: 31px;
   left: 50%;
   transform: translateX(-50%);
   color: #f4d58a;
@@ -3322,6 +3321,14 @@ li { margin: 0 0 10px; }
   font-weight: 950;
   white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+}
+
+.skillLevelingTick.top .skillLevelingTickLabel {
+  bottom: 31px;
+}
+
+.skillLevelingTick.bottom .skillLevelingTickLabel {
+  top: 31px;
 }
 
 .skillLevelingTick:first-child .skillLevelingTickLabel {
@@ -3342,7 +3349,33 @@ li { margin: 0 0 10px; }
   font-size: 0.92rem;
 }
 
+.skillLevelingStats.compact {
+  gap: 5px;
+}
+
+.skillLevelingStats.compact div {
+  padding: 6px 7px;
+  border-radius: 10px;
+}
+
+.skillLevelingStats.compact span {
+  font-size: 0.66rem;
+  letter-spacing: 0.01em;
+}
+
+.skillLevelingStats.compact strong {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
 @media (max-width: 1120px) {
+  .skillLevelingIntro {
+    grid-template-columns: 1fr;
+  }
+  .skillLevelingIntroStats {
+    grid-template-columns: repeat(3, minmax(105px, 1fr));
+  }
   .skillLevelingRow {
     grid-template-columns: minmax(170px, 220px) minmax(260px, 1fr);
   }
@@ -3356,7 +3389,9 @@ li { margin: 0 0 10px; }
   .skillLevelingRow {
     grid-template-columns: 1fr;
   }
-  .skillLevelingIntroStats,
+  .skillLevelingIntroStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .skillLevelingStats {
     grid-template-columns: 1fr;
   }
