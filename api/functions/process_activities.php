@@ -76,22 +76,23 @@ function process_activities_for_clan(PDO $pdo, int $clanId, int $limit = 1000): 
               AND rule_id IS NULL
         ");
 
+        // Preserve the original activity and week on either unique-key conflict.
         $stCap = $pdo->prepare("
             INSERT INTO member_caps
-              (clan_id, member_id, cap_week_start_utc, cap_week_end_utc, capped_at_utc, created_at)
+              (clan_id, member_id, activity_id, cap_week_start_utc, cap_week_end_utc, capped_at_utc, created_at)
             VALUES
-              (:clan_id, :member_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
+              (:clan_id, :member_id, :activity_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
             ON DUPLICATE KEY UPDATE
-              capped_at_utc = VALUES(capped_at_utc)
+              id = member_caps.id
         ");
 
         $stVisit = $pdo->prepare("
             INSERT INTO member_citadel_visits
-              (clan_id, member_id, cap_week_start_utc, cap_week_end_utc, visited_at_utc, created_at)
+              (clan_id, member_id, activity_id, cap_week_start_utc, cap_week_end_utc, visited_at_utc, created_at)
             VALUES
-              (:clan_id, :member_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
+              (:clan_id, :member_id, :activity_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
             ON DUPLICATE KEY UPDATE
-              visited_at_utc = VALUES(visited_at_utc)
+              id = member_citadel_visits.id
         ");
 
         $pdo->beginTransaction();
@@ -126,6 +127,7 @@ function process_activities_for_clan(PDO $pdo, int $clanId, int $limit = 1000): 
                     $payload = [
                         ':clan_id' => $clanId,
                         ':member_id' => (int)$a['member_id'],
+                        ':activity_id' => (int)$a['id'],
                         ':start_utc' => $startUtc->format('Y-m-d H:i:s.v'),
                         ':end_utc' => $endUtc->format('Y-m-d H:i:s.v'),
                         ':at_utc' => $atUtc->format('Y-m-d H:i:s.v'),

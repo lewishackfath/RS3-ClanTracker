@@ -623,7 +623,6 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
     // set by reference for the caller
     $capDetected = false;
     $capWeekStartUtc = null;
-    $capWeekStartUtc = null;
 
     $clan = rm_db_load_clan_reset($pdo, $clanId);
     if (!$clan) {
@@ -641,22 +640,26 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
           rule_id = IFNULL(member_activities.rule_id, VALUES(rule_id))
     ");
 
+    // Resolve the persisted ID even when this poll repeats an existing activity.
+    $stActivityId = $pdo->prepare("SELECT id FROM member_activities WHERE member_id = :member_id AND activity_hash = :hash");
+
+    // Preserve the original activity and week on either unique-key conflict.
     $stCap = $pdo->prepare("
         INSERT INTO member_caps
-          (clan_id, member_id, cap_week_start_utc, cap_week_end_utc, capped_at_utc, created_at)
+          (clan_id, member_id, activity_id, cap_week_start_utc, cap_week_end_utc, capped_at_utc, created_at)
         VALUES
-          (:clan_id, :member_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
+          (:clan_id, :member_id, :activity_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
         ON DUPLICATE KEY UPDATE
-          capped_at_utc = VALUES(capped_at_utc)
+          id = member_caps.id
     ");
 
     $stVisit = $pdo->prepare("
         INSERT INTO member_citadel_visits
-          (clan_id, member_id, cap_week_start_utc, cap_week_end_utc, visited_at_utc, created_at)
+          (clan_id, member_id, activity_id, cap_week_start_utc, cap_week_end_utc, visited_at_utc, created_at)
         VALUES
-          (:clan_id, :member_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
+          (:clan_id, :member_id, :activity_id, :start_utc, :end_utc, :at_utc, CURRENT_TIMESTAMP(3))
         ON DUPLICATE KEY UPDATE
-          visited_at_utc = VALUES(visited_at_utc)
+          id = member_citadel_visits.id
     ");
 
     $pdo->beginTransaction();
@@ -702,9 +705,16 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
                         (string)$clan['reset_time']
                     );
 
+                    $stActivityId->execute([':member_id' => $memberId, ':hash' => $hash]);
+                    $activityId = $stActivityId->fetchColumn();
+                    if ($activityId === false) {
+                        throw new RuntimeException('Persisted activity could not be found');
+                    }
+
                     $payload = [
                         ':clan_id' => $clanId,
                         ':member_id' => $memberId,
+                        ':activity_id' => (int)$activityId,
                         ':start_utc' => $startUtc->format('Y-m-d H:i:s.v'),
                         ':end_utc' => $endUtc->format('Y-m-d H:i:s.v'),
                         ':at_utc' => $dtUtc->format('Y-m-d H:i:s.v'),
@@ -712,8 +722,11 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
 
                     if ($purpose === 'cap_detection') {
                         $stCap->execute($payload);
-                        $capDetected = true;
-                        $capWeekStartUtc = $startUtc->format('Y-m-d H:i:s.v');
+                        // A replay under a changed reset must not signal a new cap week.
+                        if ($stCap->rowCount() === 1) {
+                            $capDetected = true;
+                            $capWeekStartUtc = $payload[':start_utc'];
+                        }
                     } else {
                         $stVisit->execute($payload);
                     }

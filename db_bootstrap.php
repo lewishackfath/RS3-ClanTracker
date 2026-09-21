@@ -363,12 +363,16 @@ function dbb_create_tables(PDO $pdo): void
         `id` BIGINT NOT NULL AUTO_INCREMENT,
         `clan_id` {$clanIdType} NOT NULL,
         `member_id` {$memberIdType} NOT NULL,
+        `activity_id` {$activityIdType} NULL,
         `cap_week_start_utc` DATETIME(3) NOT NULL,
         `cap_week_end_utc` DATETIME(3) NOT NULL,
         `visited_at_utc` DATETIME(3) NOT NULL,
         `rule_id` {$ruleIdType} NULL,
         `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
         PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_visit_activity` (`activity_id`),
+        CONSTRAINT `fk_visit_activity` FOREIGN KEY (`activity_id`) REFERENCES `member_activities`(`id`)
+            ON DELETE SET NULL ON UPDATE CASCADE,
         UNIQUE KEY `uk_visit_member_week` (`member_id`,`cap_week_start_utc`),
         KEY `idx_visits_clan_week` (`clan_id`,`cap_week_start_utc`),
         KEY `idx_visits_time` (`visited_at_utc`),
@@ -385,12 +389,16 @@ function dbb_create_tables(PDO $pdo): void
         `id` BIGINT NOT NULL AUTO_INCREMENT,
         `clan_id` {$clanIdType} NOT NULL,
         `member_id` {$memberIdType} NOT NULL,
+        `activity_id` {$activityIdType} NULL,
         `cap_week_start_utc` DATETIME(3) NOT NULL,
         `cap_week_end_utc` DATETIME(3) NOT NULL,
         `capped_at_utc` DATETIME(3) NOT NULL,
         `rule_id` {$ruleIdType} NULL,
         `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
         PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_cap_activity` (`activity_id`),
+        CONSTRAINT `fk_cap_activity` FOREIGN KEY (`activity_id`) REFERENCES `member_activities`(`id`)
+            ON DELETE SET NULL ON UPDATE CASCADE,
         UNIQUE KEY `uk_cap_member_week` (`member_id`,`cap_week_start_utc`),
         KEY `idx_caps_clan_week` (`clan_id`,`cap_week_start_utc`),
         KEY `idx_caps_time` (`capped_at_utc`),
@@ -637,6 +645,53 @@ try {
 
 }
 
+/**
+ * Run with activity processors paused. Keep the earliest row when the same
+ * historical activity was recorded under multiple reset windows.
+ */
+function dbb_migrate_citadel_activity_links(PDO $pdo): void
+{
+    $activityIdType = dbb_get_column_type($pdo, 'member_activities', 'id');
+    foreach ([
+        ['member_caps', 'cap', 'capped_at_utc', 'cap_detection'],
+        ['member_citadel_visits', 'visit', 'visited_at_utc', 'visit_detection'],
+    ] as [$table, $short, $timestamp, $purpose]) {
+        if (!dbb_get_column_type($pdo, $table, 'activity_id')) {
+            $pdo->exec("ALTER TABLE `{$table}` ADD COLUMN activity_id {$activityIdType} NULL AFTER member_id");
+        }
+        $st = $pdo->prepare("SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND INDEX_NAME = :i");
+        $st->execute([':t' => $table, ':i' => "uk_{$short}_activity"]);
+        if (!$st->fetchColumn()) {
+            // Match exact event times, never reset-week boundaries. Ambiguous or
+            // missing source activities remain NULL rather than guessing a link.
+            $pdo->exec("UPDATE `{$table}` c JOIN (
+                SELECT a.member_id, a.member_clan_id, a.activity_date_utc, MIN(a.id) AS activity_id
+                FROM member_activities a
+                JOIN activity_announcement_rules r ON r.id = a.rule_id
+                WHERE r.purpose = '{$purpose}'
+                GROUP BY a.member_id, a.member_clan_id, a.activity_date_utc
+                HAVING COUNT(*) = 1
+            ) source ON source.member_id = c.member_id
+                AND source.member_clan_id = c.clan_id
+                AND source.activity_date_utc = c.`{$timestamp}`
+            SET c.activity_id = source.activity_id WHERE c.activity_id IS NULL");
+            $pdo->exec("DELETE duplicate FROM `{$table}` duplicate
+                JOIN `{$table}` original ON original.activity_id = duplicate.activity_id
+                AND original.id < duplicate.id");
+            $pdo->exec("ALTER TABLE `{$table}` ADD UNIQUE KEY `uk_{$short}_activity` (activity_id)");
+        }
+        $st = $pdo->prepare("SELECT 1 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+            WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = :t AND CONSTRAINT_NAME = :c");
+        $st->execute([':t' => $table, ':c' => "fk_{$short}_activity"]);
+        if (!$st->fetchColumn()) {
+            $pdo->exec("ALTER TABLE `{$table}` ADD CONSTRAINT `fk_{$short}_activity`
+                FOREIGN KEY (activity_id) REFERENCES member_activities(id)
+                ON DELETE SET NULL ON UPDATE CASCADE");
+        }
+    }
+}
+
 function dbb_bootstrap_schema(PDO $pdo, bool $force = false): void
 {
     $force = $force || ((string)getenv('BOOTSTRAP_FORCE') === '1');
@@ -648,6 +703,7 @@ function dbb_bootstrap_schema(PDO $pdo, bool $force = false): void
 
     dbb_create_tables($pdo);
     dbb_apply_schema_migrations($pdo);
+    dbb_migrate_citadel_activity_links($pdo);
 
     $existing = dbb_tables_present($pdo);
     dbb_out("DB bootstrap: schema ensured. Tables present: " . count($existing));
