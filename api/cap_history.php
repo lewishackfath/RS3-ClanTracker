@@ -79,36 +79,13 @@ function tracker_ch_rank_icon(?string $rank): string {
 }
 
 
-function tracker_ch_current_cap_week_start_local(array $clan): DateTimeImmutable {
-    $tzName = (string)($clan['timezone'] ?? 'UTC');
-    try {
-        $tz = new DateTimeZone($tzName);
-    } catch (Throwable $e) {
-        $tz = new DateTimeZone('UTC');
-    }
-
-    $resetWeekday = (int)($clan['reset_weekday'] ?? 0); // PHP w: 0=Sun..6=Sat
-    if ($resetWeekday < 0 || $resetWeekday > 6) $resetWeekday = 0;
-
-    $resetTimeRaw = (string)($clan['reset_time'] ?? '00:00:00');
-    $parts = array_map('intval', explode(':', $resetTimeRaw));
-    $h = max(0, min(23, (int)($parts[0] ?? 0)));
-    $m = max(0, min(59, (int)($parts[1] ?? 0)));
-    $sec = max(0, min(59, (int)($parts[2] ?? 0)));
-
-    $nowLocal = new DateTimeImmutable('now', $tz);
-    $localWeekday = (int)$nowLocal->format('w');
-    $diffDays = ($localWeekday - $resetWeekday + 7) % 7;
-
-    $candidate = $nowLocal->modify('-' . $diffDays . ' days')->setTime($h, $m, $sec, 0);
-    if ($nowLocal < $candidate) {
-        $candidate = $candidate->modify('-7 days');
-    }
-
-    return $candidate;
+function tracker_ch_week_start_local(DateTimeImmutable $date): DateTimeImmutable {
+    // ISO weekday: Monday=1 through Sunday=7. Calendar arithmetic preserves DST.
+    $daysSinceMonday = (int)$date->format('N') - 1;
+    return $date->modify('-' . $daysSinceMonday . ' days')->setTime(0, 0, 0, 0);
 }
 
-function tracker_ch_citadel_per_cap_week_52(PDO $pdo, int $clanId, array $clan): array {
+function tracker_ch_citadel_per_week_52(PDO $pdo, int $clanId, array $clan): array {
     $tzName = (string)($clan['timezone'] ?? 'UTC');
     try {
         $tz = new DateTimeZone($tzName);
@@ -118,7 +95,7 @@ function tracker_ch_citadel_per_cap_week_52(PDO $pdo, int $clanId, array $clan):
     }
 
     $utc = new DateTimeZone('UTC');
-    $currentWeekStartLocal = tracker_ch_current_cap_week_start_local($clan);
+    $currentWeekStartLocal = tracker_ch_week_start_local(new DateTimeImmutable('now', $tz));
     $firstWeekStartLocal = $currentWeekStartLocal->modify('-51 weeks');
     $lastWeekEndLocal = $currentWeekStartLocal->modify('+1 week');
 
@@ -147,13 +124,13 @@ function tracker_ch_citadel_per_cap_week_52(PDO $pdo, int $clanId, array $clan):
     $endUtc = $lastWeekEndLocal->setTimezone($utc)->format('Y-m-d H:i:s');
 
     $capStmt = $pdo->prepare("
-        SELECT cap_week_start_utc, COUNT(*) AS cap_count
+        SELECT capped_at_utc, COUNT(*) AS cap_count
         FROM member_caps
         WHERE clan_id = :cid
-          AND cap_week_start_utc >= :start_utc
-          AND cap_week_start_utc < :end_utc
-        GROUP BY cap_week_start_utc
-        ORDER BY cap_week_start_utc ASC
+          AND capped_at_utc >= :start_utc
+          AND capped_at_utc < :end_utc
+        GROUP BY capped_at_utc
+        ORDER BY capped_at_utc ASC
     ");
     $capStmt->execute([
         ':cid' => $clanId,
@@ -162,26 +139,27 @@ function tracker_ch_citadel_per_cap_week_52(PDO $pdo, int $clanId, array $clan):
     ]);
 
     while ($row = $capStmt->fetch()) {
-        $raw = (string)($row['cap_week_start_utc'] ?? '');
+        $raw = (string)($row['capped_at_utc'] ?? '');
         if ($raw === '') continue;
         try {
-            $key = (new DateTimeImmutable($raw, $utc))->format('Y-m-d H:i:s');
+            $key = tracker_ch_week_start_local((new DateTimeImmutable($raw, $utc))->setTimezone($tz))
+                ->setTimezone($utc)->format('Y-m-d H:i:s');
             if (isset($weeks[$key])) {
                 $count = (int)($row['cap_count'] ?? 0);
-                $weeks[$key]['cap_count'] = $count;
-                $weeks[$key]['count'] = $count;
+                $weeks[$key]['cap_count'] += $count;
+                $weeks[$key]['count'] += $count;
             }
         } catch (Throwable $e) {}
     }
 
     $visitStmt = $pdo->prepare("
-        SELECT cap_week_start_utc, COUNT(*) AS visit_count
+        SELECT visited_at_utc, COUNT(*) AS visit_count
         FROM member_citadel_visits
         WHERE clan_id = :cid
-          AND cap_week_start_utc >= :start_utc
-          AND cap_week_start_utc < :end_utc
-        GROUP BY cap_week_start_utc
-        ORDER BY cap_week_start_utc ASC
+          AND visited_at_utc >= :start_utc
+          AND visited_at_utc < :end_utc
+        GROUP BY visited_at_utc
+        ORDER BY visited_at_utc ASC
     ");
     $visitStmt->execute([
         ':cid' => $clanId,
@@ -190,12 +168,13 @@ function tracker_ch_citadel_per_cap_week_52(PDO $pdo, int $clanId, array $clan):
     ]);
 
     while ($row = $visitStmt->fetch()) {
-        $raw = (string)($row['cap_week_start_utc'] ?? '');
+        $raw = (string)($row['visited_at_utc'] ?? '');
         if ($raw === '') continue;
         try {
-            $key = (new DateTimeImmutable($raw, $utc))->format('Y-m-d H:i:s');
+            $key = tracker_ch_week_start_local((new DateTimeImmutable($raw, $utc))->setTimezone($tz))
+                ->setTimezone($utc)->format('Y-m-d H:i:s');
             if (isset($weeks[$key])) {
-                $weeks[$key]['visit_count'] = (int)($row['visit_count'] ?? 0);
+                $weeks[$key]['visit_count'] += (int)($row['visit_count'] ?? 0);
             }
         } catch (Throwable $e) {}
     }
@@ -326,7 +305,7 @@ usort($groups, function(array $a, array $b): int {
     return tracker_ch_compare_ranks_desc((string)($a['rank_name'] ?? ''), (string)($b['rank_name'] ?? ''));
 });
 
-$citadelPerCapWeek52 = tracker_ch_citadel_per_cap_week_52($pdo, $clanId, $clan);
+$citadelPerWeek52 = tracker_ch_citadel_per_week_52($pdo, $clanId, $clan);
 
 tracker_json([
     'ok' => true,
@@ -340,8 +319,10 @@ tracker_json([
         'total_caps' => $totalCaps,
         'total_visits' => $totalVisits,
     ],
-    'citadel_per_cap_week_1y' => $citadelPerCapWeek52,
-    'caps_per_cap_week_1y' => $citadelPerCapWeek52,
+    'citadel_per_week_1y' => $citadelPerWeek52,
+    // Legacy response keys retained for cached clients; all series use calendar weeks.
+    'citadel_per_cap_week_1y' => $citadelPerWeek52,
+    'caps_per_cap_week_1y' => $citadelPerWeek52,
     'members' => $outMembers,
     'rank_groups' => $groups,
     'generated_at_utc' => gmdate('Y-m-d H:i:s'),

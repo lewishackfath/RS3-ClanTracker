@@ -77,17 +77,15 @@
     });
   }
 
-  function renderCitadelPerCapWeekChart() {
+  function renderCitadelPerWeekChart() {
     const mount = el("capHistoryCapsChart");
     const data = state.data;
     if (!mount) return;
 
-    const rows = Array.isArray(data?.citadel_per_cap_week_1y)
-      ? data.citadel_per_cap_week_1y
-      : (Array.isArray(data?.caps_per_cap_week_1y) ? data.caps_per_cap_week_1y : []);
+    const rows = Array.isArray(data?.citadel_per_week_1y) ? data.citadel_per_week_1y : [];
 
     if (!rows.length) {
-      mount.innerHTML = '<section class="panel capHistoryChartPanel"><div class="capHistoryChartEmpty">No cap-week history is available yet.</div></section>';
+      mount.innerHTML = '<section class="panel capHistoryChartPanel"><div class="capHistoryChartEmpty">No weekly history is available yet.</div></section>';
       return;
     }
 
@@ -134,7 +132,7 @@
       const capY = bottomY - capH;
       const showLabel = index === 0 || index === normalisedRows.length - 1 || index % 4 === 0;
       const label = row.label || row.date || "week";
-      const tooltip = `Cap week starting ${label}: ${number(visits)} visits • ${number(caps)} caps`;
+      const tooltip = `Week starting Monday ${label} (Mon–Sun): ${number(visits)} visits • ${number(caps)} caps`;
       return `
         <g class="capHistoryChartWeek" tabindex="0" data-chart-tooltip="${escapeHtml(tooltip)}">
           <title>${escapeHtml(tooltip)}</title>
@@ -147,11 +145,12 @@
     }).join("");
 
     mount.innerHTML = `
-      <section class="panel capHistoryChartPanel" aria-label="Visits and caps per cap week for the last year">
+      <section class="panel capHistoryChartPanel" aria-label="Visits and caps per Monday–Sunday week for the last year">
         <div class="capHistoryChartHeader">
           <div>
-            <h2 class="h2">Visits and caps/cap week — last year</h2>
-            <div class="muted">${number(totalVisits)} visits • ${number(totalCaps)} caps • Peak ${number(Math.max(peakVisits, peakCaps))} in one cap week</div>
+            <h2 class="h2">Visits and caps per week — last year</h2>
+            <div class="muted">Monday–Sunday (${escapeHtml(data.clan?.timezone || "UTC")})</div>
+            <div class="muted">${number(totalVisits)} visits • ${number(totalCaps)} caps • Peak ${number(Math.max(peakVisits, peakCaps))} in one week</div>
           </div>
           <div class="capHistoryChartLegend" aria-label="Chart legend">
             <span><i class="capHistoryLegendDot capHistoryLegendVisits"></i> Visits</span>
@@ -159,7 +158,7 @@
           </div>
         </div>
         <div class="capHistoryChartScroll">
-          <svg class="capHistoryCapsChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Visits and caps per cap week for the last year">
+          <svg class="capHistoryCapsChart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Visits and caps per Monday–Sunday week for the last year">
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${padTop}" y2="${padTop}" />
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${midY}" y2="${midY}" />
             <line class="capHistoryChartGrid" x1="${padLeft}" x2="${width - padRight}" y1="${bottomY}" y2="${bottomY}" />
@@ -257,7 +256,7 @@
     setText("capHistoryTotalVisits", number(data.stats?.total_visits));
     setText("capHistoryTotalCaps", number(data.stats?.total_caps));
     setText("capHistoryGenerated", data.generated_at_utc ? `Generated: ${data.generated_at_utc} UTC` : "");
-    renderCitadelPerCapWeekChart();
+    renderCitadelPerWeekChart();
 
     renderRankFilter();
 
