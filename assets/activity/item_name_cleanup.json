@@ -2,7 +2,7 @@
   "strip_prefixes": [
     "pair of",
     "some",
-    "a book:"
+    "book:"
   ],
   "strip_suffixes": [],
   "replacements": []
