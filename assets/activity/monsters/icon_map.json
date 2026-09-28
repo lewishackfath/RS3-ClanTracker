@@ -19,6 +19,7 @@
   "Barrows - Rise of the Six": "ROTS.webp",
   "The Barrows: Rise of the Six": "ROTS.webp",
   "Wrights of the Shadow Realm": "ROTS.webp",
+  "the Wrights of the Shadow Realm": "ROTS.webp",
   "Rise of the Six": "ROTS.webp",
   "Beastmaster Durzag": "beastmaster_durzag.png",
   "Durzag": "beastmaster_durzag.png",
@@ -94,5 +95,6 @@
   "glacor": "glacor.png",
   "tormented demon": "tormented_demon.webp",
   "TzTok-Jad": "TzTok-Jad.png",
-  "Rex Matriarchs": "RexMatriarchs.webp"
+  "Rex Matriarchs": "RexMatriarchs.webp",
+  "Rex Matriarch": "RexMatriarchs.webp"
 }

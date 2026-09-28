@@ -1,7 +1,8 @@
 {
   "strip_prefixes": [
     "pair of",
-    "some"
+    "some",
+    "a book:"
   ],
   "strip_suffixes": [],
   "replacements": []
