@@ -30,7 +30,7 @@
     },
     {
       "name": "Defeated boss times",
-      "activity_regex": "^I defeated the\\s+(?<boss>.+?)\\s+(?<count>\\d[\\d,]*)\\s+times(?:\\b.*)?(?:\\.\\s*)?$",
+      "activity_regex": "^I defeated the\\s+(?<boss>.+?)\\s+(?<count>\\d[\\d,]*)\\s+times?(?:\\b.*)?(?:\\.\\s*)?$",
       "regex_flags": "i",
       "boss_group": "boss",
       "count_group": "count"
