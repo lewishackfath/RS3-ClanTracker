@@ -22,4 +22,20 @@ Use a disposable MySQL/MariaDB server with permission to create databases:
 CITADEL_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/citadel_activity_links.php
 ```
 
-Optional credentials: `CITADEL_TEST_USER` and `CITADEL_TEST_PASSWORD`. The test creates and drops its own randomly named database. It covers reset changes, repeated polling, catch-up processing, weekly uniqueness, legacy duplicate cleanup, migration reruns, new weeks and source deletion.
+Optional credentials: `CITADEL_TEST_USER` and `CITADEL_TEST_PASSWORD`. The test creates and drops its own randomly named database. It covers reset changes, repeated polling, catch-up processing, weekly uniqueness, legacy duplicate cleanup, migration reruns, new weeks, source deletion and persistence of DST week boundaries.
+
+## Timezone regression test
+
+```sh
+php tests/timezone_windows.php
+```
+
+No database is required. Covers Sydney, London, New York and Lord Howe DST
+transitions, zones without DST, reset boundaries in skipped/repeated hours,
+adjacent XP weeks and rank-up guard boundaries. Weekly resets use the clan's
+local calendar; their UTC duration can change at DST transitions. Configure
+`clans.timezone` with an IANA identifier such as `Australia/Sydney` when seasonal
+changes are required. Fixed offsets such as `+10:00` do not follow DST.
+
+These changes apply when calculating week boundaries; they do not rewrite
+historical cap/visit rows or activity timestamps.

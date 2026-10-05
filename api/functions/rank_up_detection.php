@@ -14,6 +14,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/discord.php';
+require_once __DIR__ . '/time_helpers.php';
 
 /* -------------------- helpers -------------------- */
 
@@ -197,7 +198,8 @@ function detect_and_notify_rank_up(
     if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $weekStart)) {
         $weekStart = gmdate('Y-m-d H:i:s');
     }
-    $weekEnd = gmdate('Y-m-d H:i:s', strtotime($weekStart . ' +7 days'));
+    $week = tracker_week_window($clan, new DateTimeImmutable($weekStart, new DateTimeZone('UTC')));
+    $weekEnd = $week['week_end_utc'];
 
     /* ---------- weekly guard (prevents multi-pings / multi-promotions) ---------- */
     // If we've already processed rank-up logic for this member in this cap week (either required or processed),

@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 date_default_timezone_set('UTC');
 
+require_once __DIR__ . '/time_helpers.php';
+
 /**
  * Loads enabled rules for a clan.
  * Ordered so cap/visit rules win first.
@@ -174,27 +176,5 @@ function ah_cap_week_bounds_utc(
     int $resetWeekday,
     string $resetTime
 ): array {
-    $tz = new DateTimeZone($clanTimezone ?: 'UTC');
-
-    $local = $activityUtc->setTimezone($tz);
-    $localW = (int)$local->format('w');
-
-    $diffDays = ($localW - $resetWeekday + 7) % 7;
-    $candidate = $local->modify("-{$diffDays} days");
-
-    $parts = explode(':', $resetTime);
-    $hh = (int)($parts[0] ?? 0);
-    $mm = (int)($parts[1] ?? 0);
-    $ss = (int)($parts[2] ?? 0);
-
-    $resetThisWeek = $candidate->setTime($hh, $mm, $ss, 0);
-
-    if ($local < $resetThisWeek) {
-        $resetThisWeek = $resetThisWeek->modify('-7 days');
-    }
-
-    $startUtc = $resetThisWeek->setTimezone(new DateTimeZone('UTC'));
-    $endUtc = $startUtc->modify('+7 days');
-
-    return [$startUtc, $endUtc];
+    return tracker_cap_week_bounds_utc($activityUtc, $clanTimezone, $resetWeekday, $resetTime);
 }

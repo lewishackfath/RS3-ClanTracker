@@ -103,7 +103,40 @@ try {
     foreach ($tables as $table => $_) {
         check((int)$pdo->query("SELECT COUNT(*) FROM $table WHERE activity_id IS NULL")->fetchColumn() === 3, 'Deleting source preserves cap/visit history');
     }
-    echo "PASS: reset changes, replay, catch-up, migration, reruns, new weeks and source deletion\n";
+    // Live polling and catch-up must persist the same variable-length DST weeks.
+    $pdo->exec("UPDATE clans SET timezone = 'Australia/Sydney', reset_weekday = 1, reset_time = '00:00:00' WHERE id = 1");
+    $dstCases = [
+        ['2026-10-02 11:00:00', '2026-09-27 14:00:00.000', '2026-10-04 13:00:00.000'],
+        ['2026-04-03 11:00:00', '2026-03-29 13:00:00.000', '2026-04-05 14:00:00.000'],
+    ];
+    foreach ($dstCases as $i => [$at, $start, $end]) {
+        foreach (['live', 'catchup'] as $mode) {
+            $name = "DST $i $mode";
+            $pdo->prepare('INSERT INTO members (clan_id, rsn, rsn_normalised) VALUES (1, ?, ?)')->execute([$name, $name]);
+            $memberId = (int)$pdo->lastInsertId();
+            if ($mode === 'live') {
+                $source = (new DateTimeImmutable($at, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/London'))->format('d-M-Y H:i:s');
+                $activities = [['text' => 'Capped', 'date' => $source], ['text' => 'Visited', 'date' => $source]];
+                check(rm_db_insert_activities_with_processing($pdo, $memberId, 1, $activities, $cap, $week) === 2, 'DST live insert');
+                check($cap && $week === $start, 'DST live cap week');
+                check(rm_db_insert_activities_with_processing($pdo, $memberId, 1, $activities, $cap, $week) === 0, 'DST replay');
+                check(!$cap, 'DST replay does not signal new cap');
+            } else {
+                $insert = $pdo->prepare('INSERT INTO member_activities (member_id, member_clan_id, activity_hash, activity_date_utc, activity_text) VALUES (?, 1, ?, ?, ?)');
+                foreach (['Capped', 'Visited'] as $text) {
+                    $insert->execute([$memberId, hash('sha256', "$memberId|$text|$at"), $at, $text]);
+                }
+                check(process_activities_for_clan($pdo, 1)['ok'], 'DST catch-up');
+            }
+            foreach ($tables as $table => $_) {
+                $rows = $pdo->query("SELECT * FROM $table WHERE member_id = $memberId")->fetchAll(PDO::FETCH_ASSOC);
+                check(count($rows) === 1, 'DST weekly uniqueness');
+                check($rows[0]['cap_week_start_utc'] === $start && $rows[0]['cap_week_end_utc'] === $end, 'DST persisted bounds');
+                check($rows[0]['activity_id'] !== null, 'DST source link');
+            }
+        }
+    }
+    echo "PASS: reset changes, replay, catch-up, migration, reruns, new weeks, source deletion and DST persistence\n";
 } finally {
     $pdo->exec("DROP DATABASE `$db`");
 }
