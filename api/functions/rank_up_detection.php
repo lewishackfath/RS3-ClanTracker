@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/discord.php';
 require_once __DIR__ . '/time_helpers.php';
+require_once __DIR__ . '/member_helpers.php';
 
 /* -------------------- helpers -------------------- */
 
@@ -191,6 +192,7 @@ function detect_and_notify_rank_up(
     $rsn      = (string)($member['rsn'] ?? '');
 
     if ($memberId <= 0 || $clanId <= 0 || $rsn === '') return;
+    if (tracker_is_guest_rank($member['rank_name'] ?? null)) return;
 
     /* ---------- cap-week window normalisation ---------- */
     // Normalise week start to second precision (stable string)
@@ -390,4 +392,3 @@ $detailsNeedle = ru_normalise_rank_label($currentRankRaw) . ' → ' . ru_normali
         error_log("Rank-up Discord send failed (member_id={$memberId}, clan_id={$clanId}): HTTP {$code} {$err}");
     }
 }
-

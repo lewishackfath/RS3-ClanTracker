@@ -24,6 +24,18 @@ CITADEL_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/citadel_activi
 
 Optional credentials: `CITADEL_TEST_USER` and `CITADEL_TEST_PASSWORD`. The test creates and drops its own randomly named database. It covers reset changes, repeated polling, catch-up processing, weekly uniqueness, legacy duplicate cleanup, migration reruns, new weeks, source deletion and persistence of DST week boundaries.
 
+## Guest citadel exclusion
+
+Members with a `Guest` rank (case-insensitive, ignoring surrounding spaces) are excluded from cap/visit credit in live polling and catch-up processing. Their personal activities still receive rules, so catch-up does not repeatedly select them, but guest citadel activities are marked consumed with `is_announced = 1` and no announcement timestamp. Other guest activities and XP tracking continue normally. Guests cannot trigger cap-based rank-up checks.
+
+The roster keeps guests visible with a **Not tracked** badge and excludes them from capping filters, uncapped counts and capping percentages. Player cap/visit status, cap history and weekly charts exclude existing guest credit using the current stored rank. Stored historical rows are not deleted; former members with non-guest ranks retain their chart history. No schema migration is required. If RS3-API workers share the database, their processors must also apply the guest exclusion; tracker changes do not update external workers.
+
+```sh
+CITADEL_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/citadel_guests.php
+```
+
+Uses the same disposable database setup and optional credentials as the activity-link test. Covers mixed-case guest ranks, normal and unranked members, replay, catch-up queue consumption, announcement suppression, rank-up guards, legacy guest records, guest-only clans and the real clan/player/history API responses. Player requests defer external refreshes, so no RuneScape or Discord calls are made.
+
 ## Timezone regression test
 
 ```sh

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_db.php';
 require_once __DIR__ . '/functions/time_helpers.php';
+require_once __DIR__ . '/functions/member_helpers.php';
 
 function tracker_get_param(string $key, int $maxLen = 64): string {
     $v = (string)($_GET[$key] ?? '');
@@ -222,6 +223,14 @@ ORDER BY m.rsn ASC
 $stmt->execute([':cid' => $clanId, ':ws' => $ws]);
 
 $members = $stmt->fetchAll();
+foreach ($members as &$member) {
+    $member['citadel_eligible'] = !tracker_is_guest_rank($member['rank_name'] ?? null);
+    if (!$member['citadel_eligible']) {
+        $member['capped'] = 0;
+        $member['visited'] = 0;
+    }
+}
+unset($member);
 usort($members, 'tracker_compare_members_by_rank_desc');
 
 // Rank list for UI filters
@@ -236,13 +245,15 @@ usort($ranks, 'tracker_compare_ranks_desc');
 
 $active = count($members);
 $capped = 0;
+$citadelEligible = 0;
 $privateProfiles = 0;
 foreach ($members as $m) {
+    if ($m['citadel_eligible']) $citadelEligible++;
     if ((int)$m['capped'] === 1) $capped++;
     if ((int)($m['is_private'] ?? 0) === 1) $privateProfiles++;
 }
-$uncapped = $active - $capped;
-$percent = $active > 0 ? (int)round(($capped / $active) * 100) : 0;
+$uncapped = $citadelEligible - $capped;
+$percent = $citadelEligible > 0 ? (int)round(($capped / $citadelEligible) * 100) : 0;
 $newMembersThisWeek = tracker_count_new_members_this_week($pdo, $clanId, (string)$week['week_start_utc']);
 
 // Last data pull indicators
@@ -500,6 +511,7 @@ tracker_json([
     'week' => $week,
     'stats' => [
         'active_members' => $active,
+        'citadel_eligible_members' => $citadelEligible,
         'private_profiles' => $privateProfiles,
         'capped' => $capped,
         'uncapped' => $uncapped,
@@ -511,6 +523,7 @@ tracker_json([
         return [
             'rsn' => $m['rsn'],
             'rank_name' => $m['rank_name'],
+            'citadel_eligible' => $m['citadel_eligible'],
             'capped' => ((int)$m['capped'] === 1),
             'visited' => ((int)($m['visited'] ?? 0) === 1),
             'is_private' => $isPrivate,

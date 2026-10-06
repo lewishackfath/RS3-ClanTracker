@@ -1521,14 +1521,15 @@ function renderMemberList() {
   const f = String(clanFilter || "all").trim().toLowerCase();
 
   // Be tolerant of schema differences in member objects
-  const getCapped = (m) => !!(m?.capped ?? m?.has_capped ?? m?.is_capped ?? false);
-  const getVisited = (m) => !!(m?.visited ?? m?.has_visited ?? m?.is_visited ?? m?.visited_this_week ?? false);
   const getRank = (m) => String(m?.rank_name ?? m?.rank ?? "").trim();
+  const isCitadelEligible = (m) => m?.citadel_eligible !== false && getRank(m).toLowerCase() !== "guest";
+  const getCapped = (m) => isCitadelEligible(m) && !!(m?.capped ?? m?.has_capped ?? m?.is_capped ?? false);
+  const getVisited = (m) => isCitadelEligible(m) && !!(m?.visited ?? m?.has_visited ?? m?.is_visited ?? m?.visited_this_week ?? false);
 
   if (f === "capped") {
     members = members.filter(m => getCapped(m));
   } else if (f === "uncapped") {
-    members = members.filter(m => !getCapped(m));
+    members = members.filter(m => isCitadelEligible(m) && !getCapped(m));
   } else if (f === "private") {
     members = members.filter(m => !!(m?.is_private ?? m?.private ?? false));
   } else if (f === "guests" || f === "guest") {
@@ -1555,9 +1556,9 @@ function renderMemberList() {
   qs("clanStatus").textContent = `${members.length} shown`;
 
   listEl.innerHTML = members.map(m => {
-    const isCapped = !!(m?.capped ?? m?.has_capped ?? m?.is_capped ?? false);
-    const isVisited = !!(m?.visited ?? m?.has_visited ?? m?.is_visited ?? m?.visited_this_week ?? false);
-    const badge = isCapped ? "Capped" : (isVisited ? "Visited" : "Uncapped");
+    const isCapped = getCapped(m);
+    const isVisited = getVisited(m);
+    const badge = !isCitadelEligible(m) ? "Not tracked" : (isCapped ? "Capped" : (isVisited ? "Visited" : "Uncapped"));
 
     const rank = getRank(m);
     const titleHtml = memberTitleRankHtml(m.rsn, rank);

@@ -163,7 +163,7 @@ rm_db_clear_member_private($pdo, (int)$member['id']);
         // 2) The member is already marked as capped for the CURRENT cap week (even if the cap activity isn't in the last N RuneMetrics activities).
         //
         // A synthetic marker activity prevents duplicates per cap week, so this is safe to run repeatedly.
-        if (function_exists('detect_and_notify_rank_up')) {
+        if (!tracker_is_guest_rank($member['rank_name'] ?? null) && function_exists('detect_and_notify_rank_up')) {
             try {
                 $clanFull = rm_db_load_clan_reset($pdo, (int)$member['clan_id']); // includes discord + rank settings
                 if ($clanFull) {
@@ -629,15 +629,21 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
         throw new RuntimeException("Clan not found: {$clanId}");
     }
 
+    $member = rm_db_get_member($pdo, $memberId);
+    if (!$member || (int)$member['clan_id'] !== $clanId) {
+        throw new RuntimeException("Member does not belong to clan: {$memberId}");
+    }
+    $isGuest = tracker_is_guest_rank($member['rank_name'] ?? null);
     $rules = ah_load_enabled_rules($pdo, $clanId);
 
     $stInsertActivity = $pdo->prepare("
         INSERT INTO member_activities
           (member_id, member_clan_id, activity_hash, activity_date_utc, activity_text, activity_details, rule_id, is_announced, announced_at, created_at)
         VALUES
-          (:member_id, :clan_id, :hash, :date_utc, :text, :details, :rule_id, 0, NULL, CURRENT_TIMESTAMP(3))
+          (:member_id, :clan_id, :hash, :date_utc, :text, :details, :rule_id, :is_announced, NULL, CURRENT_TIMESTAMP(3))
         ON DUPLICATE KEY UPDATE
-          rule_id = IFNULL(member_activities.rule_id, VALUES(rule_id))
+          rule_id = IFNULL(member_activities.rule_id, VALUES(rule_id)),
+          is_announced = GREATEST(member_activities.is_announced, VALUES(is_announced))
     ");
 
     // Resolve the persisted ID even when this poll repeats an existing activity.
@@ -680,6 +686,8 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
 
             $matchedRule = ah_match_rule($text, $details, $rules);
             $ruleId = $matchedRule ? (int)$matchedRule['id'] : null;
+            $purpose = (string)($matchedRule['purpose'] ?? '');
+            $isCitadel = $purpose === 'cap_detection' || $purpose === 'visit_detection';
 
             $stInsertActivity->execute([
                 ':member_id' => $memberId,
@@ -689,13 +697,16 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
                 ':text' => $text,
                 ':details' => ($details !== '' ? $details : null),
                 ':rule_id' => $ruleId,
+                // Keep the personal activity, but consume guest citadel rules
+                // without queuing a clan announcement or awarding clan credit.
+                ':is_announced' => (int)($isGuest && $isCitadel),
             ]);
 
             if ((int)$stInsertActivity->rowCount() === 1) {
                 $inserted++;
             }
 
-            if ($matchedRule) {
+            if ($matchedRule && !$isGuest) {
                 $purpose = (string)$matchedRule['purpose'];
                 if ($purpose === 'cap_detection' || $purpose === 'visit_detection') {
                     [$startUtc, $endUtc] = ah_cap_week_bounds_utc(

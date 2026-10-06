@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_db.php';
 require_once __DIR__ . '/functions/time_helpers.php';
+require_once __DIR__ . '/functions/member_helpers.php';
 
 /**
  * api/player.php (NEW SCHEMA)
@@ -1515,25 +1516,29 @@ try {
     $clanId = (int)$member['clan_id'];
     $memberId = (int)$member['id'];
 
-    // Week cap (NEW schema: member_caps has NO activity_text/activity_details)
-    $stmt = $pdo->prepare("
-        SELECT capped_at_utc, rule_id
-        FROM member_caps
-        WHERE clan_id = :clan AND member_id = :mid AND cap_week_start_utc = :ws
-        LIMIT 1
-    ");
-    $stmt->execute([':clan' => $clanId, ':mid' => $memberId, ':ws' => $week['week_start_utc']]);
-    $capRow = $stmt->fetch() ?: null;
+    $citadelEligible = !tracker_is_guest_rank($member['rank_name'] ?? null);
+    $capRow = null;
+    $visitRow = null;
+    if ($citadelEligible) {
+        // Guests' historical records must not appear as this clan's credit.
+        $stmt = $pdo->prepare("
+            SELECT capped_at_utc, rule_id
+            FROM member_caps
+            WHERE clan_id = :clan AND member_id = :mid AND cap_week_start_utc = :ws
+            LIMIT 1
+        ");
+        $stmt->execute([':clan' => $clanId, ':mid' => $memberId, ':ws' => $week['week_start_utc']]);
+        $capRow = $stmt->fetch() ?: null;
 
-    // Week visit (NEW schema: member_citadel_visits has NO activity_text/activity_details)
-    $stmt = $pdo->prepare("
-        SELECT visited_at_utc, rule_id
-        FROM member_citadel_visits
-        WHERE clan_id = :clan AND member_id = :mid AND cap_week_start_utc = :ws
-        LIMIT 1
-    ");
-    $stmt->execute([':clan' => $clanId, ':mid' => $memberId, ':ws' => $week['week_start_utc']]);
-    $visitRow = $stmt->fetch() ?: null;
+        $stmt = $pdo->prepare("
+            SELECT visited_at_utc, rule_id
+            FROM member_citadel_visits
+            WHERE clan_id = :clan AND member_id = :mid AND cap_week_start_utc = :ws
+            LIMIT 1
+        ");
+        $stmt->execute([':clan' => $clanId, ':mid' => $memberId, ':ws' => $week['week_start_utc']]);
+        $visitRow = $stmt->fetch() ?: null;
+    }
 
     // Recent activity (NEW schema: member_activities DOES have activity_text)
     $stmt = $pdo->prepare("
@@ -1718,6 +1723,7 @@ try {
             'rsn' => $member['rsn'],
             'rsn_normalised' => $member['rsn_normalised'],
             'rank_name' => $member['rank_name'],
+            'citadel_eligible' => $citadelEligible,
             'is_active' => (int)$member['is_active'] === 1,
             'is_private' => $isPrivate,
             'private_since_utc' => $privateSinceUtc,

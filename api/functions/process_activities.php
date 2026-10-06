@@ -71,7 +71,8 @@ function process_activities_for_clan(PDO $pdo, int $clanId, int $limit = 1000): 
 
         $stUpdateRule = $pdo->prepare("
             UPDATE member_activities
-            SET rule_id = :rule_id
+            SET rule_id = :rule_id,
+                is_announced = IF(:suppress_announcement = 1, 1, is_announced)
             WHERE id = :id
               AND rule_id IS NULL
         ");
@@ -104,17 +105,22 @@ function process_activities_for_clan(PDO $pdo, int $clanId, int $limit = 1000): 
                 $match = ah_match_rule($text, $details, $rules);
                 if ($match === null) continue;
 
+                $purpose = (string)$match['purpose'];
+                $isCitadel = $purpose === 'cap_detection' || $purpose === 'visit_detection';
+                $isGuest = tracker_is_guest_rank($a['rank_name'] ?? null);
                 $stUpdateRule->execute([
                     ':rule_id' => (int)$match['id'],
                     ':id' => (int)$a['id'],
+                    // Classify once so skipped guest activities don't keep
+                    // occupying the catch-up queue or get announced for us.
+                    ':suppress_announcement' => (int)($isGuest && $isCitadel),
                 ]);
 
                 if ((int)$stUpdateRule->rowCount() === 1) {
                     $res['updated_rule_id']++;
                 }
 
-                $purpose = (string)$match['purpose'];
-                if ($purpose === 'cap_detection' || $purpose === 'visit_detection') {
+                if ($isCitadel && !$isGuest) {
                     $atUtc = ah_dt_from_db_utc((string)$a['activity_date_utc']);
 
                     [$startUtc, $endUtc] = ah_cap_week_bounds_utc(
@@ -229,11 +235,13 @@ function pa_db_fetch_unruled_activities(PDO $pdo, int $clanId, int $limit): arra
     $limit = max(1, min(5000, (int)$limit));
 
     $sql = "
-        SELECT id, member_id, member_clan_id, activity_date_utc, activity_text, activity_details
-        FROM member_activities
-        WHERE member_clan_id = :clan_id
-          AND rule_id IS NULL
-        ORDER BY activity_date_utc DESC, id DESC
+        SELECT a.id, a.member_id, a.member_clan_id, a.activity_date_utc, a.activity_text, a.activity_details,
+               m.rank_name
+        FROM member_activities a
+        JOIN members m ON m.id = a.member_id AND m.clan_id = a.member_clan_id
+        WHERE a.member_clan_id = :clan_id
+          AND a.rule_id IS NULL
+        ORDER BY a.activity_date_utc DESC, a.id DESC
         LIMIT {$limit}
     ";
 

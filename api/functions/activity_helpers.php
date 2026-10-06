@@ -13,6 +13,7 @@ declare(strict_types=1);
 date_default_timezone_set('UTC');
 
 require_once __DIR__ . '/time_helpers.php';
+require_once __DIR__ . '/member_helpers.php';
 
 /**
  * Loads enabled rules for a clan.

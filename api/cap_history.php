@@ -125,8 +125,10 @@ function tracker_ch_citadel_per_week_52(PDO $pdo, int $clanId, array $clan): arr
 
     $capStmt = $pdo->prepare("
         SELECT capped_at_utc, COUNT(*) AS cap_count
-        FROM member_caps
-        WHERE clan_id = :cid
+        FROM member_caps c
+        JOIN members m ON m.id = c.member_id AND m.clan_id = c.clan_id
+        WHERE c.clan_id = :cid
+          AND LOWER(TRIM(COALESCE(m.rank_name, ''))) <> 'guest'
           AND capped_at_utc >= :start_utc
           AND capped_at_utc < :end_utc
         GROUP BY capped_at_utc
@@ -154,8 +156,10 @@ function tracker_ch_citadel_per_week_52(PDO $pdo, int $clanId, array $clan): arr
 
     $visitStmt = $pdo->prepare("
         SELECT visited_at_utc, COUNT(*) AS visit_count
-        FROM member_citadel_visits
-        WHERE clan_id = :cid
+        FROM member_citadel_visits v
+        JOIN members m ON m.id = v.member_id AND m.clan_id = v.clan_id
+        WHERE v.clan_id = :cid
+          AND LOWER(TRIM(COALESCE(m.rank_name, ''))) <> 'guest'
           AND visited_at_utc >= :start_utc
           AND visited_at_utc < :end_utc
         GROUP BY visited_at_utc
@@ -242,6 +246,7 @@ LEFT JOIN (
 ) v ON v.clan_id = m.clan_id AND v.member_id = m.id
 WHERE m.clan_id = :cid
   AND m.is_active = 1
+  AND LOWER(TRIM(COALESCE(m.rank_name, ''))) <> 'guest'
 ORDER BY m.rsn ASC
 ");
 $stmt->execute([
