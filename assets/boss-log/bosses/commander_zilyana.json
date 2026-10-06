@@ -16,67 +16,71 @@
       "order": 3
     },
     {
-      "name": "Saradomin hilt",
+      "name": "Saradomin's hum",
       "order": 4
     },
     {
-      "name": "Godsword shard 1",
+      "name": "Saradomin hilt",
       "order": 5
     },
     {
-      "name": "Godsword shard 2",
+      "name": "Godsword shard 1",
       "order": 6
     },
     {
-      "name": "Godsword shard 3",
+      "name": "Godsword shard 2",
       "order": 7
     },
     {
-      "name": "Saradomin sword",
+      "name": "Godsword shard 3",
       "order": 8
     },
     {
-      "name": "Armadyl crossbow",
+      "name": "Saradomin sword",
       "order": 9
     },
     {
-      "name": "Off-hand Armadyl crossbow",
+      "name": "Armadyl crossbow",
       "order": 10
     },
     {
-      "name": "Warpriest of Saradomin helm",
+      "name": "Off-hand Armadyl crossbow",
       "order": 11
     },
     {
-      "name": "Warpriest of Saradomin cape",
+      "name": "Warpriest of Saradomin helm",
       "order": 12
     },
     {
-      "name": "Warpriest of Saradomin cuirass",
+      "name": "Warpriest of Saradomin cape",
       "order": 13
     },
     {
-      "name": "Warpriest of Saradomin greaves",
+      "name": "Warpriest of Saradomin cuirass",
       "order": 14
     },
     {
-      "name": "Warpriest of Saradomin gauntlets",
+      "name": "Warpriest of Saradomin greaves",
       "order": 15
     },
     {
-      "name": "Warpriest of Saradomin boots",
+      "name": "Warpriest of Saradomin gauntlets",
       "order": 16
     },
     {
-      "name": "Zilyana's Notes",
+      "name": "Warpriest of Saradomin boots",
       "order": 17
+    },
+    {
+      "name": "Zilyana's Notes",
+      "order": 18
     },
     {
       "name": "Commander Miniana",
       "aliases": [
         "Auburn lock"
       ],
-      "order": 18
+      "order": 19
     }
   ]
 }
