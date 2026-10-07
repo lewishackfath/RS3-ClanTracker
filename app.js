@@ -79,6 +79,7 @@ function clanRankAssetPath(rankName) {
     sergeant: "Sergeant",
     corporal: "Corporal",
     recruit: "Recruit",
+    guest: "Guest",
   };
 
   const fileBase = fileMap[key];

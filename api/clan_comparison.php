@@ -73,6 +73,7 @@ function tracker_cc_rank_icon(?string $rank): string {
         'sergeant' => 'Sergeant',
         'corporal' => 'Corporal',
         'recruit' => 'Recruit',
+        'guest' => 'Guest',
     ];
 
     return isset($fileMap[$key]) ? 'assets/ranks/' . $fileMap[$key] . '_Clan_Rank.png' : '';
