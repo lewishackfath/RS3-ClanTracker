@@ -44,10 +44,18 @@ php tests/timezone_windows.php
 
 No database is required. Covers Sydney, London, New York and Lord Howe DST
 transitions, zones without DST, reset boundaries in skipped/repeated hours,
-adjacent XP weeks and rank-up guard boundaries. Weekly resets use the clan's
-local calendar; their UTC duration can change at DST transitions. Configure
+midnight/weekday rollover, adjacent XP weeks and rank-up guard boundaries.
+`clans.reset_weekday` and `clans.reset_time` are stored in the clan's **standard
+time**, without DST. The reset instant stays on that schedule throughout the year;
+only its displayed local time changes. For example, Sydney `20:00` means
+`20:00 AEST` in winter and `21:00 AEDT` in summer. Lord Howe's adjustment is
+30 minutes. The countdown, cap/visit processors and XP/rank-up windows all use
+these same boundaries. Configure
 `clans.timezone` with an IANA identifier such as `Australia/Sydney` when seasonal
 changes are required. Fixed offsets such as `+10:00` do not follow DST.
 
 These changes apply when calculating week boundaries; they do not rewrite
-historical cap/visit rows or activity timestamps.
+historical cap/visit rows or activity timestamps. Existing rows assigned using the
+old daylight-adjusted wall-clock convention retain their stored week keys. Deploy
+this helper with all cap/visit processors; external RS3-API workers sharing the
+database must use the same standard-time convention.

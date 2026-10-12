@@ -103,11 +103,13 @@ try {
     foreach ($tables as $table => $_) {
         check((int)$pdo->query("SELECT COUNT(*) FROM $table WHERE activity_id IS NULL")->fetchColumn() === 3, 'Deleting source preserves cap/visit history');
     }
-    // Live polling and catch-up must persist the same variable-length DST weeks.
+    // Live polling and catch-up must persist the same standard-time weeks across DST changes.
     $pdo->exec("UPDATE clans SET timezone = 'Australia/Sydney', reset_weekday = 1, reset_time = '00:00:00' WHERE id = 1");
     $dstCases = [
-        ['2026-10-02 11:00:00', '2026-09-27 14:00:00.000', '2026-10-04 13:00:00.000'],
-        ['2026-04-03 11:00:00', '2026-03-29 13:00:00.000', '2026-04-05 14:00:00.000'],
+        ['2026-10-02 11:00:00', '2026-09-27 14:00:00.000', '2026-10-04 14:00:00.000'],
+        ['2026-10-04 13:30:00', '2026-09-27 14:00:00.000', '2026-10-04 14:00:00.000'],
+        ['2026-10-04 14:00:00', '2026-10-04 14:00:00.000', '2026-10-11 14:00:00.000'],
+        ['2026-04-03 11:00:00', '2026-03-29 14:00:00.000', '2026-04-05 14:00:00.000'],
     ];
     foreach ($dstCases as $i => [$at, $start, $end]) {
         foreach (['live', 'catchup'] as $mode) {

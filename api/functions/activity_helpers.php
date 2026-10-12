@@ -166,7 +166,7 @@ function ah_dt_from_db_utc(string $dt): DateTimeImmutable
 }
 
 /**
- * Compute cap-week bounds in UTC using clan reset weekday/time + timezone.
+ * Compute cap-week bounds in UTC from the clan's standard-time reset settings.
  * reset_weekday uses PHP 'w' convention: 0=Sun..6=Sat.
  *
  * @return array{0:DateTimeImmutable,1:DateTimeImmutable}

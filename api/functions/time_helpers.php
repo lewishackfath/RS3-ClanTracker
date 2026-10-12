@@ -2,13 +2,34 @@
 declare(strict_types=1);
 
 /**
- * Resolve calendar weeks in the clan's named timezone before converting to UTC.
+ * Reset weekday/time values are stored in the clan's local STANDARD time.
+ * Resolve resets with that offset, then use the named timezone for display.
  * Use IANA identifiers such as Australia/Sydney for seasonal offset changes;
  * fixed offsets and abbreviations intentionally retain their fixed offset.
  */
 function tracker_timezone(string $name): DateTimeZone {
     try { return new DateTimeZone($name ?: 'UTC'); }
     catch (Throwable $e) { return new DateTimeZone('UTC'); }
+}
+
+function tracker_standard_timezone(DateTimeZone $tz, DateTimeImmutable $at): DateTimeZone {
+    $offset = $tz->getOffset($at);
+    if ($at->setTimezone($tz)->format('I') === '1') {
+        // Use the latest standard-time offset from this zone's rules. Do not
+        // assume DST is one hour (Lord Howe uses 30 minutes), or that January
+        // is winter. Fixed offsets/abbreviations have no transition history.
+        $transitions = $tz->getTransitions(PHP_INT_MIN, $at->getTimestamp() + 1);
+        foreach (array_reverse($transitions ?: []) as $transition) {
+            if (!$transition['isdst']) {
+                $offset = (int)$transition['offset'];
+                break;
+            }
+        }
+    }
+    $seconds = abs($offset);
+    return new DateTimeZone(sprintf('%s%02d:%02d:%02d',
+        $offset < 0 ? '-' : '+', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60
+    ));
 }
 
 /** @return array{0:DateTimeImmutable,1:DateTimeImmutable} */
@@ -18,7 +39,7 @@ function tracker_cap_week_bounds_utc(
     int $resetWeekday,
     string $resetTime
 ): array {
-    $tz = tracker_timezone($timezone);
+    $tz = tracker_standard_timezone(tracker_timezone($timezone), $at);
     $utc = new DateTimeZone('UTC');
     $local = $at->setTimezone($tz);
     // Support Sunday as either 0 (database convention) or ISO weekday 7.
@@ -27,14 +48,11 @@ function tracker_cap_week_bounds_utc(
     $parts = array_map('intval', explode(':', $resetTime));
     $time = sprintf('%02d:%02d:%02d', $parts[0] ?? 0, $parts[1] ?? 0, $parts[2] ?? 0);
 
-    // Calendar dates are advanced independently of the reset time. If PHP
-    // normalises a nonexistent local time forward through a DST gap, that
-    // adjustment must not carry into the preceding or following week's reset.
+    // Work out the weekday in standard time too: a late-night reset can be
+    // displayed on the following day when daylight saving is active.
     $date = new DateTimeImmutable($local->format('Y-m-d'), $utc);
     $date = $date->modify("-{$daysSinceReset} days");
     $resetOn = static function(DateTimeImmutable $day) use ($tz, $time): DateTimeImmutable {
-        // Construct afresh so repeated local times resolve consistently,
-        // regardless of which side of a clock change the activity occurred on.
         return new DateTimeImmutable($day->format('Y-m-d') . ' ' . $time, $tz);
     };
     $start = $resetOn($date);
@@ -85,8 +103,7 @@ function tracker_period_window(string $period, array $weekWindow): array {
     }
 
     if ($period === 'lastweek') {
-        // Both boundaries were resolved from local reset dates, which may be
-        // 167, 168 or 169 hours apart across a daylight-saving transition.
+        // Reuse the same standard-time reset boundaries as cap tracking.
         $start = new DateTime($weekWindow['previous_week_start_utc'], new DateTimeZone('UTC'));
         $end = new DateTime($weekWindow['week_start_utc'], new DateTimeZone('UTC'));
         return [
@@ -157,4 +174,3 @@ function tracker_period_window(string $period, array $weekWindow): array {
         'end_utc' => $nowUtc->format('Y-m-d H:i:s'),
     ];
 }
-

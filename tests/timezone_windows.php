@@ -12,15 +12,16 @@ function same($actual, $expected, string $message): void {
 
 $utc = new DateTimeZone('UTC');
 $cases = [
-    // Zone, instant within week, expected Monday reset boundaries, elapsed hours.
-    ['Australia/Sydney', '2026-10-02 12:00:00', '2026-09-27 14:00:00', '2026-10-04 13:00:00', 167],
-    ['Australia/Sydney', '2026-04-03 12:00:00', '2026-03-29 13:00:00', '2026-04-05 14:00:00', 169],
-    ['Europe/London', '2026-03-27 12:00:00', '2026-03-23 00:00:00', '2026-03-29 23:00:00', 167],
-    ['Europe/London', '2026-10-23 12:00:00', '2026-10-18 23:00:00', '2026-10-26 00:00:00', 169],
-    ['America/New_York', '2026-03-06 12:00:00', '2026-03-02 05:00:00', '2026-03-09 04:00:00', 167],
-    ['America/New_York', '2026-10-30 12:00:00', '2026-10-26 04:00:00', '2026-11-02 05:00:00', 169],
-    ['Australia/Lord_Howe', '2026-10-02 12:00:00', '2026-09-27 13:30:00', '2026-10-04 13:00:00', 167.5],
-    ['Australia/Lord_Howe', '2026-04-03 12:00:00', '2026-03-29 13:00:00', '2026-04-05 13:30:00', 168.5],
+    // Stored Monday midnight is standard time, even when the displayed time is in DST.
+    // Zone, instant within week, expected UTC boundaries, elapsed hours.
+    ['Australia/Sydney', '2026-10-02 12:00:00', '2026-09-27 14:00:00', '2026-10-04 14:00:00', 168],
+    ['Australia/Sydney', '2026-04-03 12:00:00', '2026-03-29 14:00:00', '2026-04-05 14:00:00', 168],
+    ['Europe/London', '2026-03-27 12:00:00', '2026-03-23 00:00:00', '2026-03-30 00:00:00', 168],
+    ['Europe/London', '2026-10-23 12:00:00', '2026-10-19 00:00:00', '2026-10-26 00:00:00', 168],
+    ['America/New_York', '2026-03-06 12:00:00', '2026-03-02 05:00:00', '2026-03-09 05:00:00', 168],
+    ['America/New_York', '2026-10-30 12:00:00', '2026-10-26 05:00:00', '2026-11-02 05:00:00', 168],
+    ['Australia/Lord_Howe', '2026-10-02 12:00:00', '2026-09-27 13:30:00', '2026-10-04 13:30:00', 168],
+    ['Australia/Lord_Howe', '2026-04-03 12:00:00', '2026-03-29 13:30:00', '2026-04-05 13:30:00', 168],
     ['Australia/Brisbane', '2026-10-02 12:00:00', '2026-09-27 14:00:00', '2026-10-04 14:00:00', 168],
     ['Asia/Kolkata', '2026-10-02 12:00:00', '2026-09-27 18:30:00', '2026-10-04 18:30:00', 168],
     ['UTC', '2026-10-02 12:00:00', '2026-09-28 00:00:00', '2026-10-05 00:00:00', 168],
@@ -68,28 +69,52 @@ foreach ($cases as [$zone, $instant, $expectedStart, $expectedEnd, $hours]) {
     same($pdo->statement->params[':we'], $expectedEnd, "$zone rank guard end");
 }
 
-// A reset inside the skipped hour moves forward for that date only.
-$clan = ['timezone' => 'Australia/Sydney', 'reset_weekday' => 0, 'reset_time' => '02:30:00'];
-$before = tracker_week_window($clan, new DateTimeImmutable('2026-10-03 16:15:00', $utc));
-same($before['week_start_local'], '2026-09-27 02:30:00', 'Gap must not shift previous reset');
-same($before['week_end_local'], '2026-10-04 03:30:00', 'Gap reset normalises forward');
-$during = tracker_week_window($clan, new DateTimeImmutable('2026-10-03 16:30:00', $utc));
-same($during['week_start_utc'], $before['week_end_utc'], 'Gap has no overlap');
-same($during['week_end_local'], '2026-10-11 02:30:00', 'Gap must not shift next reset');
-$after = tracker_week_window($clan, new DateTimeImmutable('2026-10-10 16:00:00', $utc));
-same(tracker_period_window('lastweek', $after)['start_utc'], $during['week_start_utc'], 'Lastweek retains normalised reset');
+// Explicit display expectations: the DB value remains 20:00 standard time.
+$clan = ['timezone' => 'Australia/Sydney', 'reset_weekday' => 1, 'reset_time' => '20:00:00'];
+foreach ([
+    ['2026-01-12 00:00:00', '2026-01-12 21:00:00', '2026-01-12 10:00:00'],
+    ['2026-07-12 00:00:00', '2026-07-13 20:00:00', '2026-07-13 10:00:00'],
+    ['2026-10-02 00:00:00', '2026-10-05 21:00:00', '2026-10-05 10:00:00'],
+    ['2026-10-12 00:00:00', '2026-10-12 21:00:00', '2026-10-12 10:00:00'],
+] as [$instant, $localEnd, $utcEnd]) {
+    $week = tracker_week_window($clan, new DateTimeImmutable($instant, $utc));
+    same($week['week_end_local'], $localEnd, 'Sydney displayed reset');
+    same($week['week_end_utc'], $utcEnd, 'Sydney countdown instant');
+}
+$lordHowe = tracker_week_window(array_replace($clan, ['timezone' => 'Australia/Lord_Howe']), new DateTimeImmutable('2026-10-12 00:00:00', $utc));
+same($lordHowe['week_end_local'], '2026-10-12 20:30:00', 'Half-hour DST display');
+same($lordHowe['week_end_utc'], '2026-10-12 09:30:00', 'Half-hour standard offset');
 
-// Repeated wall times resolve to one consistent reset, from either side of DST.
-$fold = new DateTimeImmutable('2026-04-05 02:30:00', new DateTimeZone('Australia/Sydney'));
-$previous = tracker_week_window($clan, $fold->setTimezone($utc)->modify('-1 second'));
+// A Sunday 23:30 standard reset displays as Monday 00:30 during Sydney DST.
+$clan['reset_weekday'] = 0;
+$clan['reset_time'] = '23:30:00';
+$before = tracker_week_window($clan, new DateTimeImmutable('2026-10-11 13:15:00', $utc));
+same($before['week_end_local'], '2026-10-12 00:30:00', 'DST reset crosses midnight');
+$after = tracker_week_window($clan, new DateTimeImmutable('2026-10-11 13:30:00', $utc));
+same($after['week_start_utc'], $before['week_end_utc'], 'Standard weekday at reset');
+same($after['week_end_local'], '2026-10-19 00:30:00', 'Next reset after weekday rollover');
+same(tracker_period_window('lastweek', $after)['start_utc'], $before['week_start_utc'], 'Lastweek after weekday rollover');
+same(tracker_week_window(array_replace($clan, ['reset_weekday' => 7]), new DateTimeImmutable('2026-10-11 13:30:00', $utc)), $after, 'ISO Sunday alias');
+
+// Stored standard times are unambiguous through both clock changes.
+$clan['reset_time'] = '02:30:00';
+$before = tracker_week_window($clan, new DateTimeImmutable('2026-10-03 16:15:00', $utc));
+same($before['week_start_local'], '2026-09-27 02:30:00', 'Reset before spring change');
+same($before['week_end_local'], '2026-10-04 03:30:00', 'Spring reset display');
+$during = tracker_week_window($clan, new DateTimeImmutable('2026-10-03 16:30:00', $utc));
+same($during['week_start_utc'], $before['week_end_utc'], 'Spring reset continuity');
+same($during['week_end_local'], '2026-10-11 03:30:00', 'DST adjustment continues all summer');
+$fold = new DateTimeImmutable('2026-04-04 16:30:00', $utc);
+$previous = tracker_week_window($clan, $fold->modify('-1 second'));
 $next = tracker_week_window($clan, $fold);
-same($previous['week_end_utc'], $next['week_start_utc'], 'Repeated time has one boundary');
+same($previous['week_start_local'], '2026-03-29 03:30:00', 'Reset before autumn change');
+same($next['week_start_local'], '2026-04-05 02:30:00', 'Autumn reset display');
+same($previous['week_end_utc'], $next['week_start_utc'], 'Autumn reset continuity');
 foreach (['2026-04-04 15:15:00', '2026-04-04 15:45:00', '2026-04-04 16:15:00', '2026-04-04 16:45:00'] as $instant) {
     $at = new DateTimeImmutable($instant, $utc);
     $week = tracker_week_window($clan, $at);
     same($week['week_start_utc'], $at < $fold ? $previous['week_start_utc'] : $next['week_start_utc'], 'Repeated time classification');
 }
-same(tracker_week_window(array_replace($clan, ['reset_weekday' => 7]), $fold), $next, 'ISO Sunday alias');
 same(tracker_week_window(['timezone' => 'Invalid/Timezone'])['timezone'], 'UTC', 'Invalid timezone fallback');
 
-echo "PASS: DST transitions, half-hour DST, fixed zones, reset edges, XP periods and rank guards\n";
+echo "PASS: standard-time resets, DST display, midnight rollover, XP periods and rank guards\n";
