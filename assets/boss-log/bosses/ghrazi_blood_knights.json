@@ -1,0 +1,26 @@
+{
+  "key": "ghrazi_blood_knights",
+  "name": "The Ghrazi Blood Knights",
+  "source": "https://runescape.wiki/w/The_Ghrazi_Blood_Knights",
+  "items": [
+    {
+      "name": "Malachi's tooth",
+      "order": 1
+    },
+    {
+      "name": "Malachi's claw",
+      "order": 2
+    },
+    {
+      "name": "Invoke Arisen Flesh incantation codex",
+      "order": 3
+    },
+    {
+      "name": "Lady Karmini",
+      "aliases": [
+        "Ghrazi Fauld"
+      ],
+      "order": 4
+    }
+  ]
+}
