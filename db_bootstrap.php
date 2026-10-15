@@ -109,6 +109,10 @@ function dbb_tables_present(PDO $pdo): array {
 
 function dbb_drop_known_tables(PDO $pdo): void {
     $dropOrder = [
+        'activity_icon_checks',
+        'activity_icon_sightings',
+        'activity_icon_issues',
+        'activity_icon_workers',
         'member_boss_collection_submissions',
         'member_boss_collection_log',
         'member_poll_state',
@@ -704,6 +708,8 @@ function dbb_bootstrap_schema(PDO $pdo, bool $force = false): void
     dbb_create_tables($pdo);
     dbb_apply_schema_migrations($pdo);
     dbb_migrate_citadel_activity_links($pdo);
+    require_once __DIR__ . '/api/functions/icon_issues.php';
+    ii_ensure_schema($pdo);
 
     $existing = dbb_tables_present($pdo);
     dbb_out("DB bootstrap: schema ensured. Tables present: " . count($existing));

@@ -59,3 +59,96 @@ historical cap/visit rows or activity timestamps. Existing rows assigned using t
 old daylight-adjusted wall-clock convention retain their stored week keys. Deploy
 this helper with all cap/visit processors; external RS3-API workers sharing the
 database must use the same standard-time convention.
+
+## Missing activity icons
+
+Player-feed images now use `api/activity_icon.php?id=<stored activity ID>`. That
+endpoint and `scripts/check_activity_icons.php` use the same PHP resolver and
+existing activity, boss, item-alias and item-cleanup JSON files. Local uploaded
+icons take priority over Wiki downloads. A successful HTTP response containing
+either bundled default image is still a fallback; copied defaults and invalid
+image files are also rejected. Other tracker screens retain their existing icon
+selection.
+
+The shared database stores:
+
+- `activity_icon_issues`: one issue per tracker source and normalized icon identity,
+  with examples, lookup attempts, distinct activity count, timestamps, and
+  `open`, `retrying`, or `resolved` status.
+- `activity_icon_sightings`: unique issue/activity pairs, so repeated views,
+  worker runs and regressions never inflate the count.
+- `activity_icon_checks`: which stored activities each tracker has scanned.
+- `activity_icon_workers`: last run and failure information for the admin page.
+
+Matched activity mappings are grouped by their rule key. Unclassified activity
+text and details retain numbers and wording so fixing one variant cannot hide
+another. Item identities retain their source name independently of editable aliases.
+No activity history is deleted or modified. Resolved issues remain available for
+history and reopen if their icon falls back again.
+
+### Deployment
+
+1. Deploy all changed ClanTracker files together: the PHP helpers, endpoints and
+   worker, including `api/_db.php`, the updated player API, `app.js`, `index.php`
+   and `db_bootstrap.php`. Deploy
+   `admin/missing_icons.php`, `admin/includes/layout.php`,
+   `functions/icon_issues.php` and `setup/db_bootstrap.php` in RS3-API. Both apps
+   must connect to the same database. Keep the two `icon_issues.php` copies identical.
+2. Set a stable `TRACKER_ICON_SOURCE` in the tracker environment (default
+   `tracker`). Give deployments with different icon assets different source
+   names. The worker uses `TRACKER_CLAN_ID` when configured; otherwise it scans
+   all clans. Use the same source/clan environment for PHP web requests and cron.
+3. Create the additive tables with the regular tracker DB environment:
+
+   ```sh
+   php scripts/check_activity_icons.php --setup-only
+   ```
+
+   Both projects' normal schema bootstrap also ensures these tables. Do not use
+   `BOOTSTRAP_FORCE`. No existing activity data needs migration. The PHP account
+   must be able to write `cache/item-icons` and `cache/mapped-icons`.
+4. Add a server cron job on the **tracker host**, where its actual assets and
+   mappings live. For example, replacing the PHP, project and log paths:
+
+   ```cron
+   * * * * * /path/to/php /path/to/ClanTracker/scripts/check_activity_icons.php --limit=100 --seconds=45 >> /path/to/icon-checks.log 2>&1
+   ```
+
+   The worker is CLI-only and runs bounded batches with a per-source database
+   lock. It scans previously unseen stored activities, including history and
+   activities fetched by RS3-API, without waiting for profile views. Run the same
+   command manually to start the initial backfill. The time budget stops between
+   lookups; a lookup already in progress is allowed to finish.
+5. Open **Missing Icons** in RS3 API admin. Filter by status, category, tracker or
+   text, and sort by frequency or age. **Recheck** and **Recheck all unresolved**
+   queue work for the next tracker run; they do not fetch images on the admin host.
+
+Missing assets are rechecked every six hours; transient network failures retry
+after five minutes. Explicit rechecks bypass the negative download cache.
+Resolved issues are checked daily for regressions. A confirmed real icon removes
+the issue from the default unresolved view on its next matching feed/worker
+check. Newly introduced mapping rules can change an issue's identity; the queued
+or periodic recheck of its saved sample resolves the older entry as well.
+Cached valid Wiki images remain usable during upstream outages. Remote image
+URLs in the administrator-maintained maps are cached and validated too; redirects
+must stay on the configured host. Local SVG and raster images are supported;
+remote images must be decodable raster images.
+
+Failed issue logging never hides an otherwise valid feed image. The admin page
+uses the existing login, CSRF protection and audit log, and indicates missing or
+overdue background runs. Feed requests can only inspect stored activity IDs
+within the configured clan; they cannot submit arbitrary issue records or URLs.
+
+### Regression checks
+
+```sh
+php tests/activity_icons.php
+ICON_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/icon_issues.php
+```
+
+The first test uses temporary files and simulated Wiki responses (no network).
+The second creates and drops its own database on a disposable MySQL/MariaDB
+server. Optional credentials are `ICON_TEST_USER` and `ICON_TEST_PASSWORD`.
+It covers repeatable schema setup, deduplication, resolution, reopening, transient
+failures, source isolation, concurrent rechecks, background scanning, deleted
+source activities and overlapping workers.

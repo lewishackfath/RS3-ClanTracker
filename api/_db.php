@@ -30,7 +30,7 @@ function tracker_json(array $payload, int $status = 200): void {
     exit;
 }
 
-function tracker_pdo(): PDO {
+function tracker_pdo(bool $throwOnError = false): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
 
@@ -41,6 +41,7 @@ function tracker_pdo(): PDO {
     $charset = getenv('TRACKER_DB_CHARSET') ?: 'utf8mb4';
 
     if ($host === '' || $name === '' || $user === '') {
+        if ($throwOnError) throw new RuntimeException('DB env vars not configured. Set TRACKER_DB_HOST/NAME/USER/PASS.');
         tracker_json([
             'ok' => false,
             'error' => 'DB env vars not configured. Set TRACKER_DB_HOST/NAME/USER/PASS.'
@@ -56,6 +57,7 @@ function tracker_pdo(): PDO {
         ]);
         return $pdo;
     } catch (Throwable $e) {
+        if ($throwOnError) throw new RuntimeException('DB connection failed', 0, $e);
         tracker_json([
             'ok' => false,
             'error' => 'DB connection failed',

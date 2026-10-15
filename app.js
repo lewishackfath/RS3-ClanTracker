@@ -3465,98 +3465,20 @@ function renderPlayer() {
       `;
     }).join("");
 
+    // The backend uses the same resolver as the missing-icon worker. A successful
+    // placeholder response is no longer mistaken for a resolved candidate.
     activityList.querySelectorAll("img.miniIcon").forEach(img => {
-      const kind = img.getAttribute("data-kind") || "default";
-      const skillName = img.getAttribute("data-skill") || "";
-      const itemName = cleanDropItemNameForLookup(img.getAttribute("data-item") || "");
-      const bossName = cleanBossNameForIcons(img.getAttribute("data-boss") || "");
-
-      if (kind === "level") {
-        const candidates = skillName ? [...iconCandidates("assets/skills/", skillName)] : [];
-        candidates.push("assets/activity/level.png");
-        setImgWithFallback(img, candidates, "assets/activity/default.png");
-        return;
-      }
-
-      if (kind === "skill_xp" || kind === "skill") {
-        const candidates = skillName ? [...iconCandidates("assets/skills/", skillName)] : [];
-        candidates.push("assets/activity/default.png");
-        setImgWithFallback(img, candidates, "assets/activity/default.png");
-        return;
-      }
-
-      if (kind === "boss") {
-        const candidates = bossName ? bossIconCandidatesFromName(bossName) : [];
-        candidates.push("assets/activity/default.png");
-        setImgWithFallback(img, candidates, "assets/activity/default.png");
-        return;
-      }
-
-      if (kind === "drop") {
-        const candidates = itemName ? dropItemIconCandidates(itemName) : [];
-        candidates.push("assets/activity/default.png");
-        setImgWithFallback(img, candidates, "assets/activity/default.png");
-        return;
-      }
-
-      if (kind === "quest") {
-        setImgWithFallback(img, ["assets/activity/quest.png"], "assets/activity/default.png");
-        return;
-      }
-
-      setImgWithFallback(img, ["assets/activity/default.png"], "assets/activity/default.png");
+      const a = activity[Number(img.dataset.idx)];
+      const candidates = a?.id ? [`api/activity_icon.php?id=${encodeURIComponent(a.id)}`] : [];
+      setImgWithFallback(img, candidates, "assets/activity/default.png");
     });
 
-    // Re-apply drop icons once configurable item-name cleanup and alias rules have loaded.
-    Promise.all([loadItemNameCleanupRules(), loadItemIconAliases()]).then(() => {
-      activityList.querySelectorAll('img.miniIcon[data-kind="drop"]').forEach(img => {
-        const itemName = img.getAttribute("data-item") || "";
-        const candidates = itemName ? dropItemIconCandidates(itemName) : [];
-        candidates.push("assets/activity/default.png");
-        setImgWithFallback(img, candidates, "assets/activity/default.png");
-      });
-    });
-
-    // Apply boss phrase parsing and icon mappings from JSON once both have loaded.
-    Promise.all([loadBossActivityPhrases(), loadBossIconMap()]).then(([, bossIconMap]) => {
-      const list = playerData?.recent_activity || [];
-
-      activityList.querySelectorAll("img.miniIcon").forEach(img => {
-        const idx = Number(img.getAttribute("data-idx") || "NaN");
-        if (!Number.isFinite(idx)) return;
-
-        const a = list[idx];
-        const info = classifyActivity(a?.text || "", a?.details || "");
-        if (info.kind !== "boss") return;
-
-        const bossName = cleanBossNameForIcons(info.bossName || "");
-        if (!bossName) return;
-
-        img.setAttribute("data-kind", "boss");
-        img.setAttribute("data-boss", bossName);
-
-        const row = img.closest(".activityRow");
-        if (row) row.classList.add("activity-boss");
-
-        const mapped = findMappedBossIcon(bossName, bossIconMap);
-        const candidates = mapped
-          ? [...bossMappedIconCandidates(mapped), ...bossIconCandidatesFromName(bossName)]
-          : bossIconCandidatesFromName(bossName);
-        candidates.push("assets/activity/default.png");
-        setImgWithFallback(img, candidates, "assets/activity/default.png");
-      });
-    });
-
-    // Apply JSON icon overrides (if any mappings match)
-    loadActivityIconMap().then(iconMap => {
-      if (!iconMap) return;
-      const list = playerData?.recent_activity || [];
-      activityList.querySelectorAll("img.miniIcon").forEach(img => {
-        const idx = Number(img.getAttribute("data-idx") || "NaN");
-        if (!Number.isFinite(idx)) return;
-        const a = list[idx];
-        const mapped = findMappedActivityIcon(a, iconMap);
-        if (mapped) setImgWithFallback(img, _mappedIconCandidates(mapped), "assets/activity/default.png");
+    loadBossActivityPhrases().then(() => {
+      activityList.querySelectorAll('img.miniIcon').forEach(img => {
+        const a = activity[Number(img.dataset.idx)];
+        if (classifyActivity(a?.text || "", a?.details || "").kind === "boss") {
+          img.closest('.activityRow')?.classList.add('activity-boss');
+        }
       });
     });
   } else {

@@ -1542,7 +1542,7 @@ try {
 
     // Recent activity (NEW schema: member_activities DOES have activity_text)
     $stmt = $pdo->prepare("
-        SELECT activity_date_utc, activity_text, activity_details, announced_at
+        SELECT id, activity_date_utc, activity_text, activity_details, announced_at
         FROM member_activities
         WHERE member_id = :mid
           AND activity_text <> 'Rank-up required'
@@ -1759,6 +1759,7 @@ try {
             $annUtc = $r['announced_at'] ?? null;
 
             return [
+                'id' => (int)$r['id'],
                 'activity_date_utc' => $actUtc,
                 'activity_date_local' => tracker_to_local($actUtc, (string)$week['timezone']),
                 'announced_at_utc' => $annUtc,
