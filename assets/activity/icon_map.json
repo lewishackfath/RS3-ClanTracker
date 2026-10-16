@@ -63,12 +63,12 @@
   },
   "TreasureTrail": {
     "icon": "assets/activity/Clue_Scrolls.webp",
-    "activity_regex": "\btreasure trail completed\b",
+    "activity_regex": "^.+?\\s+treasure trail completed\\.?\\s*$",
     "regex_flags": "i"
   },
   "TotalLevelGained": {
     "icon": "assets/activity/skills/_default.png",
-    "activity_regex": "\b\d+(?:,\d{3})*\s+Total\s+levels\s+gained\b",
+    "activity_regex": "^(?:\\d{1,3}(?:,\\d{3})+|\\d+)\\s+Total levels gained\\.?\\s*$",
     "regex_flags": "i"
   }
 }
