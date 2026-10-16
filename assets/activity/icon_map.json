@@ -85,5 +85,18 @@
     "icon": "assets/activity/ChampionChallenge.png",
     "activity_regex": "^Won a challenge against the\\s+.+?\\s+Champion\\.?\\s*$",
     "regex_flags": "i"
+  },
+  "CharmSprite": {
+    "icon": "assets/activity/CharmSprite.webp",
+    "activity_regex": "^Caught\\s+100\\s+.+?\\s+charm sprites\\.?\\s*$",
+    "regex_flags": "i"
+  },
+  "LividFarmFirst": {
+    "icon": "assets/activity/LunarSpellbook.png",
+    "activity_text": "Unlocked the first spell on the Livid Farm",
+  },
+  "ChimpIce": {
+    "icon": "assets/activity/ChimpIce.png",
+    "activity_text": "Brought 25 chimp ices to King Awowogei",
   }
 }
