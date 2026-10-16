@@ -67,13 +67,18 @@
     "regex_flags": "i"
   },
   "TotalLevelGained": {
-    "icon": "assets/skills/total.png",
+    "icon": "assets/activity/TotalLevelMilestone.png",
     "activity_regex": "^(?:\\d{1,3}(?:,\\d{3})+|\\d+)\\s+Total levels gained\\.?\\s*$",
     "regex_flags": "i"
   },
   "ChampionScroll": {
     "icon": "assets/activity/ChampionScroll.png",
     "activity_regex": "^A message was dropped by an?\\s+.+?\\s+from the\\s+.+?\\s+Champion, challenging me to a fight\\.?\\s*$",
+    "regex_flags": "i"
+  },
+  "ChampionChallenge": {
+    "icon": "assets/activity/ChampionChallenge.png",
+    "activity_regex": "^Won a challenge against the\\s+.+?\\s+Champion\\.?\\s*$",
     "regex_flags": "i"
   }
 }
