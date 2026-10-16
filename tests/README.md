@@ -70,6 +70,19 @@ either bundled default image is still a fallback; copied defaults and invalid
 image files are also rejected. Other tracker screens retain their existing icon
 selection.
 
+Wiki item lookups search file titles without regard to capitalisation. Names must
+match the complete sequence of words (including numbers and qualifiers), ignoring
+separators such as spaces and underscores and normalising curly apostrophes.
+The resolver prefers `{item name} detail` and falls
+back to the standard image; existing aliases ending in `Detail` also work. Search
+results supply the actual filename and image URL, so mixed-case requests do not
+depend on guessing the Wiki's capitalisation. Direct filenames remain a fallback
+if search is unavailable. Search and downloads share the existing five-second
+budget, and API errors remain retryable rather than confirming a missing item.
+Item cache keys now share case/spacing variants and use a new version so existing
+standard-image or negative caches are refreshed on the next lookup. Local uploads
+and explicit activity mappings retain priority.
+
 The shared database stores:
 
 - `activity_icon_issues`: one issue per tracker source and normalized icon identity,

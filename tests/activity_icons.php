@@ -68,11 +68,16 @@ try {
     icon_check(ai_local_file($root, ['path' => 'assets/skills/_default.png']) === null, 'Skill default is a placeholder');
 
     $calls = 0;
-    $notFound = static function () use (&$calls): array { $calls++; return ['status' => 'missing', 'reason' => 'wiki_not_found']; };
+    $notFound = static function (string $url) use (&$calls): array {
+        $calls++;
+        return str_contains($url, '/api.php?')
+            ? ['status' => 'resolved', 'bytes' => '{"batchcomplete":true}']
+            : ['status' => 'missing', 'reason' => 'wiki_not_found'];
+    };
     $r = wi_resolve($root, 'Missing item', false, $notFound);
-    icon_check($r['status'] === 'missing' && $calls === 2, 'Both Wiki locations confirm missing');
-    wi_resolve($root, 'Missing item', false, $notFound);
-    icon_check($calls === 2, 'Negative cache prevents repeated network requests');
+    icon_check($r['status'] === 'missing' && $calls === 5, 'Wiki search and both detail/standard locations confirm missing');
+    wi_resolve($root, 'MISSING ITEM Detail', false, $notFound);
+    icon_check($calls === 5, 'Negative cache is shared across capitalisation and detail suffixes');
     $bytes = file_get_contents($root . '/assets/activity/fealty_3.png');
     $success = static fn(): array => ['status' => 'resolved', 'bytes' => $bytes];
     $r = wi_resolve($root, 'Missing item', true, $success);
@@ -82,6 +87,77 @@ try {
     icon_check(wi_resolve($root, 'Rate limited item', false, $temporary)['status'] === 'temporary', '429 is retryable, not confirmed missing');
     icon_check(wi_mapped_icon($root, 'https://example.test/icon.png', false, $success)['status'] === 'resolved', 'Configured remote images share validated caching');
     icon_check(wi_mapped_icon($root, 'file:///etc/passwd', false, $success)['status'] === 'missing', 'Mapped remote URLs reject non-HTTP schemes');
+
+    $standardUrl = 'https://runescape.wiki/images/Scripture_of_Jas.png?standard';
+    $detailUrl = 'https://runescape.wiki/images/Scripture_of_Jas_detail.png?detail';
+    $page = static fn(string $title, string $url): array => ['title' => 'File:' . $title, 'imageinfo' => [['url' => $url]]];
+    $pages = [
+        $page('Scripture of Jas.png', $standardUrl),
+        $page('Scripture of Jas (used).png', 'https://runescape.wiki/images/used.png'),
+        $page('Scripture of Jas Active (self status).png', 'https://runescape.wiki/images/status.png'),
+        $page('Scripture of Ful detail.png', 'https://runescape.wiki/images/wrong_item.png'),
+        $page('Scripture of Jas detail.png', $detailUrl),
+    ];
+    $requests = [];
+    $standardBytes = file_get_contents($root . '/assets/activity/default.png');
+    $wiki = static function (string $url) use (&$requests, &$pages, $detailUrl, $standardUrl, $bytes, $standardBytes): array {
+        $requests[] = $url;
+        if (str_contains($url, '/api.php?')) {
+            parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+            icon_check($query['gsrnamespace'] === '6' && $query['gsrsearch'] === 'intitle:"scripture of jas"', 'Search file titles using item words');
+            return ['status' => 'resolved', 'bytes' => json_encode(['batchcomplete' => true, 'query' => ['pages' => $pages]])];
+        }
+        if ($url === $detailUrl) return ['status' => 'resolved', 'bytes' => $bytes];
+        if ($url === $standardUrl) return ['status' => 'resolved', 'bytes' => $standardBytes];
+        return ['status' => 'missing', 'reason' => 'wiki_not_found'];
+    };
+    // A pre-upgrade positive cache must not keep serving the standard image.
+    $oldCache = $root . '/cache/item-icons/scripture_of_jas_' . substr(sha1('Scripture of Jas'), 0, 10) . '.png';
+    copy($root . '/assets/activity/default.png', $oldCache);
+    $r = wi_resolve($root, 'Scripture of Jas', false, $wiki);
+    icon_check($r['status'] === 'resolved' && file_get_contents($r['file']) === $bytes, 'Detailed image wins even if standard ranks first and an old cache exists');
+    icon_check(count($requests) === 2 && $requests[1] === $detailUrl, 'Use canonical Wiki image URL without fetching other variants');
+    $cached = wi_resolve($root, 'SCRIPTURE_of_jas DETAIL', false, $noWiki);
+    icon_check($cached['file'] === $r['file'], 'Positive cache ignores case and word separators');
+    $requests = [];
+    $r = wi_resolve($root, 'sCrIpTuRe OF jAs DeTaIl', true, $wiki);
+    icon_check($r['status'] === 'resolved' && $requests[1] === $detailUrl, 'Mixed case detail aliases find canonical filename without doubling detail');
+
+    array_pop($pages);
+    $requests = [];
+    $r = wi_resolve($root, 'sCrIpTuRe of JaS DETAIL', true, $wiki);
+    icon_check($r['status'] === 'resolved' && end($requests) === $standardUrl, 'Standard canonical image is used when detail is absent');
+    icon_check(count($requests) === 4, 'Only exact full-name matches are downloaded; additional qualifiers and other items are excluded');
+    $pages = [$page('Jas of Scripture detail.png', 'https://runescape.wiki/images/reordered.png'), $pages[1], $pages[2], $pages[3]];
+    $requests = [];
+    // Remove the good cache so an unrelated search result cannot appear resolved.
+    unlink($r['file']);
+    clearstatcache();
+    $r = wi_resolve($root, 'scripture of jas', true, $wiki);
+    icon_check($r['status'] === 'missing' && count($requests) === 5, 'Partial names, reordered words and other variants do not resolve an item');
+
+    $apostropheUrl = 'https://runescape.wiki/images/Saradomin%27s_whisper_detail.png?canonical';
+    $apostropheWiki = static function (string $url) use ($apostropheUrl, $page, $bytes): array {
+        if (str_contains($url, '/api.php?')) {
+            parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+            icon_check($query['gsrsearch'] === 'intitle:"saradomin\'s whisper"', 'Apostrophes must survive in Wiki search terms');
+            return ['status' => 'resolved', 'bytes' => json_encode(['batchcomplete' => true, 'query' => ['pages' => [
+                $page("Saradomin's whisper detail.png", $apostropheUrl),
+            ]]])];
+        }
+        icon_check($url === $apostropheUrl, 'Mixed-case names with curly apostrophes use the canonical filename');
+        return ['status' => 'resolved', 'bytes' => $bytes];
+    };
+    icon_check(wi_resolve($root, 'sArAdOmIn’s WHISPER detail', false, $apostropheWiki)['status'] === 'resolved', 'Case-insensitive lookup preserves possessive item words');
+
+    $badSearch = static fn(string $url): array => str_contains($url, '/api.php?')
+        ? ['status' => 'resolved', 'bytes' => '{"error":{"code":"ratelimited"}}']
+        : ['status' => 'missing', 'reason' => 'wiki_not_found'];
+    icon_check(wi_resolve($root, 'API error item', false, $badSearch)['status'] === 'temporary', 'Search API errors cannot confirm missing items');
+    $badImage = static fn(): array => ['status' => 'resolved', 'bytes' => '<html>upstream error</html>'];
+    icon_check(wi_resolve($root, 'Invalid image item', false, $badImage)['status'] === 'temporary', 'Invalid API and image responses remain retryable');
+    icon_check(wi_resolve($root, ' ___ ', false, $noWiki)['status'] === 'missing', 'Empty word lookup avoids all network calls');
+
     $r = ai_resolve($root, ['activity_text' => 'I found a Missing new item.'], false, $temporary);
     icon_check($r['status'] === 'temporary', 'Final fallback retains transient network cause');
     $r = ai_resolve($root, ['activity_text' => 'I found a Missing new item.'], false,
