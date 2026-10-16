@@ -23,6 +23,11 @@
     "icon": "assets/activity/arch_mystery.png",
     "activity_text": "Solved an archaeological mystery."
   },
+  "Collection": {
+    "icon": "assets/activity/CollectionJournal.png",
+    "activity_regex": "^(?:[Ff]ully\\s+)?[Rr]estored\\s+a\\s+collection\\s+of\\s+.+?\\s+artefacts\\.?\\s*$",
+    "regex_flags": "i"
+  },
   "Citadel": {
     "icon": "assets/activity/citadel.png",
     "activity_regex": "^(Capped|Visited) (at )?my Clan Citadel\\.$",
