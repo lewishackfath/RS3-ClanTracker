@@ -3,9 +3,21 @@
     "icon": "assets/activity/fealty_3.png",
     "activity_text": "Maintained Clan Fealty 3"
   },
-  "Fealty2": {
+  "ReachedFealty3": {
+    "icon": "assets/activity/fealty_3.png",
+    "activity_text": "Reached Clan Fealty 3"
+  },
+  "ReachedFealty2": {
     "icon": "assets/activity/fealty_2.png",
-    "activity_text": "Maintained Clan Fealty 2"
+    "activity_text": "Reached Clan Fealty 2"
+  },
+  "ReachedFealty1": {
+    "icon": "assets/activity/fealty_1.png",
+    "activity_text": "Reached Clan Fealty 1"
+  },
+  "comp": {
+    "icon": "assets/activity/CompCape.png",
+    "activity_text": "Bought my first completionist cape"
   },
   "Mystery": {
     "icon": "assets/activity/arch_mystery.png",
