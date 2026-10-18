@@ -1,0 +1,208 @@
+{
+  "version": "2026-10-19",
+  "pets": [
+    {
+      "key": "agility",
+      "skill": "Agility",
+      "name": "Dojo Mojo, the Agility pet",
+      "icon_name": "Dojo Mojo (pet)",
+      "aliases": []
+    },
+    {
+      "key": "archaeology",
+      "skill": "Archaeology",
+      "name": "Archie, the Archaeology pet",
+      "icon_name": "Archie (pet)",
+      "aliases": []
+    },
+    {
+      "key": "attack",
+      "skill": "Attack",
+      "name": "Sifu, the Attack pet",
+      "icon_name": "Sifu (pet)",
+      "aliases": []
+    },
+    {
+      "key": "constitution",
+      "skill": "Constitution",
+      "name": "Morty, the Constitution pet",
+      "icon_name": "Morty (pet)",
+      "aliases": []
+    },
+    {
+      "key": "construction",
+      "skill": "Construction",
+      "name": "Baby Yaga's House, the Construction pet",
+      "icon_name": "Baby Yaga's House (pet)",
+      "aliases": []
+    },
+    {
+      "key": "cooking",
+      "skill": "Cooking",
+      "name": "Ramsay, the Cooking pet",
+      "icon_name": "Ramsay (pet)",
+      "aliases": []
+    },
+    {
+      "key": "crafting",
+      "skill": "Crafting",
+      "name": "Gemi, the Crafting pet",
+      "icon_name": "Gemi (pet)",
+      "aliases": []
+    },
+    {
+      "key": "defence",
+      "skill": "Defence",
+      "name": "Wallace, the Defence pet",
+      "icon_name": "Wallace (pet)",
+      "aliases": []
+    },
+    {
+      "key": "divination",
+      "skill": "Divination",
+      "name": "Willow, the Divination pet",
+      "icon_name": "Willow (pet)",
+      "aliases": []
+    },
+    {
+      "key": "dungeoneering",
+      "skill": "Dungeoneering",
+      "name": "Gordie, the Dungeoneering pet",
+      "icon_name": "Gordie (pet)",
+      "aliases": []
+    },
+    {
+      "key": "farming",
+      "skill": "Farming",
+      "name": "Brains, the Farming pet",
+      "icon_name": "Brains (pet)",
+      "aliases": []
+    },
+    {
+      "key": "firemaking",
+      "skill": "Firemaking",
+      "name": "Bernie, the Firemaking pet",
+      "icon_name": "Bernie (pet)",
+      "aliases": []
+    },
+    {
+      "key": "fishing",
+      "skill": "Fishing",
+      "name": "Bubbles, the Fishing pet",
+      "icon_name": "Bubbles (pet)",
+      "aliases": []
+    },
+    {
+      "key": "fletching",
+      "skill": "Fletching",
+      "name": "Flo, the Fletching pet",
+      "icon_name": "Flo (pet)",
+      "aliases": []
+    },
+    {
+      "key": "herblore",
+      "skill": "Herblore",
+      "name": "Herbert, the Herblore pet",
+      "icon_name": "Herbert (pet)",
+      "aliases": []
+    },
+    {
+      "key": "hunter",
+      "skill": "Hunter",
+      "name": "Ace, the Hunter pet",
+      "icon_name": "Ace (pet)",
+      "aliases": []
+    },
+    {
+      "key": "invention",
+      "skill": "Invention",
+      "name": "Malcolm, the Invention pet",
+      "icon_name": "Malcolm (pet)",
+      "aliases": []
+    },
+    {
+      "key": "magic",
+      "skill": "Magic",
+      "name": "Newton, the Magic pet",
+      "icon_name": "Newton (pet)",
+      "aliases": []
+    },
+    {
+      "key": "mining",
+      "skill": "Mining",
+      "name": "Rocky, the Mining pet",
+      "icon_name": "Rocky (pet)",
+      "aliases": []
+    },
+    {
+      "key": "necromancy",
+      "skill": "Necromancy",
+      "name": "Omen, the Necromancy pet",
+      "icon_name": "Omen (pet)",
+      "aliases": []
+    },
+    {
+      "key": "prayer",
+      "skill": "Prayer",
+      "name": "Ghostly, the Prayer pet",
+      "icon_name": "Ghostly (pet)",
+      "aliases": []
+    },
+    {
+      "key": "ranged",
+      "skill": "Ranged",
+      "name": "Sparky, the Ranged pet",
+      "icon_name": "Sparky (pet)",
+      "aliases": []
+    },
+    {
+      "key": "runecrafting",
+      "skill": "Runecrafting",
+      "name": "Rue, the Runecrafting pet",
+      "icon_name": "Rue (pet)",
+      "aliases": []
+    },
+    {
+      "key": "slayer",
+      "skill": "Slayer",
+      "name": "Crabbe, the Slayer pet",
+      "icon_name": "Crabbe (pet)",
+      "aliases": []
+    },
+    {
+      "key": "smithing",
+      "skill": "Smithing",
+      "name": "Smithy, the Smithing pet",
+      "icon_name": "Smithy (pet)",
+      "aliases": []
+    },
+    {
+      "key": "strength",
+      "skill": "Strength",
+      "name": "Kangali, the Strength pet",
+      "icon_name": "Kangali (pet)",
+      "aliases": []
+    },
+    {
+      "key": "summoning",
+      "skill": "Summoning",
+      "name": "Shamini, the Summoning pet",
+      "icon_name": "Shamini (pet)",
+      "aliases": []
+    },
+    {
+      "key": "thieving",
+      "skill": "Thieving",
+      "name": "Ralph, the Thieving pet",
+      "icon_name": "Ralph (pet)",
+      "aliases": []
+    },
+    {
+      "key": "woodcutting",
+      "skill": "Woodcutting",
+      "name": "Woody, the Woodcutting pet",
+      "icon_name": "Woody (pet)",
+      "aliases": []
+    }
+  ]
+}

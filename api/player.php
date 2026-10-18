@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_db.php';
 require_once __DIR__ . '/functions/time_helpers.php';
 require_once __DIR__ . '/functions/member_helpers.php';
+require_once __DIR__ . '/functions/skilling_pets.php';
 
 /**
  * api/player.php (NEW SCHEMA)
@@ -1639,6 +1640,7 @@ try {
     $xpStats = tracker_build_xp_stats($pdo, $memberId, $xpWindow, (string)$week['timezone']);
     $dropHistory = tracker_build_drop_history($pdo, $memberId, (string)$week['timezone']);
     $bossCollectionLog = tracker_build_boss_collection_log($pdo, $memberId, $clanId, (string)$week['timezone']);
+    $skillingPets = sp_build_log($pdo, $memberId, $clanId, __DIR__ . '/../assets/skilling-pets/pets.json');
 
     // Current skills list from latest snapshot
     $currentSkills = [
@@ -1773,6 +1775,7 @@ try {
         'xp_stats' => $xpStats,
         'drop_history' => $dropHistory,
         'boss_collection_log' => $bossCollectionLog,
+        'skilling_pets' => $skillingPets,
         'xp_periods' => [
         ['value' => '24h', 'label' => 'Last 24 hours'],
         ['value' => '7d', 'label' => 'Last 7 days'],

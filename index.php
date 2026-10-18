@@ -189,6 +189,7 @@ include __DIR__ . '/includes/menu.php';
               <button class="segBtn" type="button" data-journal-view="skilleveling" role="tab" aria-selected="false">Skill Levelling</button>
               <button class="segBtn" type="button" data-journal-view="drops" role="tab" aria-selected="false">Drop History</button>
               <button class="segBtn" type="button" data-journal-view="bosslog" role="tab" aria-selected="false">Boss Log</button>
+              <button class="segBtn" type="button" data-journal-view="skillingpets" role="tab" aria-selected="false">Skilling Pets</button>
             </div>
           </div>
           <div id="activityJournalView">
@@ -199,6 +200,7 @@ include __DIR__ . '/includes/menu.php';
           <div class="skillLevelingPanel hidden" id="skillLevelingView" aria-live="polite"></div>
           <div class="dropHistoryPanel hidden" id="dropHistoryView" aria-live="polite"></div>
           <div class="bossCollectionPanel hidden" id="bossCollectionLogView" aria-live="polite"></div>
+          <div class="bossCollectionPanel hidden" id="skillingPetsView" aria-live="polite"></div>
         </div>
       </div>
 
@@ -214,6 +216,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202607070620"></script>
-  <script src="./app.js?v=2026101601"></script>
+  <script src="./app.js?v=2026101901"></script>
 </body>
 </html>

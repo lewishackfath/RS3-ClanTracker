@@ -7,6 +7,7 @@ const API = {
   player: "api/player.php",
   refreshPlayerXp: "api/refresh_member_data.php",
   bossLogCsv: "api/boss_log_csv.php",
+  skillingPetsCsv: "api/skilling_pets_csv.php",
 };
 
 const TRACKER_CONFIG = window.TRACKER_CONFIG || {};
@@ -1736,7 +1737,7 @@ function formatShortDateFromUtc(value) {
 }
 
 function setJournalView(view) {
-  selectedJournalView = ["xpstats", "skilleveling", "drops", "bosslog"].includes(view) ? view : "activity";
+  selectedJournalView = ["xpstats", "skilleveling", "drops", "bosslog", "skillingpets"].includes(view) ? view : "activity";
 
   qs("journalTabs")?.querySelectorAll("[data-journal-view]").forEach(btn => {
     const active = btn.getAttribute("data-journal-view") === selectedJournalView;
@@ -1752,7 +1753,7 @@ function setJournalView(view) {
         ? "Skill Levelling"
         : (selectedJournalView === "drops"
           ? "Drop History"
-          : (selectedJournalView === "bosslog" ? "Boss Log" : "Activity Journal")));
+          : (selectedJournalView === "bosslog" ? "Boss Log" : (selectedJournalView === "skillingpets" ? "Skilling Pets" : "Activity Journal"))));
   }
 
   show(qs("activityJournalView"), selectedJournalView === "activity");
@@ -1760,6 +1761,7 @@ function setJournalView(view) {
   show(qs("skillLevelingView"), selectedJournalView === "skilleveling");
   show(qs("dropHistoryView"), selectedJournalView === "drops");
   show(qs("bossCollectionLogView"), selectedJournalView === "bosslog");
+  show(qs("skillingPetsView"), selectedJournalView === "skillingpets");
 
   const limitWrap = qs("activityLimitWrap");
   if (limitWrap) {
@@ -1770,6 +1772,7 @@ function setJournalView(view) {
   if (selectedJournalView === "skilleveling") renderSkillLeveling();
   if (selectedJournalView === "drops") renderDropHistory();
   if (selectedJournalView === "bosslog") renderBossCollectionLog();
+  if (selectedJournalView === "skillingpets") renderSkillingPets();
 }
 
 function xpSkillSelectionForChart(chartKey) {
@@ -2712,7 +2715,62 @@ function renderBossCollectionLog() {
   wireBossLogCsvUpload(el);
 }
 
-function wireBossLogCsvUpload(root) {
+function renderSkillingPets() {
+  const el = qs("skillingPetsView");
+  if (!el) return;
+  const log = playerData?.skilling_pets;
+  if (!log) {
+    el.innerHTML = '<div class="muted">Skilling pet data is unavailable.</div>';
+    return;
+  }
+  const pets = Array.isArray(log.pets) ? log.pets : [];
+  const found = pets.filter(pet => pet.found).length;
+  const playerName = String(playerData?.member?.rsn || getParams().player || "").trim();
+  const clanId = String(playerData?.clan?.id || "");
+  const downloadUrl = `${API.skillingPetsCsv}?action=download&player=${encodeURIComponent(playerName)}&clan=${encodeURIComponent(clanId)}`;
+  el.innerHTML = `
+    <div class="bossLogSummary">
+      <div class="xpStatsCard"><div class="xpStatsLabel">Pets collected</div><div class="xpStatsValue">${found}/${pets.length}</div></div>
+      <div class="xpStatsCard"><div class="xpStatsLabel">Completion</div><div class="xpStatsValue">${pets.length ? Math.round(found / pets.length * 100) : 0}%</div></div>
+      <div class="xpStatsCard"><div class="xpStatsLabel">Still to find</div><div class="xpStatsValue">${pets.length - found}</div></div>
+    </div>
+    <p class="muted">Pet finds are inferred from recorded RuneMetrics activities. Submit a CSV for pets received before tracking began or missed by the activity log.</p>
+    ${log.available === false ? `<div class="bossLogNotice">${escapeHtml(log.error || "Skilling pet storage is unavailable.")}</div>` : `
+    <details class="bossLogCsvPanel">
+      <summary class="bossLogCsvSummary"><span>Update Skilling Pets</span><small>Download, edit, and submit CSV updates for review</small></summary>
+      <div class="bossLogCsvBody">
+        <p class="muted">Change <strong>Is collected</strong> to yes or no, then upload the CSV. Changes appear after admin approval.</p>
+        <div class="bossLogCsvActions"><a class="bossLogCsvButton" href="${escapeHtml(downloadUrl)}">Download current CSV</a></div>
+        <form class="bossLogCsvForm" data-boss-log-csv-form enctype="multipart/form-data">
+          <input type="hidden" name="action" value="upload">
+          <input type="hidden" name="player" value="${escapeHtml(playerName)}">
+          <input type="hidden" name="clan" value="${escapeHtml(clanId)}">
+          <label>Edited CSV file<input type="file" name="skilling_pets_csv" accept=".csv,text/csv" required></label>
+          <label>Optional note<input type="text" name="submitter_note" maxlength="255" placeholder="Example: Pets received before tracking started"></label>
+          <button type="submit">Submit CSV for review</button>
+        </form>
+        <div class="bossLogCsvStatus" data-boss-log-csv-status aria-live="polite"></div>
+      </div>
+    </details>`}
+    <section class="bossLogCard" aria-label="Skilling pet collection">
+      <div class="bossLogItems">
+        ${pets.map(pet => {
+          const status = pet.found ? "Collected" : "Not collected";
+          const date = pet.first_seen_utc ? ` · First detected: ${pet.first_seen_utc} UTC` : "";
+          const source = pet.collection_source === "player_csv" ? " · Approved CSV" : pet.collection_source === "manual_admin" ? " · Admin correction" : "";
+          return `<div class="bossLogItem ${pet.found ? "found" : "missing"}" title="${escapeHtml(pet.name + ' · ' + status + date + source)}">
+            <div class="bossLogItemTile" aria-hidden="true"><img class="bossLogItemIcon" data-icon-item="${escapeHtml(pet.icon_name)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async"></div>
+            <div class="bossLogItemName">${escapeHtml(pet.name)}</div>
+            <small>${status}</small>
+          </div>`;
+        }).join("")}
+      </div>
+    </section>`;
+  wireBossCollectionLogIcons(el);
+  wireBossLogCsvUpload(el, API.skillingPetsCsv);
+}
+
+function wireBossLogCsvUpload(root, endpoint = API.bossLogCsv) {
   const form = root?.querySelector?.("[data-boss-log-csv-form]");
   if (!form) return;
 
@@ -2735,7 +2793,7 @@ function wireBossLogCsvUpload(root) {
 
     try {
       const fd = new FormData(form);
-      const res = await fetch(API.bossLogCsv, { method: "POST", body: fd, cache: "no-store" });
+      const res = await fetch(endpoint, { method: "POST", body: fd, cache: "no-store" });
       const text = await res.text();
       let data;
       try { data = JSON.parse(text); }
@@ -3593,6 +3651,7 @@ async function loadPlayer(rsn, period) {
   if (qs("xpStatsView")) qs("xpStatsView").innerHTML = "";
   if (qs("dropHistoryView")) qs("dropHistoryView").innerHTML = "";
   if (qs("bossCollectionLogView")) qs("bossCollectionLogView").innerHTML = "";
+  if (qs("skillingPetsView")) qs("skillingPetsView").innerHTML = "";
 
   const activityLimit = normaliseActivityLimit(selectedActivityLimit);
   const url = buildPlayerApiUrl(rsn, period || "7d", activityLimit, true);

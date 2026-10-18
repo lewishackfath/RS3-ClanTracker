@@ -114,6 +114,8 @@ function dbb_drop_known_tables(PDO $pdo): void {
         'activity_icon_issues',
         'activity_icon_workers',
         'member_boss_collection_submissions',
+        'member_skilling_pet_submissions',
+        'member_skilling_pets',
         'member_boss_collection_log',
         'member_poll_state',
         'member_rm_quests',
@@ -710,6 +712,8 @@ function dbb_bootstrap_schema(PDO $pdo, bool $force = false): void
     dbb_migrate_citadel_activity_links($pdo);
     require_once __DIR__ . '/api/functions/icon_issues.php';
     ii_ensure_schema($pdo);
+    require_once __DIR__ . '/api/functions/skilling_pets.php';
+    sp_ensure_schema($pdo);
 
     $existing = dbb_tables_present($pdo);
     dbb_out("DB bootstrap: schema ensured. Tables present: " . count($existing));

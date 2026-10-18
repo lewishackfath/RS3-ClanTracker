@@ -165,3 +165,75 @@ server. Optional credentials are `ICON_TEST_USER` and `ICON_TEST_PASSWORD`.
 It covers repeatable schema setup, deduplication, resolution, reopening, transient
 failures, source isolation, concurrent rechecks, background scanning, deleted
 source activities and overlapping workers.
+
+## Skilling pets
+
+The tracker has a **Skilling Pets** player tab. The RS3-API admin navigation has a
+matching checklist, activity rescan, CSV download/upload and pending-submission
+review page. Public uploads only request changes; an authenticated administrator
+must accept them before they affect the collection. Admin actions use the existing
+CSRF protection and audit log.
+
+`assets/skilling-pets/pets.json` defines the 29 pets, their skills, stable keys,
+full activity names, Wiki image names and optional activity aliases. Add new pets
+there without editing PHP or JavaScript. Keep existing keys stable and deploy the
+same JSON to both projects. Wiki image aliases use `icon_name`; activity aliases
+belong in `aliases`. Names and skill/pet combinations are matched exactly after
+case, whitespace, HTML entities and apostrophe normalization.
+
+Finds are inferred from `I found <configured name>.` in the activity text or
+`While skilling, I found <configured name>.` in the details. A row matching both
+fields counts once. Profile views, CSV exports/imports and the admin page scan
+stored history, independently of the visible activity limit. Repeat scans do not
+add duplicate pets. Admin edits and approved CSV corrections, including marking
+a pet missing, survive rescans. Backfilled pets retain an unknown discovery date
+until supporting activity is found. Removing a source activity does not erase a
+recorded pet.
+
+The CSV columns are `Skill`, `Pet`, and `Is collected`. Use yes/no, true/false or
+1/0; blank values are rejected. Downloads quote pet names containing commas.
+UTF-8 BOM and CRLF files are supported. Invalid rows or contradictory duplicates
+reject the whole upload with a line number. Uploads are limited to 1 MB and are
+not retained. A newer upload supersedes pending requests for each included pet,
+even if its value now matches the current collection. Omitted pets are untouched.
+
+### Deploying both projects
+
+1. Deploy ClanTracker's changed `app.js`, `index.php`, `api/player.php`,
+   `api/skilling_pets_csv.php`, `api/functions/skilling_pets.php`,
+   `assets/skilling-pets/pets.json`, `scripts/sync_skilling_pets.php` and
+   `db_bootstrap.php`.
+2. Deploy RS3-API's `admin/skilling_pets.php`, `admin/includes/layout.php`,
+   `functions/skilling_pets.php`, `assets/skilling-pets/pets.json` and
+   `setup/db_bootstrap.php`. Keep the two `skilling_pets.php` helpers identical.
+   Both applications must use the same database, as with boss logs.
+3. With the normal tracker DB environment, run:
+
+   ```sh
+   php scripts/sync_skilling_pets.php --setup-only
+   php scripts/sync_skilling_pets.php
+   ```
+
+   The first command creates the additive `member_skilling_pets` and
+   `member_skilling_pet_submissions` tables. The second backfills stored history
+   for `TRACKER_CLAN_ID`, or all members when that variable is unset. Both projects'
+   regular bootstraps also create the tables. Do not use `BOOTSTRAP_FORCE`.
+   No historical activity rows are changed. The backfill can safely be repeated
+   or run by an existing scheduler if collection records must be populated before
+   anyone opens a profile.
+
+### Regression checks
+
+```sh
+php tests/skilling_pets.php
+PET_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/skilling_pets.php
+```
+
+The first command checks configuration, both activity fields, punctuation and
+apostrophes, future aliases, false positives and CSV parsing without a database.
+The second also creates and drops its own test database and starts a temporary
+localhost PHP server. Optional credentials are `PET_TEST_USER` and
+`PET_TEST_PASSWORD`. It verifies schema reruns, member/clan isolation, historical
+inference, replay, manual corrections, accept/decline, supersession, transaction
+rollback, deletion behavior, real player/CSV endpoints, multipart imports,
+unchanged export round trips, upload limits and HTTP method checks.
