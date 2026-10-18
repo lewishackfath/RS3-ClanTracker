@@ -174,6 +174,20 @@ review page. Public uploads only request changes; an authenticated administrator
 must accept them before they affect the collection. Admin actions use the existing
 CSRF protection and audit log.
 
+Pending skilling-pet CSVs also trigger Discord DMs through RS3-API's existing
+`cron/process_announcements.php`, using the same admin users and role members as
+boss CSVs. Each upload produces one grouped alert per recipient with the player,
+collected/missing change counts, note, submission time and Skilling Pets review
+link. The cron processes up to 20 uploads of each type per run. Accepted,
+declined, superseded and already-notified submissions are excluded. Older pending
+pet submissions are eligible on the first run after deployment.
+
+Delivery timestamps, successful recipient IDs and errors are recorded on the
+submission rows. As with existing boss alerts, complete delivery failures retry
+on a later cron run; if any admin receives the DM, the upload is marked notified
+and errors for other recipients are retained. Notifications do not approve
+changes. No new cron schedule or recipient configuration is required.
+
 `assets/skilling-pets/pets.json` defines the 29 pets, their skills, stable keys,
 full activity names, Wiki image names and optional activity aliases. Add new pets
 there without editing PHP or JavaScript. Keep existing keys stable and deploy the
@@ -205,7 +219,9 @@ even if its value now matches the current collection. Omitted pets are untouched
    `db_bootstrap.php`.
 2. Deploy RS3-API's `admin/skilling_pets.php`, `admin/includes/layout.php`,
    `functions/skilling_pets.php`, `assets/skilling-pets/pets.json` and
-   `setup/db_bootstrap.php`. Keep the two `skilling_pets.php` helpers identical.
+   `setup/db_bootstrap.php`, `cron/process_announcements.php` and
+   `functions/submission_notifications.php`. Deploy the cron and its new helper
+   together. Keep the two `skilling_pets.php` helpers identical.
    Both applications must use the same database, as with boss logs.
 3. With the normal tracker DB environment, run:
 
@@ -221,6 +237,8 @@ even if its value now matches the current collection. Omitted pets are untouched
    No historical activity rows are changed. The backfill can safely be repeated
    or run by an existing scheduler if collection records must be populated before
    anyone opens a profile.
+   For existing installations, `--setup-only` also adds the pet submission DM
+   tracking columns and index; the regular bootstrap performs the same upgrade.
 
 ### Regression checks
 

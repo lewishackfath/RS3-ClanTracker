@@ -89,12 +89,43 @@ function sp_ensure_schema(PDO $pdo): void
         reviewed_by VARCHAR(120) NULL,
         reviewed_at_utc DATETIME(3) NULL,
         review_note VARCHAR(255) NULL,
+        admin_dm_notified_at_utc DATETIME(3) NULL,
+        admin_dm_notify_error TEXT NULL,
+        admin_dm_notified_user_ids TEXT NULL,
         KEY idx_pet_submission_uuid (submission_uuid),
         KEY idx_pet_submission_status (status, submitted_at_utc),
+        KEY idx_pet_submission_admin_dm (status, admin_dm_notified_at_utc),
         KEY idx_pet_submission_member (member_id, member_clan_id, pet_key),
         CONSTRAINT fk_pet_submission_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT fk_pet_submission_clan FOREIGN KEY (member_clan_id) REFERENCES clans(id) ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    sp_ensure_submission_dm_columns($pdo);
+}
+
+function sp_ensure_submission_dm_columns(PDO $pdo): void
+{
+    $column = $pdo->prepare("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'member_skilling_pet_submissions' AND COLUMN_NAME = ?");
+    foreach (['admin_dm_notified_at_utc' => 'DATETIME(3)', 'admin_dm_notify_error' => 'TEXT', 'admin_dm_notified_user_ids' => 'TEXT'] as $name => $type) {
+        $column->execute([$name]);
+        if ($column->fetchColumn()) continue;
+        try {
+            $pdo->exec("ALTER TABLE member_skilling_pet_submissions ADD COLUMN {$name} {$type} NULL");
+        } catch (PDOException $e) {
+            // Another schema bootstrap may have added this column concurrently.
+            $column->execute([$name]);
+            if (!$column->fetchColumn()) throw $e;
+        }
+    }
+    $index = $pdo->query("SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'member_skilling_pet_submissions' AND INDEX_NAME = 'idx_pet_submission_admin_dm'");
+    if (!$index->fetchColumn()) {
+        try {
+            $pdo->exec('CREATE INDEX idx_pet_submission_admin_dm ON member_skilling_pet_submissions (status, admin_dm_notified_at_utc)');
+        } catch (PDOException $e) {
+            if ((int)($e->errorInfo[1] ?? 0) !== 1061) throw $e;
+        }
+    }
 }
 
 function sp_match_activity(array $activity, array $definitions): ?string
