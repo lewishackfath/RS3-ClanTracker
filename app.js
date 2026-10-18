@@ -2723,7 +2723,9 @@ function renderSkillingPets() {
     el.innerHTML = '<div class="muted">Skilling pet data is unavailable.</div>';
     return;
   }
-  const pets = Array.isArray(log.pets) ? log.pets : [];
+  const pets = Array.isArray(log.pets) ? log.pets.slice().sort(compareSkillsByIdAscending) : [];
+  const split = Math.ceil(pets.length / 2);
+  const columns = [pets.slice(0, split), pets.slice(split)];
   const found = pets.filter(pet => pet.found).length;
   const playerName = String(playerData?.member?.rsn || getParams().player || "").trim();
   const clanId = String(playerData?.clan?.id || "");
@@ -2753,20 +2755,27 @@ function renderSkillingPets() {
       </div>
     </details>`}
     <section class="bossLogCard" aria-label="Skilling pet collection">
-      <div class="bossLogItems">
-        ${pets.map(pet => {
-          const status = pet.found ? "Collected" : "Not collected";
-          const date = pet.first_seen_utc ? ` · First detected: ${pet.first_seen_utc} UTC` : "";
-          const source = pet.collection_source === "player_csv" ? " · Approved CSV" : pet.collection_source === "manual_admin" ? " · Admin correction" : "";
-          return `<div class="bossLogItem ${pet.found ? "found" : "missing"}" title="${escapeHtml(pet.name + ' · ' + status + date + source)}">
-            <div class="bossLogItemTile" aria-hidden="true"><img class="bossLogItemIcon" data-icon-item="${escapeHtml(pet.icon_name)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async"></div>
-            <div class="bossLogItemName">${escapeHtml(pet.name)}</div>
-            <small>${status}</small>
-          </div>`;
-        }).join("")}
+      <div class="skillingPetList" role="list">
+        ${columns.map(column => `<div class="skillingPetColumn" role="presentation">
+          ${column.map(pet => {
+            const name = String(pet.name || "").replace(/,\s*the\s+.+?\s+pet$/i, "");
+            const status = pet.found ? "Collected" : "Not collected";
+            const date = pet.first_seen_utc ? ` · First detected: ${pet.first_seen_utc} UTC` : "";
+            const source = pet.collection_source === "player_csv" ? " · Approved CSV" : pet.collection_source === "manual_admin" ? " · Admin correction" : "";
+            const description = `${pet.skill}: ${name} · ${status}${date}${source}`;
+            return `<div class="skillingPetRow ${pet.found ? "found" : "missing"}" role="listitem" aria-label="${escapeHtml(description)}" title="${escapeHtml(description)}">
+              <img class="skillingPetSkillIcon" data-skill="${escapeHtml(pet.skill)}" src="assets/skills/_default.png" alt="${escapeHtml(pet.skill)}" loading="lazy" decoding="async">
+              <img class="bossLogItemIcon" data-icon-item="${escapeHtml(pet.icon_name)}" src="assets/activity/default.png" alt="" loading="lazy" decoding="async">
+              <span class="skillingPetName">${escapeHtml(name)}</span>
+            </div>`;
+          }).join("")}
+        </div>`).join("")}
       </div>
     </section>`;
   wireBossCollectionLogIcons(el);
+  el.querySelectorAll("img.skillingPetSkillIcon").forEach(img => {
+    setImgWithFallback(img, iconCandidates("assets/skills/", img.dataset.skill), "assets/skills/_default.png");
+  });
   wireBossLogCsvUpload(el, API.skillingPetsCsv);
 }
 
