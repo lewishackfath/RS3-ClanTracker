@@ -1,5 +1,17 @@
 # RuneScape Platform API migration
 
+Platform events, Hiscores and quest requests in both applications send:
+
+```text
+RS3-ClanTracker/2.0 (+https://rs3-api.com.au; email: support@hitmedia.com.au; Discord: @lodovicus1993; https://hitmedia.com.au)
+```
+
+These public contacts are the default. An optional `RS_PLATFORM_CONTACT`
+environment variable (or entry in Tracker's existing `.env`) replaces the
+contact text for a different deployment. Separate multiple contacts with
+semicolons; blank or unset values keep the defaults. RS3-API's environment
+override must be available to both PHP web requests and cron workers.
+
 Deploy both applications together with PHP 8.1+ and their identical
 `platform_api.php` / `platform_storage.php` helpers. Stop background polling and
 Tracker refresh requests during deployment. Run `php scripts/migrate_platform_api.php`

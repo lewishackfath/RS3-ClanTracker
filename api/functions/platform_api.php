@@ -21,6 +21,19 @@ function rp_url(string $source, string $rsn): string
     };
 }
 
+/** Public contact details can include email, Discord and a contact URL together. */
+function rp_user_agent(): string
+{
+    $contact = getenv('RS_PLATFORM_CONTACT');
+    $contact = trim(preg_replace('/[\x00-\x1F\x7F]+/', ' ', $contact === false ? '' : $contact) ?? '');
+    if ($contact === '') {
+        $contact = 'email: support@hitmedia.com.au; Discord: @lodovicus1993; https://hitmedia.com.au';
+    }
+    // Escape comment delimiters and prevent configured text from adding headers.
+    $contact = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $contact);
+    return 'RS3-ClanTracker/2.0 (+https://rs3-api.com.au' . ($contact !== '' ? '; ' . $contact : '') . ')';
+}
+
 function rp_http_get(string $url): array
 {
     $ch = curl_init($url);
@@ -30,7 +43,7 @@ function rp_http_get(string $url): array
         CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_TIMEOUT => 15, CURLOPT_ENCODING => '',
         CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_USERAGENT => 'RS3-ClanTracker/2.0 (+https://rs3-api.com.au)',
+        CURLOPT_USERAGENT => rp_user_agent(),
         CURLOPT_HTTPHEADER => ['Accept: application/json'],
         CURLOPT_HEADERFUNCTION => static function ($ch, string $header) use (&$retryAfter): int {
             if (stripos($header, 'Retry-After:') === 0) {
