@@ -8,8 +8,9 @@ require_once __DIR__ . '/functions/activity_helpers.php';
 
 header('Content-Type: application/json');
 
-$REFRESH_INTERVAL_SECONDS = 15 * 60; // 15 minutes
+$REFRESH_INTERVAL_SECONDS = 5 * 60; // Same cadence as scheduled collection
 $pdo = tracker_pdo();
+rp_ensure_schema($pdo);
 
 // Inputs
 $memberId = isset($_GET['member_id']) ? (int)$_GET['member_id'] : 0;
@@ -47,10 +48,9 @@ $clanId   = (int)$member['clan_id'];
 $rsn      = (string)$member['rsn'];
 
 try {
-  // -------------------------------------------------------------------
-  // Freshness check: XP snapshots ONLY, using captured_at_utc
-  // (manual pull must NOT touch member_poll_state)
-  // -------------------------------------------------------------------
+  // Successful source fetches determine freshness, even when XP has not changed.
+  // Browser refreshes do not change cron scheduling in member_poll_state.
+  $states = rp_fetch_states($pdo, $memberId);
   $stXp = $pdo->prepare("
     SELECT MAX(captured_at_utc) AS last_xp_at
     FROM member_xp_snapshots
@@ -59,10 +59,7 @@ try {
   $stXp->execute([':mid' => $memberId]);
   $lastCapturedUtc = (string)($stXp->fetchColumn() ?: '');
 
-  $lastTs = $lastCapturedUtc ? strtotime($lastCapturedUtc . ' UTC') : 0;
-  $nowTs  = time();
-
-  if ($lastTs > 0 && ($nowTs - $lastTs) < $REFRESH_INTERVAL_SECONDS) {
+  if (!rp_sync_due($states, $REFRESH_INTERVAL_SECONDS)) {
     tracker_json([
       'ok' => true,
       'refreshed' => false,
@@ -70,13 +67,13 @@ try {
       'member_id' => $memberId,
       'clan_id' => $clanId,
       'rsn' => $rsn,
-      'freshness_column' => 'member_xp_snapshots.captured_at_utc',
+      'freshness_column' => 'member_platform_fetches.fetched_at_utc',
       'last_xp_captured_at_utc' => $lastCapturedUtc,
     ]);
   }
 
   // -------------------------------------------------------------------
-  // Refresh: RuneMetrics sync (creates new XP snapshot + stores raw activities)
+  // Refresh Platform events and Hiscores independently
   // -------------------------------------------------------------------
   $sync = runemetrics_sync_member($pdo, $memberId, 20);
 
@@ -91,12 +88,14 @@ try {
   $newLastCapturedUtc = (string)($stXp->fetchColumn() ?: '');
 
   tracker_json([
-    'ok' => true,
+    'ok' => $sync['ok'],
     'refreshed' => true,
+    'partial' => !$sync['ok'],
+    'platform_sources' => rp_fetch_states($pdo, $memberId),
     'member_id' => $memberId,
     'clan_id' => $clanId,
     'rsn' => $rsn,
-    'freshness_column' => 'member_xp_snapshots.captured_at_utc',
+    'freshness_column' => 'member_platform_fetches.fetched_at_utc',
     'last_xp_captured_at_utc' => $newLastCapturedUtc ?: null,
     'sync' => $sync,
     'activities_processed' => $proc,

@@ -178,7 +178,7 @@ function utcAgeSeconds(utc) {
   return Math.floor((Date.now() - ms) / 1000);
 }
 
-const PLAYER_XP_REFRESH_SECONDS = 15 * 60;
+const PLAYER_XP_REFRESH_SECONDS = 5 * 60;
 const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const playerBackgroundRefreshInFlight = new Set();
 let autoRefreshTimer = null;
@@ -2736,7 +2736,7 @@ function renderSkillingPets() {
       <div class="xpStatsCard"><div class="xpStatsLabel">Completion</div><div class="xpStatsValue">${pets.length ? Math.round(found / pets.length * 100) : 0}%</div></div>
       <div class="xpStatsCard"><div class="xpStatsLabel">Still to find</div><div class="xpStatsValue">${pets.length - found}</div></div>
     </div>
-    <p class="muted">Pet finds are inferred from recorded RuneMetrics activities. Submit a CSV for pets received before tracking began or missed by the activity log.</p>
+    <p class="muted">Pet finds are inferred from recorded player activities. Submit a CSV for pets received before tracking began or missed by the activity log.</p>
     ${log.available === false ? `<div class="bossLogNotice">${escapeHtml(log.error || "Skilling pet storage is unavailable.")}</div>` : `
     <details class="bossLogCsvPanel">
       <summary class="bossLogCsvSummary"><span>Update Skilling Pets</span><small>Download, edit, and submit CSV updates for review</small></summary>
@@ -3227,6 +3227,7 @@ function calculateCombatLevelFromCurrentSkills() {
 
 function scoreRowValue(row) {
   if (!row || typeof row !== "object") return null;
+  if (row.score === null || row.score === undefined) return null;
   const value = Number(row.score);
   return Number.isFinite(value) ? value : null;
 }
@@ -3466,16 +3467,14 @@ function renderPlayer() {
 
   const metaEl = qs("playerMeta");
   if (metaEl) {
-    const isPrivate = !!(m?.is_private ?? m?.private ?? false);
-    const sinceLocal = (m?.private_since_local || "").trim();
-    if (isPrivate) {
-      const since = sinceLocal ? ` since ${escapeHtml(sinceLocal)}` : "";
-      metaEl.innerHTML = `<span class="pill private" title="Profile is private">Private profile${since}</span>`;
-      metaEl.classList.remove("hidden");
-    } else {
-      metaEl.innerHTML = "";
-      metaEl.classList.add("hidden");
+    const sources = playerData.platform_sources || {};
+    const messages = [];
+    if (sources.events && !sources.events.ok) messages.push("Recent activities are currently unavailable.");
+    if (sources.hiscores && (!sources.hiscores.ok || sources.hiscores.processing_error)) {
+      messages.push("XP is awaiting a successful Hiscores update.");
     }
+    metaEl.textContent = messages.join(" ");
+    metaEl.classList.toggle("hidden", messages.length === 0);
   }
 
   const weekDetails = qs("playerWeekDetails");
@@ -3567,16 +3566,17 @@ function buildPlayerApiUrl(rsn, period, activityLimit, deferRefresh = true) {
 
 function cacheNeedsRefresh(cache) {
   if (!cache || typeof cache !== "object") return false;
+  if (cache.retry_at_utc && utcAgeSeconds(cache.retry_at_utc) < 0) return false;
   return !!(cache.needs_refresh || cache.stale || cache.deferred_refresh);
 }
 
 function playerXpNeedsRefresh(data) {
-  const lastSnapUtc =
-    data?.last_pull?.sources?.last_xp_snapshot_utc ||
-    data?.current_skills?.captured_at_utc ||
-    null;
-  const age = utcAgeSeconds(lastSnapUtc);
-  return (age === null) || (age >= PLAYER_XP_REFRESH_SECONDS);
+  return ["events", "hiscores"].some(source => {
+    const state = data?.platform_sources?.[source];
+    if (state?.retry_at_utc && utcAgeSeconds(state.retry_at_utc) < 0) return false;
+    const age = utcAgeSeconds(state?.last_success_at_utc);
+    return age === null || age >= PLAYER_XP_REFRESH_SECONDS;
+  });
 }
 
 function playerNeedsBackgroundRefresh(data) {
@@ -3607,7 +3607,7 @@ async function refreshPlayerInBackground(rsn, period, opts = {}) {
     if (force || playerXpNeedsRefresh(currentData)) {
       const rsnForRefresh = name.replace(/\s+/g, "_");
       const refreshUrl = `${API.refreshPlayerXp}?rsn=${encodeURIComponent(rsnForRefresh)}`;
-      await fetchJson(refreshUrl);
+      try { await fetchJson(refreshUrl); } catch { /* Reload successful sources below. */ }
     }
 
     const fresh = await fetchJson(buildPlayerApiUrl(name, selectedPeriodAtStart, selectedLimitAtStart, false));

@@ -117,6 +117,8 @@ function dbb_drop_known_tables(PDO $pdo): void {
         'member_skilling_pet_submissions',
         'member_skilling_pets',
         'member_boss_collection_log',
+        'member_platform_fetches',
+        'platform_migrations',
         'member_poll_state',
         'member_rm_quests',
         'member_hiscores_lite',
@@ -710,6 +712,8 @@ function dbb_bootstrap_schema(PDO $pdo, bool $force = false): void
     dbb_create_tables($pdo);
     dbb_apply_schema_migrations($pdo);
     dbb_migrate_citadel_activity_links($pdo);
+    require_once __DIR__ . '/api/functions/platform_storage.php';
+    rp_ensure_schema($pdo);
     require_once __DIR__ . '/api/functions/icon_issues.php';
     ii_ensure_schema($pdo);
     require_once __DIR__ . '/api/functions/skilling_pets.php';

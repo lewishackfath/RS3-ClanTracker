@@ -5,12 +5,12 @@ declare(strict_types=1);
  * /functions/runemetrics.php
  *
  * Responsibilities:
- * 1) Fetch RuneMetrics profile for a member (activities=N)
+ * 1) Fetch Platform API events and Hiscores independently
  * 2) Insert activities into member_activities
  *    - Match activity_announcement_rules at insert time (first match wins)
  *    - If purpose is cap_detection or visit_detection, upsert into member_caps / member_citadel_visits
  * 3) Insert XP snapshot into member_xp_snapshots
- *    - Divide XP values by 10
+ *    - Preserve whole XP from Hiscores
  *    - Store as JSON (SkillName => {level, xp})
  *
  * Notes:
@@ -22,6 +22,7 @@ declare(strict_types=1);
 date_default_timezone_set('UTC');
 
 require_once __DIR__ . '/activity_helpers.php';
+require_once __DIR__ . '/platform_storage.php';
 require_once __DIR__ . '/rank_up_detection.php';
 
 /**
@@ -72,7 +73,7 @@ function rm_load_rank_order_from_json_file(string $path): array
  *   error:?string
  * }
  */
-function runemetrics_sync_member(PDO $pdo, int $memberId, int $activities = 20): array
+function runemetrics_sync_member(PDO $pdo, int $memberId, int $activities = 20, ?callable $transport = null): array
 {
     $result = [
         'ok' => false,
@@ -121,42 +122,11 @@ function runemetrics_sync_member(PDO $pdo, int $memberId, int $activities = 20):
         }
 
 
-        $profile = rm_fetch_profile((string)$member['rsn'], $activities);
+        // The legacy function name is retained for callers; both sources now use Platform APIs.
+        $result = array_merge($result, rp_sync_data($pdo, $member, $transport));
+        $capDetected = $result['cap_detected'];
+        $capWeekStartUtc = $result['cap_week_start_utc'];
 
-        // Handle private RuneMetrics profiles (poll less frequently in scheduler)
-if (($profile['status'] ?? null) === 'private_profile') {
-    rm_db_mark_member_private($pdo, (int)$member['id']);
-
-    $result['ok'] = true;
-    $result['fetched_activities'] = 0;
-    $result['inserted_activities'] = 0;
-    $result['xp_snapshot_inserted'] = false;
-    $result['status'] = 'private_profile';
-    return $result;
-}
-
-// If they were previously private and are now public again, clear the flags.
-rm_db_clear_member_private($pdo, (int)$member['id']);
-
-
-
-        // Activities
-        $acts = is_array($profile['activities'] ?? null) ? $profile['activities'] : [];
-        $result['fetched_activities'] = count($acts);
-
-        if (!empty($acts)) {
-            $result['inserted_activities'] = rm_db_insert_activities_with_processing(
-                $pdo,
-                (int)$member['id'],
-                (int)$member['clan_id'],
-                $acts,
-                $capDetected,
-                $capWeekStartUtc
-            );
-        }
-
-
-        
         // Rank-up detection:
         // We run this when:
         // 1) A cap activity was detected in THIS sync, OR
@@ -267,23 +237,11 @@ rm_db_clear_member_private($pdo, (int)$member['id']);
             }
         }
 
-        // XP snapshot (divide XP by 10)
-        $snapshot = rm_parse_xp_snapshot_div10($profile);
-        if ($snapshot !== null) {
-            $result['xp_snapshot_inserted'] = rm_db_insert_xp_snapshot(
-                $pdo,
-                (int)$member['id'],
-                $snapshot['total_xp'],
-                $snapshot['skills_json'],
-                $snapshot['snapshot_hash']
-            );
-        }
-
         $result['cap_detected'] = $capDetected;
-        $result['ok'] = true;
         return $result;
 
     } catch (Throwable $e) {
+        $result['ok'] = false;
         $result['error'] = $e->getMessage();
         return $result;
     }
@@ -309,63 +267,6 @@ function runemetrics_sync_rsn(PDO $pdo, int $clanId, string $rsn, int $activitie
         ];
     }
     return runemetrics_sync_member($pdo, (int)$member['id'], $activities);
-}
-
-/* ============================================================
-   RuneMetrics HTTP fetch
-   ============================================================ */
-
-function rm_build_url(string $rsn, int $activities): string
-{
-    $user = str_replace(' ', '_', trim($rsn));
-    return 'https://apps.runescape.com/runemetrics/profile/profile?user=' . rawurlencode($user) . '&activities=' . (int)$activities;
-}
-
-/** @return array decoded JSON */
-function rm_fetch_profile(string $rsn, int $activities = 20): array
-{
-    $url = rm_build_url($rsn, $activities);
-
-    $ch = curl_init($url);
-    if ($ch === false) {
-        throw new RuntimeException('curl_init failed');
-    }
-
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_CONNECTTIMEOUT => 15,
-        CURLOPT_TIMEOUT => 25,
-        CURLOPT_USERAGENT => 'RS24K-Tracker/1.0 (RuneMetrics ingest)',
-        CURLOPT_HTTPHEADER => ['Accept: application/json,text/plain,*/*'],
-    ]);
-
-    $body = curl_exec($ch);
-    $err  = curl_error($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($body === false) {
-        throw new RuntimeException("RuneMetrics HTTP error: " . ($err ?: 'unknown'));
-    }
-    if ($code !== 200) {
-        throw new RuntimeException("RuneMetrics HTTP status {$code}");
-    }
-
-    $data = json_decode((string)$body, true);
-    if (!is_array($data)) {
-        throw new RuntimeException('RuneMetrics returned invalid JSON');
-    }
-
-    if (isset($data['error'])) {
-        // Private profiles return a valid JSON payload but contain no activities/XP.
-        if ((string)$data['error'] === 'PROFILE_PRIVATE') {
-            return ['status' => 'private_profile'];
-        }
-        throw new RuntimeException("RuneMetrics error: " . (string)$data['error']);
-    }
-
-    return $data;
 }
 
 /* ============================================================
@@ -624,6 +525,9 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
     $capDetected = false;
     $capWeekStartUtc = null;
 
+    foreach ($activities as $event) {
+        if (isset($event['type'])) { rp_ensure_schema($pdo); break; }
+    }
     $clan = rm_db_load_clan_reset($pdo, $clanId);
     if (!$clan) {
         throw new RuntimeException("Clan not found: {$clanId}");
@@ -670,6 +574,8 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
 
     $pdo->beginTransaction();
     try {
+        $memberLock = $pdo->prepare('SELECT id FROM members WHERE id = ? FOR UPDATE');
+        $memberLock->execute([$memberId]);
         foreach ($activities as $a) {
             if (!is_array($a)) continue;
 
@@ -683,6 +589,9 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
             $dateUtc = $dtUtc->format('Y-m-d H:i:s.v');
 
             $hash = rm_activity_hash($memberId, $dateUtc, $text, $details);
+            $platformHash = $hash;
+            [$hash, $dateUtc] = rp_resolve_event($pdo, $memberId, $clanId, $a, $activities, $hash, $dateUtc);
+            $dtUtc = new DateTimeImmutable($dateUtc, new DateTimeZone('UTC'));
 
             $matchedRule = ah_match_rule($text, $details, $rules);
             $ruleId = $matchedRule ? (int)$matchedRule['id'] : null;
@@ -705,6 +614,8 @@ function rm_db_insert_activities_with_processing(PDO $pdo, int $memberId, int $c
             if ((int)$stInsertActivity->rowCount() === 1) {
                 $inserted++;
             }
+
+            rp_record_event($pdo, $memberId, $hash, $platformHash, $a);
 
             if ($matchedRule && !$isGuest) {
                 $purpose = (string)$matchedRule['purpose'];

@@ -24,45 +24,19 @@ include __DIR__ . '/includes/menu.php';
     <section class="card" id="landingCard">
       <h1 class="h1">Welcome</h1>
       <p class="muted">
-        If a RuneMetrics Profile is set to private the app is unable to access XP/Activity Data.<br>
-        This prevents us from knowing if you have visited or capped at the citadel, we cannot track your XP stats, 
-        and are therefore unable to include your profile in any competitions or giveaways that use this date. We respect 
-        your right to have your profile as private if you wish. The guide below shows you how to set your profile to public 
-        and include all the required data in your activity logs.
+        Recent activities come from the Adventurer’s Log, while skill levels and XP come from Hiscores.
+        The old RuneMetrics profile privacy setting no longer controls these API responses.
+        Activity recording requires active membership and the relevant in-game event settings.
+        Only the latest 20 events are available from RuneScape; the tracker keeps events it has already collected.
       </p>
-
-
       <div class="grid">
         <div class="panel">
-          <h2 class="h2">RuneMetrics Public/Private Profile</h2>
-          <ol>
-            <li>
-              Login to your Jagex account at <a style="text-decoration:none;color:gold" href="https://account.runescape.com" target="_blank">account.runescape.com</a>
-            </li>
-            <li>
-              Select the Character you wish to edit the profile of:<br>
-              <img src="assets/help/rmprofile-step2.png"/>
-            </li>
-            <li>
-              Click "My Account" in the top Menu Bar
-              <img src="assets/help/rmprofile-step3.png"/>
-            </li>
-            <li>
-              From the Account Management Screen Select the Characters Button.
-            </li>
-            <li>
-              On the Character Page for the Character who's profile you wish to change click "Manage" and then select "RuneMetrics Profile"
-              <img src="assets/help/rmprofile-step5.png"/>
-            </li>
-            <li>
-              On the RuneMetrics Profile Page, select "Public" and Press "Change Settings"
-              <img src="assets/help/rmprofile-step6.png"/>
-            </li>
-          </ol>
+          <h2 class="h2">When your data updates</h2>
+          <p>Events can take up to ten minutes to appear. Skills and XP update after logging out or changing worlds.
+             Changing event settings affects future events only.</p>
         </div>
-
         <div class="panel">
-          <h2 class="h2">RuneMetrics Additional Data</h2>
+          <h2 class="h2">Enable activity recording</h2>
           <ol>
             <li>
               Run the Jagex Launcher and Login to RuneScape.

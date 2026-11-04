@@ -1,3 +1,47 @@
+# RuneScape Platform API migration
+
+Deploy both applications together with PHP 8.1+ and their identical
+`platform_api.php` / `platform_storage.php` helpers. Stop background polling and
+Tracker refresh requests during deployment. Run `php scripts/migrate_platform_api.php`
+with the usual `TRACKER_DB_*` environment (or RS3-API's
+`php setup/migrate_platform_api.php` when they share a database), then resume.
+Back up the database first; do not use `BOOTSTRAP_FORCE`.
+
+The additive migration creates the shared per-source fetch cache and nullable
+Platform event metadata/index. It clears obsolete privacy flags and releases
+successful/private polls waiting on the old schedule. Existing history, event IDs,
+announcement state and XP snapshots are preserved. Successful polling now uses a
+five-minute interval even after a cap. Actual timing depends on cron capacity.
+API failures retain source-specific retries and the last good data.
+
+Both refresh paths use Player Events and Hiscores JSON. Quests use Player Quests.
+The player response retains existing field names; normalised cache version 2
+rebuilds the old CSV/quest mappings on access. `platform_sources` exposes separate
+fetch/processing status and successful-fetch times. An unchanged XP snapshot no
+longer causes repeated browser requests. The default Hiscores cache TTL is five
+minutes; the quest TTL remains six hours. Existing TTL environment overrides apply.
+
+Legacy events match by member/clan, UTC minute and exact text/details; unique
+overlaps preserve their original record and announcement state while storing
+precise Platform metadata. Ambiguous repeats are reported as
+`AMBIGUOUS_LEGACY_EVENT` for review. Lower/incomplete Hiscores are reported as
+`HISCORES_BEHIND`/`INCOMPLETE_HISCORES` without replacing current XP. Review persistent
+errors before changing a baseline or event record manually. Event failures do not
+block XP, and XP failures do not block events. No new API key is required.
+
+```sh
+php tests/platform_api.php
+node tests/platform_client.cjs
+PLATFORM_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/platform_api.php
+```
+
+Optional credentials: `PLATFORM_TEST_USER`, `PLATFORM_TEST_PASSWORD`. These checks
+use the supplied fixtures and simulated responses, never live RuneScape/Discord.
+Database tests create/drop only a randomly named test database. They cover legacy
+replay, precise same-minute events, ambiguity, XP lag, partial failures, shared
+cache freshness, negative caching, quest totals and post-cap scheduling. Live
+cap/visit, fealty, pet/drop and failure payloads remain rollout validation items.
+
 # Cap/visit activity links
 
 The tracker uses the same `activity_id` columns, unique indexes and foreign keys as RS3-API. Both live polling and catch-up processing retain the original cap/visit record when its source activity is replayed, including after citadel reset changes. The existing one-record-per-member-per-cap-week constraint is retained.

@@ -58,7 +58,6 @@ include __DIR__ . '/includes/menu.php';
           <div class="statLabel">Members</div>
           <div class="statValue" id="statMembersTotal">—</div>
           <div class="summaryStatRows">
-            <span><strong id="statMembersPrivate">—</strong> private profiles</span>
             <span><strong id="statMembersNew">—</strong> new this week</span>
           </div>
         </div>
@@ -99,7 +98,6 @@ include __DIR__ . '/includes/menu.php';
           <button class="segBtn" data-filter="capped" type="button">Capped</button>
           <button class="segBtn" data-filter="uncapped" type="button">Uncapped</button>
           <button class="segBtn" data-filter="visited_only" type="button">Visited only</button>
-          <button class="segBtn" data-filter="private" type="button">Private</button>
           <button class="segBtn" data-filter="guests" type="button">Guests</button>
         </div>
       </div>

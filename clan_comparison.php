@@ -39,7 +39,6 @@ include __DIR__ . '/includes/menu.php';
         </div>
         <div class="statCard summaryStatCard">
           <div class="statLabel">Private Profiles</div>
-          <div class="statValue" id="comparisonPrivateProfiles">—</div>
         </div>
       </div>
 

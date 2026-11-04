@@ -1,0 +1,28 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
+const names = ['parseUtcToMs', 'utcAgeSeconds', 'scoreRowValue', 'cacheNeedsRefresh', 'playerXpNeedsRefresh'];
+const functions = names.map(name => {
+  const match = source.match(new RegExp(`^function ${name}\\([^]*?^}`, 'm'));
+  assert.ok(match, `Find ${name}`);
+  return match[0];
+});
+const scope = { Date };
+vm.runInNewContext(`const PLAYER_XP_REFRESH_SECONDS = 300;\n${functions.join('\n')}`, scope);
+const timestamp = delta => new Date(Date.now() + delta * 1000).toISOString().slice(0, 19).replace('T', ' ');
+assert.equal(scope.scoreRowValue({ score: null }), null);
+assert.equal(scope.scoreRowValue({ score: 0 }), 0);
+assert.equal(scope.scoreRowValue({ score: 1000, rank: -1 }), 1000);
+assert.equal(scope.playerXpNeedsRefresh({}), true);
+const fresh = () => ({ ok: true, last_success_at_utc: timestamp(-60) });
+const data = { platform_sources: { events: fresh(), hiscores: fresh() }, current_skills: { captured_at_utc: '2000-01-01 00:00:00' } };
+assert.equal(scope.playerXpNeedsRefresh(data), false, 'Unchanged XP snapshot does not cause repeated pulls');
+data.platform_sources.events = { ok: false, retry_at_utc: timestamp(900) };
+assert.equal(scope.playerXpNeedsRefresh(data), false, 'Respect source retry time');
+data.platform_sources.hiscores.last_success_at_utc = timestamp(-600);
+assert.equal(scope.playerXpNeedsRefresh(data), true, 'Refresh the other source when due');
+assert.equal(scope.cacheNeedsRefresh({ stale: true, retry_at_utc: timestamp(900) }), false);
+assert.equal(scope.cacheNeedsRefresh({ stale: true, retry_at_utc: timestamp(-1) }), true);
+console.log('PASS: Platform client freshness, backoff and unavailable scores');
