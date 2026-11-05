@@ -12,6 +12,39 @@ contact text for a different deployment. Separate multiple contacts with
 semicolons; blank or unset values keep the defaults. RS3-API's environment
 override must be available to both PHP web requests and cron workers.
 
+Outbound requests from both applications share a database-backed limiter in
+`platform_http_state`. It covers events, Hiscores, quests, clan rosters and avatar
+downloads, including browser-triggered refreshes. The applications must use the
+same database when sharing an outbound IP. Cached responses do not consume slots.
+The limiter serialises actual requests and leaves at least 100 milliseconds after
+one request finishes before the next begins: at most ten requests per second,
+with slower responses reducing throughput further. Existing five-player batches,
+fifteen-second batch pauses and thirty-player default run limits remain unchanged.
+
+An upstream 429 pauses all participating outbound requests for at least sixty
+seconds, doubling on repeated upstream 429s up to one hour, or longer when
+`Retry-After` requires it. A successful upstream response resets that backoff.
+During cooldown, requests are deferred locally and cached data remains usable.
+The shared lock waits at most two seconds; contention defers the request rather
+than bypassing the limit. Database/limiter failure also prevents outbound requests.
+Automatic HTTP redirects are disabled so they cannot create unmetered requests.
+Requests must run outside database transactions. The ten-per-second ceiling is
+our conservative setting based on the reported sub-twenty limit; the public best
+practices page does not specify a numeric rate. Other applications on the same
+public IP are outside this limiter and must be included in any wider IP budget.
+
+Deploy `platform_rate_limit.php` alongside both existing Platform helpers. The
+additive table is created by the existing Platform migration or on first use;
+run the migration once against the shared database before resuming both apps.
+The avatar path now requires the same database/cURL setup as the other APIs;
+if unavailable, it serves the existing/default image without fetching upstream.
+
+Concurrency and cooldown regression check (no live RuneScape requests):
+
+```sh
+PLATFORM_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/platform_rate_limit.php
+```
+
 Deploy both applications together with PHP 8.1+ and their identical
 `platform_api.php` / `platform_storage.php` helpers. Stop background polling and
 Tracker refresh requests during deployment. Run `php scripts/migrate_platform_api.php`
@@ -38,8 +71,8 @@ overlaps preserve their original record and announcement state while storing
 precise Platform metadata. Ambiguous repeats are reported as
 `AMBIGUOUS_LEGACY_EVENT` for review. Lower/incomplete Hiscores are reported as
 `HISCORES_BEHIND`/`INCOMPLETE_HISCORES` without replacing current XP. Review persistent
-errors before changing a baseline or event record manually. Event failures do not
-block XP, and XP failures do not block events. No new API key is required.
+errors before changing a baseline or event record manually. Ordinary source failures do not
+block the other source; upstream 429s activate the shared cooldown described above. No new API key is required.
 
 ```sh
 php tests/platform_api.php

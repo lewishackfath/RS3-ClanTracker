@@ -119,6 +119,7 @@ function dbb_drop_known_tables(PDO $pdo): void {
         'member_boss_collection_log',
         'member_platform_fetches',
         'platform_migrations',
+        'platform_http_state',
         'member_poll_state',
         'member_rm_quests',
         'member_hiscores_lite',

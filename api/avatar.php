@@ -77,15 +77,17 @@ $force = isset($_GET['force']) && (string)$_GET['force'] === '1';
 $ttlSeconds = 6 * 60 * 60; // 6 hours
 $now = time();
 
-$hasCached = (is_file($cacheFile) && filesize($cacheFile) > 0);
-$age = $hasCached ? ($now - (int)filemtime($cacheFile)) : PHP_INT_MAX;
-$needsRefresh = $force || (!$hasCached) || ($age >= $ttlSeconds);
-
 // Acquire a lock so multiple requests don't all download at once
 $lockHandle = @fopen($lockFile, 'c');
 if ($lockHandle) {
     @flock($lockHandle, LOCK_EX);
 }
+
+clearstatcache(true, $cacheFile);
+$hasCached = (is_file($cacheFile) && filesize($cacheFile) > 0);
+$age = $hasCached ? ($now - (int)filemtime($cacheFile)) : PHP_INT_MAX;
+$needsRefresh = $force || (!$hasCached) || ($age >= $ttlSeconds);
+
 
 /**
  * Download avatar image with conditional headers (ETag / If-Modified-Since).
@@ -107,106 +109,32 @@ function refresh_avatar(string $url, string $cacheFile, string $etagFile): strin
         if ($etag === '') $etag = null;
     }
 
-    // Prefer cURL if available (lets us read status codes reliably)
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        $headers = [
-            'User-Agent: 24KRS Avatar Cache',
-            'Accept: image/png,image/*;q=0.9,*/*;q=0.8',
-        ];
-        if ($ifModifiedSince) $headers[] = 'If-Modified-Since: ' . $ifModifiedSince;
-        if ($etag) $headers[] = 'If-None-Match: ' . $etag;
-
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_HEADER => true, // include headers in output
-        ]);
-
-        $raw = curl_exec($ch);
-        if ($raw === false) {
-            curl_close($ch);
-            return 'failed';
-        }
-
-        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = (int)curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
-
-        $headerBlob = substr($raw, 0, $headerSize);
-        $body = substr($raw, $headerSize);
-
-        if ($status === 304) {
-            return 'notmod';
-        }
-
-        if ($status >= 200 && $status < 300 && $body !== '' && strlen($body) > 0) {
-            // Grab ETag if present
-            if (preg_match('/^etag:\s*(.+)\r?$/im', $headerBlob, $m)) {
-                $newEtag = trim($m[1]);
-                if ($newEtag !== '') @file_put_contents($etagFile, $newEtag);
-            }
-
-            // Write atomically
-            $tmp = $cacheFile . '.tmp';
-            if (@file_put_contents($tmp, $body) !== false && filesize($tmp) > 0) {
-                @rename($tmp, $cacheFile);
-                return 'updated';
-            }
-            @unlink($tmp);
-        }
-
-        return 'failed';
-    }
-
-    // Fallback: streams (best-effort; status derived from $http_response_header)
-    $headers = [
-        'User-Agent: 24KRS Avatar Cache',
-        'Accept: image/png,image/*;q=0.9,*/*;q=0.8',
-    ];
+    $headers = ['Accept: image/png'];
     if ($ifModifiedSince) $headers[] = 'If-Modified-Since: ' . $ifModifiedSince;
     if ($etag) $headers[] = 'If-None-Match: ' . $etag;
-
-    $ctx = stream_context_create([
-        'http' => [
-            'method' => 'GET',
-            'header' => implode("\r\n", $headers),
-            'timeout' => 10,
-            'ignore_errors' => true,
-        ],
-        'ssl' => [
-            'verify_peer' => true,
-            'verify_peer_name' => true,
-        ],
-    ]);
-
-    $body = @file_get_contents($url, false, $ctx);
-    $status = 0;
-
-    if (isset($http_response_header) && is_array($http_response_header) && isset($http_response_header[0])) {
-        if (preg_match('#\s(\d{3})\s#', $http_response_header[0], $m)) {
-            $status = (int)$m[1];
-        }
-        if (preg_match('/^etag:\s*(.+)\r?$/im', implode("\n", $http_response_header), $m2)) {
-            $newEtag = trim($m2[1]);
-            if ($newEtag !== '') @file_put_contents($etagFile, $newEtag);
-        }
+    try {
+        require_once __DIR__ . '/_db.php';
+        require_once __DIR__ . '/functions/platform_api.php';
+        $response = rp_http_get($url, tracker_pdo(true), $headers, 10);
+    } catch (Throwable $e) {
+        error_log('Avatar refresh deferred: ' . $e->getMessage());
+        return 'failed'; // Serve the existing image if the shared limiter is unavailable.
     }
-
-    if ($status === 304) return 'notmod';
-
-    if ($status >= 200 && $status < 300 && $body !== false && $body !== '' && strlen((string)$body) > 0) {
+    if ($response['status'] === 304) {
+        @touch($cacheFile); // A successful revalidation starts a new six-hour cache period.
+        return 'notmod';
+    }
+    $body = $response['body'];
+    if ($response['status'] === 200 && !$response['error'] && str_starts_with($body, "\x89PNG\r\n\x1a\n")) {
         $tmp = $cacheFile . '.tmp';
-        if (@file_put_contents($tmp, (string)$body) !== false && filesize($tmp) > 0) {
-            @rename($tmp, $cacheFile);
+        if (@file_put_contents($tmp, $body) !== false && @rename($tmp, $cacheFile)) {
+            $newEtag = $response['headers']['etag'] ?? '';
+            if ($newEtag !== '') @file_put_contents($etagFile, $newEtag);
+            elseif (is_file($etagFile)) @unlink($etagFile);
             return 'updated';
         }
         @unlink($tmp);
     }
-
     return 'failed';
 }
 

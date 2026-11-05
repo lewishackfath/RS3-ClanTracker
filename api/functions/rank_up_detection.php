@@ -67,27 +67,14 @@ function ru_normalise_rsn(string $rsn): string {
 }
 
 function ru_http_get(string $url, int $timeoutSec = 25): string {
-    $ch = curl_init($url);
-    if ($ch === false) throw new RuntimeException('curl_init failed');
-
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_CONNECTTIMEOUT => $timeoutSec,
-        CURLOPT_TIMEOUT => $timeoutSec,
-        CURLOPT_USERAGENT => 'RS24K-Tracker/1.0 (rank-up)',
-    ]);
-
-    $body = curl_exec($ch);
-    $err  = curl_error($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($body === false) throw new RuntimeException("HTTP error: {$err}");
-    if ($code < 200 || $code >= 300) throw new RuntimeException("HTTP status {$code}");
-
-    return (string)$body;
+    require_once __DIR__ . '/platform_api.php';
+    require_once __DIR__ . '/../_db.php';
+    $response = rp_http_get($url, tracker_pdo(true), ['Accept: text/csv,text/plain'], $timeoutSec);
+    if ($response['error']) throw new RuntimeException('HTTP error: ' . $response['error']);
+    if ($response['status'] !== 200) throw new RuntimeException('HTTP status ' . $response['status']);
+    return $response['body'];
 }
+
 
 /**
  * Fetch clan roster ranks from RuneScape members_lite.

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/platform_rate_limit.php';
 
 // Keep this file identical in RS3-API/functions and ClanTracker/api/functions.
 // Boundary adapters preserve the application's existing names and response shapes.
@@ -34,31 +35,43 @@ function rp_user_agent(): string
     return 'RS3-ClanTracker/2.0 (+https://rs3-api.com.au' . ($contact !== '' ? '; ' . $contact : '') . ')';
 }
 
-function rp_http_get(string $url): array
+function rp_http_get(string $url, PDO $pdo, array $headers = ['Accept: application/json'], int $timeout = 15): array
 {
-    $ch = curl_init($url);
-    if ($ch === false) throw new RuntimeException('Unable to initialise HTTP request');
-    $retryAfter = 0;
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_TIMEOUT => 15, CURLOPT_ENCODING => '',
-        CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_USERAGENT => rp_user_agent(),
-        CURLOPT_HTTPHEADER => ['Accept: application/json'],
-        CURLOPT_HEADERFUNCTION => static function ($ch, string $header) use (&$retryAfter): int {
-            if (stripos($header, 'Retry-After:') === 0) {
-                $value = trim(substr($header, 12));
-                $retryAfter = ctype_digit($value) ? (int)$value : max(0, (strtotime($value) ?: time()) - time());
-            }
-            return strlen($header);
-        },
-    ]);
-    $body = curl_exec($ch);
-    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
-    return ['status' => $status, 'body' => $body === false ? '' : $body,
-        'error' => $body === false ? ($error ?: 'Request failed') : null, 'retry_after' => $retryAfter];
+    if (parse_url($url, PHP_URL_SCHEME) !== 'https' || parse_url($url, PHP_URL_HOST) !== 'secure.runescape.com') {
+        throw new InvalidArgumentException('Unsupported RuneScape API URL');
+    }
+    return rp_rate_limited_request($pdo, static function () use ($url, $headers, $timeout): array {
+        $ch = curl_init($url);
+        if ($ch === false) throw new RuntimeException('Unable to initialise HTTP request');
+        $retryAfter = 0; $responseHeaders = [];
+        curl_setopt_array($ch, [
+            // Redirects must not make additional unmetered requests.
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => min(8, $timeout), CURLOPT_TIMEOUT => $timeout, CURLOPT_ENCODING => '',
+            CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_USERAGENT => rp_user_agent(),
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_HEADERFUNCTION => static function ($ch, string $header) use (&$retryAfter, &$responseHeaders): int {
+                if (str_starts_with($header, 'HTTP/')) { $retryAfter = 0; $responseHeaders = []; }
+                if (str_contains($header, ':')) {
+                    [$name, $value] = explode(':', $header, 2);
+                    $responseHeaders[strtolower(trim($name))] = trim($value);
+                }
+                if (stripos($header, 'Retry-After:') === 0) {
+                    $value = trim(substr($header, 12));
+                    $retryAfter = ctype_digit($value) ? (int)$value : max(0, (strtotime($value) ?: time()) - time());
+                }
+                return strlen($header);
+            },
+        ]);
+        $body = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        return ['status' => $status, 'body' => $body === false ? '' : $body,
+            'error' => $body === false ? ($error ?: 'Request failed') : null, 'retry_after' => $retryAfter,
+            'headers' => $responseHeaders];
+    });
 }
 
 function rp_event_date(string $value): DateTimeImmutable
@@ -98,14 +111,16 @@ function rp_validate_payload(string $source, array $data, string $rsn): void
 }
 
 /** Injectable transport is used only by offline tests; production always uses HTTPS. */
-function rp_request(string $source, string $rsn, ?callable $transport = null): array
+function rp_request(string $source, string $rsn, ?callable $transport = null, ?PDO $pdo = null): array
 {
     $result = ['ok' => false, 'http_code' => 0, 'error' => null, 'message' => null,
         'data' => null, 'retry_after' => 0];
     try {
-        $response = ($transport ?? 'rp_http_get')(rp_url($source, $rsn));
+        // Injected transports are offline fixtures; real HTTP always uses the shared limiter.
+        $response = $transport !== null ? $transport(rp_url($source, $rsn)) : rp_http_get(rp_url($source, $rsn), $pdo);
         $result['http_code'] = (int)($response['status'] ?? 0);
         $result['retry_after'] = max(0, (int)($response['retry_after'] ?? 0));
+        $result['locally_throttled'] = (bool)($response['locally_throttled'] ?? false);
         $data = json_decode((string)($response['body'] ?? ''), true);
         if ($result['http_code'] !== 200 || !empty($response['error']) || isset($data['error'])) {
             $result['error'] = is_string($data['error'] ?? null) ? $data['error'] :

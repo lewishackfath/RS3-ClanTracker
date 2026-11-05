@@ -25,6 +25,7 @@ function rp_ensure_schema(PDO $pdo): void
     if (isset($ready[$pdo])) return;
     $lock = rp_lock($pdo, 'schema');
     try {
+        rp_rate_limit_schema($pdo);
         $memberType = $pdo->query("SHOW COLUMNS FROM members LIKE 'id'")->fetch(PDO::FETCH_ASSOC)['Type'];
         if (!preg_match('/^(?:bigint|int|mediumint|smallint)(?:\(\d+\))?(?: unsigned)?$/iD', $memberType)) {
             throw new RuntimeException('Unsupported member ID type');
@@ -81,7 +82,7 @@ function rp_cached_fetch(PDO $pdo, int $memberId, string $source, string $rsn, i
                 'cache_hit' => true, 'fetched_at_utc' => $row['fetched_at_utc'],
                 'attempted_at_utc' => $row['attempted_at_utc'], 'retry_at_utc' => $row['retry_at_utc']]);
         }
-        $result = rp_request($source, $rsn, $transport);
+        $result = rp_request($source, $rsn, $transport, $pdo);
         $now = gmdate('Y-m-d H:i:s');
         $data = $result['ok'] ? $result['data'] : ($row && $row['data_json'] ? json_decode($row['data_json'], true) : null);
         $fetched = $result['ok'] ? $now : ($row['fetched_at_utc'] ?? null);
