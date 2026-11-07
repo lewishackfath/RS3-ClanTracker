@@ -156,6 +156,20 @@ function tracker_fetch_window_snapshots(PDO $pdo, int $memberId, string $startUt
     $stmt->execute([':mid' => $memberId, ':startUtc' => $startUtc, ':endUtc' => $endUtc]);
     $rows = $stmt->fetchAll() ?: [];
 
+    // A long custom range can exceed the graph's point limit. Keep its final
+    // snapshot so the displayed gain still covers the entire selected range.
+    if (count($rows) === max(1, min(5000, $limit))) {
+        $stmt = $pdo->prepare("
+            SELECT captured_at_utc, total_xp, skills_json
+            FROM member_xp_snapshots
+            WHERE member_id = :mid AND captured_at_utc > :startUtc AND captured_at_utc <= :endUtc
+            ORDER BY captured_at_utc DESC LIMIT 1
+        ");
+        $stmt->execute([':mid' => $memberId, ':startUtc' => $startUtc, ':endUtc' => $endUtc]);
+        $last = $stmt->fetch();
+        if ($last && $last['captured_at_utc'] !== $rows[count($rows) - 1]['captured_at_utc']) $rows[] = $last;
+    }
+
     if (!$baseline && $rows) $baseline = $rows[0];
 
     return [$baseline, $rows];
@@ -991,7 +1005,11 @@ try {
     if (!$member) tracker_json(['ok' => false, 'error' => 'Player not found'], 404);
 
     $week = tracker_week_window($member);
-    $xpWindow = tracker_period_window($period, $week);
+    try {
+        $xpWindow = tracker_period_window($period, $week, tracker_get_param('start_date'), tracker_get_param('end_date'));
+    } catch (InvalidArgumentException $e) {
+        tracker_json(['ok' => false, 'error' => $e->getMessage()], 400);
+    }
 
     $clanId = (int)$member['clan_id'];
     $memberId = (int)$member['id'];
@@ -1075,12 +1093,23 @@ try {
     $stmt = $pdo->prepare("
         SELECT captured_at_utc, total_xp, skills_json
         FROM member_xp_snapshots
-        WHERE member_id = :mid AND captured_at_utc >= :startUtc
-        ORDER BY captured_at_utc ASC
+        WHERE member_id = :mid AND captured_at_utc <= :startUtc
+        ORDER BY captured_at_utc DESC
         LIMIT 1
     ");
     $stmt->execute([':mid' => $memberId, ':startUtc' => $xpWindow['start_utc']]);
     $startSnap = $stmt->fetch() ?: null;
+    if (!$startSnap) {
+        $stmt = $pdo->prepare("
+            SELECT captured_at_utc, total_xp, skills_json
+            FROM member_xp_snapshots
+            WHERE member_id = :mid AND captured_at_utc >= :startUtc AND captured_at_utc <= :endUtc
+            ORDER BY captured_at_utc ASC
+            LIMIT 1
+        ");
+        $stmt->execute([':mid' => $memberId, ':startUtc' => $xpWindow['start_utc'], ':endUtc' => $xpWindow['end_utc']]);
+        $startSnap = $stmt->fetch() ?: null;
+    }
 
     $xp = [
         'period' => $xpWindow['period'],
@@ -1268,6 +1297,7 @@ try {
         ['value' => 'alltime', 'label' => 'All time'],
         ['value' => 'thisweek', 'label' => 'This clan week'],
         ['value' => 'lastweek', 'label' => 'Last clan week'],
+        ['value' => 'custom', 'label' => 'Custom range'],
     ],
         'current_skills' => $currentSkills,
         'last_pull' => [

@@ -82,7 +82,7 @@ function tracker_week_window(array $clan, ?DateTimeImmutable $now = null): array
     ];
 }
 
-function tracker_period_window(string $period, array $weekWindow): array {
+function tracker_period_window(string $period, array $weekWindow, string $startDate = '', string $endDate = ''): array {
     $period = strtolower(trim($period));
     if ($period === '') $period = '7d';
 
@@ -93,6 +93,30 @@ function tracker_period_window(string $period, array $weekWindow): array {
 
     $nowUtc = new DateTime('now', new DateTimeZone('UTC'));
     $nowLocal = new DateTime('now', $clanTz);
+
+    if ($period === 'custom') {
+        $parseDate = static function(string $value) use ($clanTz): DateTimeImmutable {
+            $date = preg_match('/^[1-9][0-9]{3}-[0-9]{2}-[0-9]{2}$/D', $value)
+                ? DateTimeImmutable::createFromFormat('!Y-m-d', $value, $clanTz) : false;
+            if (!$date || $date->format('Y-m-d') !== $value) {
+                throw new InvalidArgumentException('Choose valid start and end dates (YYYY-MM-DD).');
+            }
+            return $date;
+        };
+        $start = $parseDate($startDate);
+        $end = $parseDate($endDate);
+        if ($start > $end) {
+            throw new InvalidArgumentException('End date must be on or after start date.');
+        }
+        // Calendar days in the clan timezone, including 23/25-hour DST days.
+        // Snapshot queries use <=, so include the final millisecond of the end date.
+        $utc = new DateTimeZone('UTC');
+        return [
+            'period' => 'custom',
+            'start_utc' => $start->setTimezone($utc)->format('Y-m-d H:i:s'),
+            'end_utc' => $end->modify('+1 day')->setTimezone($utc)->modify('-1 millisecond')->format('Y-m-d H:i:s.v'),
+        ];
+    }
 
     if ($period === 'thisweek') {
         return [

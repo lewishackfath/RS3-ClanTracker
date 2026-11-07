@@ -1,3 +1,21 @@
+# Custom XP date ranges
+
+Clan and player XP selectors support `period=custom&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`.
+Both dates are required and use the clan's timezone, including the whole end day.
+The date controls default to today when first opened and retain edits during automatic data refreshes.
+Invalid or reversed dates return HTTP 400. Existing preset periods ignore the date parameters.
+
+```sh
+php tests/timezone_windows.php
+node tests/custom_xp_client.cjs
+XP_TEST_DSN='mysql:unix_socket=/path/to/test.sock' php tests/custom_xp_ranges.php
+```
+
+Optional credentials: `XP_TEST_USER`, `XP_TEST_PASSWORD`. The database check creates
+and drops a randomly named test database and exercises real endpoints with seeded
+snapshots. It makes no RuneScape requests. It covers DST, inclusive end timestamps,
+sparse/new/unchanged histories, long ranges, totals, leaderboards and invalid inputs.
+
 # RuneScape Platform API migration
 
 Platform events, Hiscores and quest requests in both applications send:

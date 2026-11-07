@@ -195,7 +195,11 @@ if (!$clan) tracker_json(['ok' => false, 'error' => 'Clan not found'], 404);
 $week = tracker_week_window($clan);
 $ws = $week['week_start_utc'];
 
-$xpWindow = tracker_period_window($period, $week);
+try {
+    $xpWindow = tracker_period_window($period, $week, tracker_get_param('start_date'), tracker_get_param('end_date'));
+} catch (InvalidArgumentException $e) {
+    tracker_json(['ok' => false, 'error' => $e->getMessage()], 400);
+}
 
 // Members list (active only for overview)
 $stmt = $pdo->prepare("
@@ -339,6 +343,7 @@ $stmt = $pdo->prepare("
           FROM member_xp_snapshots ps2
           WHERE ps2.member_id = m.id
             AND ps2.captured_at_utc >= :startUtc
+            AND ps2.captured_at_utc <= :endUtc
         )
      )
     LEFT JOIN member_xp_snapshots s_end
@@ -548,6 +553,7 @@ tracker_json([
         ['value' => 'alltime', 'label' => 'All time'],
         ['value' => 'thisweek', 'label' => 'This clan week'],
         ['value' => 'lastweek', 'label' => 'Last clan week'],
+        ['value' => 'custom', 'label' => 'Custom range'],
     ],
     'last_pull' => [
         'utc' => $lastPullUtc,

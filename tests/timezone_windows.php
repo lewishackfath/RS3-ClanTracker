@@ -117,4 +117,23 @@ foreach (['2026-04-04 15:15:00', '2026-04-04 15:45:00', '2026-04-04 16:15:00', '
 }
 same(tracker_week_window(['timezone' => 'Invalid/Timezone'])['timezone'], 'UTC', 'Invalid timezone fallback');
 
-echo "PASS: standard-time resets, DST display, midnight rollover, XP periods and rank guards\n";
+// Date-only custom ranges include both dates in the clan's civil timezone.
+foreach ([
+    ['Australia/Sydney', '2026-10-04', '2026-10-04', '2026-10-03 14:00:00', '2026-10-04 12:59:59.999'],
+    ['Australia/Sydney', '2026-04-05', '2026-04-05', '2026-04-04 13:00:00', '2026-04-05 13:59:59.999'],
+    ['Australia/Sydney', '2026-10-03', '2026-10-05', '2026-10-02 14:00:00', '2026-10-05 12:59:59.999'],
+    ['UTC', '2024-02-29', '2024-02-29', '2024-02-29 00:00:00', '2024-02-29 23:59:59.999'],
+] as [$zone, $start, $end, $startUtc, $endUtc]) {
+    $window = tracker_period_window('custom', ['timezone' => $zone], $start, $end);
+    same($window, ['period' => 'custom', 'start_utc' => $startUtc, 'end_utc' => $endUtc], "$zone custom range $start to $end");
+}
+foreach ([['', ''], ['2026-02-29', '2026-03-01'], ['2026-10-04', '2026-10-03'],
+    ['2026-1-01', '2026-01-01'], ['2026-01-01extra', '2026-01-02'], ['0000-01-01', '2026-01-01']] as [$start, $end]) {
+    $rejected = false;
+    try { tracker_period_window('custom', ['timezone' => 'UTC'], $start, $end); }
+    catch (InvalidArgumentException $e) { $rejected = true; }
+    same($rejected, true, 'Reject missing, invalid and reversed custom dates');
+}
+same(tracker_period_window('lastweek', $after, 'bad', 'dates'), tracker_period_window('lastweek', $after), 'Presets ignore custom fields');
+
+echo "PASS: standard-time resets, DST display, midnight rollover, custom XP dates and rank guards\n";

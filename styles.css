@@ -1474,6 +1474,22 @@ li { margin: 0 0 10px; }
   line-height: 1.1;
 }
 
+/* Custom XP periods */
+.xpPeriodControls { min-width: 220px; max-width: 100%; }
+.customXpRange { margin-top: 10px; }
+.customXpRangeFields { display: flex; flex-wrap: wrap; gap: 10px; }
+.customXpRangeFields label {
+  display: flex; flex-direction: column; gap: 4px; flex: 1 1 145px;
+  min-width: 0; font-size: 0.86rem; font-weight: 900;
+}
+.customXpRangeFields .input { width: 100%; min-width: 0; padding: 8px 10px; }
+.customXpRangeHint, .customXpRangeError { margin-top: 5px; font-size: 0.8rem; }
+.customXpRangeError { color: #842b20; font-weight: 700; }
+.customXpRangeError:empty { display: none; }
+@media (max-width: 860px) {
+  .xpPeriodControls { width: 100%; min-width: 0; }
+}
+
 /* Player controls and rank/logo pill */
 .playerTopActions .compactSelectLabel,
 .xpPeriodTopLabel {

@@ -10,7 +10,7 @@ $pageTitle = trim((string)$brand['name']) !== '' ? (string)$brand['name'] : 'Cla
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="./styles.css?v=2026101902" />
+  <link rel="stylesheet" href="./styles.css?v=2026110702" />
 </head>
 <body<?= tracker_body_style_attr($brand) ?>>
   <?php
@@ -80,8 +80,20 @@ include __DIR__ . '/includes/menu.php';
               <button class="segBtn" type="button" data-xptab="leaders" role="tab" aria-selected="false">Top earners</button>
             </div>
           </div>
-          <div style="min-width:220px;">
-            <select id="clanXpPeriod" class="select"></select>
+          <div class="xpPeriodControls">
+            <select id="clanXpPeriod" class="select" aria-label="Clan XP period"></select>
+            <div class="customXpRange hidden" id="clanXpRange">
+              <div class="customXpRangeFields">
+                <label for="clanXpStart">Start date
+                  <input id="clanXpStart" class="input" type="date" min="1000-01-01" max="9999-12-31" required aria-describedby="clanXpRangeHint clanXpRangeError" />
+                </label>
+                <label for="clanXpEnd">End date
+                  <input id="clanXpEnd" class="input" type="date" min="1000-01-01" max="9999-12-31" required aria-describedby="clanXpRangeHint clanXpRangeError" />
+                </label>
+              </div>
+              <div class="muted customXpRangeHint" id="clanXpRangeHint"></div>
+              <div class="customXpRangeError" id="clanXpRangeError" role="status" aria-live="polite"></div>
+            </div>
           </div>
         </div>
         <div class="skillsLeadersGrid" id="clanSkillLeaders"></div>
@@ -117,10 +129,24 @@ include __DIR__ . '/includes/menu.php';
           <p class="muted" id="playerSubheading"></p>
         </div>
         <div class="playerTopActions">
-          <label class="compactSelectLabel xpPeriodTopLabel" for="xpPeriod">
-            XP Period
-            <select id="xpPeriod" class="select selectSmall"></select>
-          </label>
+          <div class="xpPeriodControls">
+            <label class="compactSelectLabel xpPeriodTopLabel" for="xpPeriod">
+              XP Period
+              <select id="xpPeriod" class="select selectSmall"></select>
+            </label>
+            <div class="customXpRange hidden" id="playerXpRange">
+              <div class="customXpRangeFields">
+                <label for="playerXpStart">Start date
+                  <input id="playerXpStart" class="input" type="date" min="1000-01-01" max="9999-12-31" required aria-describedby="playerXpRangeHint playerXpRangeError" />
+                </label>
+                <label for="playerXpEnd">End date
+                  <input id="playerXpEnd" class="input" type="date" min="1000-01-01" max="9999-12-31" required aria-describedby="playerXpRangeHint playerXpRangeError" />
+                </label>
+              </div>
+              <div class="muted customXpRangeHint" id="playerXpRangeHint"></div>
+              <div class="customXpRangeError" id="playerXpRangeError" role="status" aria-live="polite"></div>
+            </div>
+          </div>
           <button class="button secondary" type="button" id="backFromPlayer">Back</button>
         </div>
       </div>
@@ -214,6 +240,6 @@ include __DIR__ . '/includes/menu.php';
     window.TRACKER_CONFIG = <?= json_encode($publicConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <script src="./config/skills.js?v=202607070620"></script>
-  <script src="./app.js?v=2026110701"></script>
+  <script src="./app.js?v=2026110702"></script>
 </body>
 </html>

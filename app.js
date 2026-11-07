@@ -1184,13 +1184,92 @@ function classifyActivity(text, details) {
   return { kind: "default" };
 }
 
+/* ---------------- Custom XP ranges ---------------- */
+const xpCustomRanges = {
+  clan: { start: "", end: "", timezone: "UTC" },
+  player: { start: "", end: "", timezone: "UTC" },
+};
+let clanLoadVersion = 0;
+let playerLoadVersion = 0;
+
+function todayInTimezone(timezone, now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: timezone || "UTC", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const part = type => parts.find(p => p.type === type).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function customXpRangeError(range) {
+  for (const value of [range.start, range.end]) {
+    if (!/^[1-9][0-9]{3}-[0-9]{2}-[0-9]{2}$/.test(value)) return "Choose valid start and end dates.";
+    const date = new Date(`${value}T00:00:00Z`);
+    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+      return "Choose valid start and end dates.";
+    }
+  }
+  return range.start > range.end ? "End date must be on or after start date." : "";
+}
+
+function syncCustomXpRange(kind, period, timezone) {
+  const range = xpCustomRanges[kind];
+  if (timezone) range.timezone = timezone;
+  const wrap = qs(`${kind}XpRange`);
+  if (!wrap) return;
+  wrap.classList.toggle("hidden", period !== "custom");
+  if (period !== "custom") return;
+  if (!range.initialised) {
+    range.start = range.end = todayInTimezone(range.timezone);
+    range.initialised = true;
+  }
+  qs(`${kind}XpStart`).value = range.start;
+  qs(`${kind}XpEnd`).value = range.end;
+  qs(`${kind}XpRangeHint`).textContent = `Dates use ${range.timezone}. End date is included.`;
+  validateCustomXpRange(kind, period);
+}
+
+function validateCustomXpRange(kind, period) {
+  const error = period === "custom" ? customXpRangeError(xpCustomRanges[kind]) : "";
+  const message = qs(`${kind}XpRangeError`);
+  if (message) message.textContent = error;
+  for (const suffix of ["Start", "End"]) {
+    qs(`${kind}Xp${suffix}`)?.setAttribute("aria-invalid", error ? "true" : "false");
+  }
+  return !error;
+}
+
+function xpPeriodParams(period, range) {
+  const params = new URLSearchParams({ period: period || "7d" });
+  if (period === "custom") {
+    params.set("start_date", range.start);
+    params.set("end_date", range.end);
+  }
+  return params;
+}
+
+function buildClanApiUrl(clanKey, period, skill = "") {
+  const params = xpPeriodParams(period, xpCustomRanges.clan);
+  params.set("clan", clanKey);
+  if (skill) params.set("skill", skill);
+  return `${API.clanOverview}?${params.toString()}`;
+}
+
+function reloadXpPeriod(kind) {
+  const { clan, configuredClan, player } = getParams();
+  if (kind === "clan") {
+    if (clan || configuredClan) loadClanOverview(clan || configuredClan, selectedClanXpPeriod);
+  } else if (player) {
+    loadPlayer(player, selectedXpPeriod);
+  }
+}
+
 /* ---------------- Clan overview state ---------------- */
 let clanData = null;
 let clanFilter = "all";
 let selectedClanXpPeriod = "7d";
 let clanXpView = "total"; // 'total' or 'leaders'
 
-const clanSkillTopCache = new Map(); // key: `${period}|${skill}` -> array
+const clanSkillTopCache = new Map(); // key: full request URL, including custom dates
 
 function populateClanXpPeriods(periods, currentValue) {
   const sel = qs("clanXpPeriod");
@@ -1233,11 +1312,13 @@ async function fetchClanTopEarnersForSkill(skillName) {
   const clanKey = params.clan || params.configuredClan;
   if (!clanKey || !skillName) return null;
 
-  const cacheKey = `${selectedClanXpPeriod}|${skillName.toLowerCase()}`;
+  if (!validateCustomXpRange("clan", selectedClanXpPeriod)) return null;
+  const cacheKey = buildClanApiUrl(clanKey, selectedClanXpPeriod, skillName);
   if (clanSkillTopCache.has(cacheKey)) return clanSkillTopCache.get(cacheKey);
 
-  const url = `${API.clanOverview}?clan=${encodeURIComponent(clanKey)}&period=${encodeURIComponent(selectedClanXpPeriod)}&skill=${encodeURIComponent(skillName)}`;
-  const data = await fetchJson(url);
+  const version = clanLoadVersion;
+  const data = await fetchJson(cacheKey);
+  if (version !== clanLoadVersion || cacheKey !== buildClanApiUrl(clanKey, selectedClanXpPeriod, skillName)) return null;
   if (data && data.ok && Array.isArray(data.top_earners)) {
     clanSkillTopCache.set(cacheKey, data.top_earners);
     return data.top_earners;
@@ -1598,6 +1679,11 @@ function renderMemberList() {
 }
 
 async function loadClanOverview(clanKey, period) {
+  const usePeriod = period || selectedClanXpPeriod || "7d";
+  if (!validateCustomXpRange("clan", usePeriod)) return;
+  const version = ++clanLoadVersion;
+  const url = buildClanApiUrl(clanKey, usePeriod);
+  clanSkillTopCache.clear();
   clanData = null;
   qs("clanSubheading").textContent = "Loading…";
   qs("clanSubheading").classList.remove("hidden");
@@ -1615,8 +1701,10 @@ async function loadClanOverview(clanKey, period) {
   if (qs("clanXpMeta")) qs("clanXpMeta").textContent = "";
   if (qs("clanSkillLeaders")) qs("clanSkillLeaders").innerHTML = "";
 
-  const usePeriod = period || selectedClanXpPeriod || "7d";
-  const data = await fetchJson(`${API.clanOverview}?clan=${encodeURIComponent(clanKey)}&period=${encodeURIComponent(usePeriod)}`);
+  const data = await fetchJson(url);
+  const current = getParams();
+  if (version !== clanLoadVersion || current.player || String(current.clan || current.configuredClan) !== String(clanKey)
+      || url !== buildClanApiUrl(clanKey, selectedClanXpPeriod)) return;
   if (!data || !data.ok) {
     qs("clanSubheading").textContent = `Error: ${data?.error || "request failed"}`;
     qs("clanStatus").textContent = data?.hint ? `Hint: ${data.hint}` : "";
@@ -1656,6 +1744,7 @@ async function loadClanOverview(clanKey, period) {
   setClanResetCountdown(data.week);
   selectedClanXpPeriod = data.xp?.period || usePeriod;
   populateClanXpPeriods(data.xp_periods || [], selectedClanXpPeriod);
+  syncCustomXpRange("clan", selectedClanXpPeriod, tz);
   setClanXpView("total");
   renderMemberList();
 }
@@ -1707,6 +1796,10 @@ function populateActivityLimitOptions(options, currentValue) {
 function currentXpPeriodLabel() {
   const sel = qs("xpPeriod");
   const selected = sel?.selectedOptions?.[0]?.textContent?.trim();
+  if (selectedXpPeriod === "custom") {
+    const range = xpCustomRanges.player;
+    return `${range.start} to ${range.end}`;
+  }
   if (selected) return selected;
   return String(playerData?.xp?.period || selectedXpPeriod || "selected period");
 }
@@ -3555,10 +3648,9 @@ function renderPlayer() {
   setJournalView(selectedJournalView);
 }
 
-function buildPlayerApiUrl(rsn, period, activityLimit, deferRefresh = true) {
-  const params = new URLSearchParams();
+function buildPlayerApiUrl(rsn, period, activityLimit, deferRefresh = true, range = xpCustomRanges.player) {
+  const params = xpPeriodParams(period, range);
   params.set("player", String(rsn || ""));
-  params.set("period", String(period || "7d"));
   params.set("activity_limit", String(normaliseActivityLimit(activityLimit || selectedActivityLimit)));
   params.set("defer_refresh", deferRefresh ? "1" : "0");
   return `${API.player}?${params.toString()}`;
@@ -3588,7 +3680,7 @@ function playerNeedsBackgroundRefresh(data) {
 
 async function refreshPlayerInBackground(rsn, period, opts = {}) {
   const name = String(rsn || "").trim();
-  if (!name) return;
+  if (!name || !validateCustomXpRange("player", period || selectedXpPeriod)) return;
 
   const key = name.toLowerCase();
   if (playerBackgroundRefreshInFlight.has(key)) return;
@@ -3603,6 +3695,8 @@ async function refreshPlayerInBackground(rsn, period, opts = {}) {
   try {
     const selectedPeriodAtStart = String(period || selectedXpPeriod || "7d");
     const selectedLimitAtStart = normaliseActivityLimit(selectedActivityLimit);
+    const rangeAtStart = { ...xpCustomRanges.player };
+    const version = playerLoadVersion;
 
     if (force || playerXpNeedsRefresh(currentData)) {
       const rsnForRefresh = name.replace(/\s+/g, "_");
@@ -3610,18 +3704,20 @@ async function refreshPlayerInBackground(rsn, period, opts = {}) {
       try { await fetchJson(refreshUrl); } catch { /* Reload successful sources below. */ }
     }
 
-    const fresh = await fetchJson(buildPlayerApiUrl(name, selectedPeriodAtStart, selectedLimitAtStart, false));
+    const fresh = await fetchJson(buildPlayerApiUrl(name, selectedPeriodAtStart, selectedLimitAtStart, false, rangeAtStart));
     if (!fresh || !fresh.ok) return;
 
     const params = getParams();
     if (String(params.player || "").trim().toLowerCase() !== key) return;
-    if (String(selectedXpPeriod || "7d") !== selectedPeriodAtStart) return;
+    if (version !== playerLoadVersion) return;
+    if (xpPeriodParams(selectedXpPeriod, xpCustomRanges.player).toString() !== xpPeriodParams(selectedPeriodAtStart, rangeAtStart).toString()) return;
     if (normaliseActivityLimit(selectedActivityLimit) !== selectedLimitAtStart) return;
 
     playerData = fresh;
     selectedXpPeriod = fresh.xp?.period || selectedPeriodAtStart;
     selectedActivityLimit = normaliseActivityLimit(fresh.activity_limit || selectedLimitAtStart);
     populateXpPeriods(fresh.xp_periods || [], selectedXpPeriod);
+    syncCustomXpRange("player", selectedXpPeriod, fresh.week?.timezone);
     populateActivityLimitOptions(fresh.activity_limit_options, selectedActivityLimit);
     renderPlayer();
   } catch {
@@ -3632,6 +3728,8 @@ async function refreshPlayerInBackground(rsn, period, opts = {}) {
 }
 
 async function loadPlayer(rsn, period) {
+  if (!validateCustomXpRange("player", period || "7d")) return;
+  const version = ++playerLoadVersion;
   playerData = null;
 
   qs("playerSubheading").textContent = "Loading…";
@@ -3665,6 +3763,8 @@ async function loadPlayer(rsn, period) {
   const activityLimit = normaliseActivityLimit(selectedActivityLimit);
   const url = buildPlayerApiUrl(rsn, period || "7d", activityLimit, true);
   const data = await fetchJson(url);
+  if (version !== playerLoadVersion || String(getParams().player || "").toLowerCase() !== String(rsn).toLowerCase()
+      || url !== buildPlayerApiUrl(rsn, selectedXpPeriod, selectedActivityLimit, true)) return;
 
   if (!data || !data.ok) {
     qs("playerSubheading").classList.remove("hidden");
@@ -3677,6 +3777,7 @@ async function loadPlayer(rsn, period) {
   selectedXpPeriod = data.xp?.period || period || "7d";
   selectedActivityLimit = normaliseActivityLimit(data.activity_limit || activityLimit);
   populateXpPeriods(data.xp_periods || [], selectedXpPeriod);
+  syncCustomXpRange("player", selectedXpPeriod, data.week?.timezone);
   populateActivityLimitOptions(data.activity_limit_options, selectedActivityLimit);
   renderPlayer();
 
@@ -3929,23 +4030,21 @@ function wireUI() {
     });
   }
 
-  const clanXpSel = qs("clanXpPeriod");
-  if (clanXpSel) {
-    clanXpSel.addEventListener("change", () => {
-      const v = clanXpSel.value || "7d";
-      selectedClanXpPeriod = v;
-      const { clan, configuredClan } = getParams();
-      const clanToOpen = clan || configuredClan;
-      if (clanToOpen) loadClanOverview(clanToOpen, selectedClanXpPeriod);
+  for (const [kind, selectId] of [["clan", "clanXpPeriod"], ["player", "xpPeriod"]]) {
+    qs(selectId)?.addEventListener("change", () => {
+      const period = qs(selectId).value || "7d";
+      if (kind === "clan") selectedClanXpPeriod = period;
+      else selectedXpPeriod = period;
+      syncCustomXpRange(kind, period);
+      reloadXpPeriod(kind);
     });
+    for (const [suffix, key] of [["Start", "start"], ["End", "end"]]) {
+      qs(`${kind}Xp${suffix}`)?.addEventListener("change", () => {
+        xpCustomRanges[kind][key] = qs(`${kind}Xp${suffix}`).value;
+        if (validateCustomXpRange(kind, qs(selectId).value)) reloadXpPeriod(kind);
+      });
+    }
   }
-
-  qs("xpPeriod")?.addEventListener("change", () => {
-    const v = qs("xpPeriod")?.value || "7d";
-    selectedXpPeriod = v;
-    const { player } = getParams();
-    if (player) loadPlayer(player, selectedXpPeriod);
-  });
 
   qs("activityLimit")?.addEventListener("change", () => {
     selectedActivityLimit = normaliseActivityLimit(qs("activityLimit")?.value || 20);
