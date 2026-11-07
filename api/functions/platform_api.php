@@ -16,6 +16,7 @@ function rp_url(string $source, string $rsn): string
     $name = rawurlencode(str_replace(' ', '_', trim($rsn)));
     return match ($source) {
         'events' => 'https://secure.runescape.com/m=adventurers-log/api/v1/playerEvents/' . $name,
+        'skills' => 'https://secure.runescape.com/m=adventurers-log/api/v1/playerData/' . $name . '?includeSkills=true',
         'quests' => 'https://secure.runescape.com/m=adventurers-log/api/v1/playerQuests/' . $name,
         'hiscores' => 'https://secure.runescape.com/m=hiscore/index_lite.json?player=' . $name,
         default => throw new InvalidArgumentException('Unknown Platform API source'),
@@ -67,7 +68,6 @@ function rp_http_get(string $url, PDO $pdo, array $headers = ['Accept: applicati
         $body = curl_exec($ch);
         $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
         return ['status' => $status, 'body' => $body === false ? '' : $body,
             'error' => $body === false ? ($error ?: 'Request failed') : null, 'retry_after' => $retryAfter,
             'headers' => $responseHeaders];
@@ -103,6 +103,8 @@ function rp_validate_payload(string $source, array $data, string $rsn): void
             if ($event['text'] === '' || $event['type'] === '') throw new UnexpectedValueException('Empty event text/type');
             rp_event_date($event['date']);
         }
+    } elseif ($source === 'skills') {
+        rp_player_skills_snapshot($data);
     } elseif ($source === 'hiscores') {
         rp_hiscores($data); // Validate before caching; partial historical records remain valid.
     } elseif ($source === 'quests') {
@@ -147,6 +149,48 @@ function rp_skill_names(): array
         'Summoning','Dungeoneering','Divination','Invention','Archaeology','Necromancy'];
 }
 
+/** Use the same ordered JSON and hash for equivalent snapshots from either source. */
+function rp_pack_snapshot(array $skills): array
+{
+    ksort($skills);
+    $totalXp = $skills['total']['xp'];
+    $json = json_encode($skills, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    return [
+        'total_xp' => $totalXp,
+        'skills_json' => $json,
+        'snapshot_hash' => hash('sha256', $totalXp . '|' . $json),
+    ];
+}
+
+function rp_player_skills_snapshot(array $data): array
+{
+    $rows = $data['skills'] ?? null;
+    $names = rp_skill_names();
+    if (!is_array($rows) || count($rows) !== count($names)) {
+        throw new UnexpectedValueException('INCOMPLETE_PLAYER_DATA: expected all tracked skills');
+    }
+
+    $skills = [];
+    $totalXp = 0;
+    $totalLevel = 0;
+    $aliases = ['Constitution' => 'hitpoints', 'Runecrafting' => 'runecraft'];
+    foreach ($names as $name) {
+        $key = $aliases[$name] ?? strtolower($name);
+        $row = $rows[$key] ?? null;
+        if (!is_int($row['fine_xp'] ?? null) || $row['fine_xp'] < 0 ||
+            !is_int($row['level'] ?? null) || $row['level'] < 0) {
+            throw new UnexpectedValueException('INCOMPLETE_PLAYER_DATA: invalid or missing skill ' . $key);
+        }
+        // Historical totals sum each skill's whole XP, discarding its fractional tenth.
+        $xp = intdiv($row['fine_xp'], 10);
+        $skills[$name] = ['level' => $row['level'], 'xp' => $xp];
+        $totalXp += $xp;
+        $totalLevel += $row['level'];
+    }
+    $skills['total'] = ['level' => $totalLevel, 'xp' => $totalXp];
+    return rp_pack_snapshot($skills);
+}
+
 function rp_hiscores(array $data): array
 {
     if (!is_array($data['skills'] ?? null) || !$data['skills'] || !array_is_list($data['skills']) ||
@@ -175,10 +219,7 @@ function rp_hiscores(array $data): array
     if ($complete) {
         // Keep only application skills; future skill support requires an explicit UI/schema decision.
         $stored = array_intersect_key($skills, array_flip(array_merge(['total'], rp_skill_names())));
-        ksort($stored);
-        $json = json_encode($stored, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-        $snapshot = ['total_xp' => $overall['xp'], 'skills_json' => $json,
-            'snapshot_hash' => hash('sha256', $overall['xp'] . '|' . $json)];
+        $snapshot = rp_pack_snapshot($stored);
     }
     $names = [
         'Bounty Hunters' => 'bounty_hunter', 'Bounty Hunter Rogues' => 'bounty_hunter_rogues',
@@ -248,7 +289,7 @@ function rp_quests(array $data): array
 
 function rp_poll_schedule(array $result, int $now, int $consecutive429 = 0): array
 {
-    $partial = !empty($result['sources']['events']['processed_ok']) || !empty($result['sources']['hiscores']['processed_ok']);
+    $partial = !empty($result['sources']['events']['processed_ok']) || !empty($result['sources']['skills']['processed_ok']);
     // A cap never changes this interval. Source-specific retries protect failed providers.
     if (!empty($result['ok']) || $partial) {
         return ['next_poll' => $now + 300, 'http_status' => !empty($result['ok']) ? 200 : 207,

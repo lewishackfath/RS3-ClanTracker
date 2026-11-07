@@ -1191,7 +1191,9 @@ try {
 
     $questsCacheUtc = $questsLive['cache']['updated_at_utc'] ?? null;
     $hiscoresCacheUtc = $hiscoresLite['cache']['updated_at_utc'] ?? null;
-    $lastPullUtc = tracker_dtmax([$lastPolledUtc, $latestSnapUtc, $latestActivityUtc, $questsCacheUtc, $hiscoresCacheUtc]);
+    $platformSources = rp_fetch_states($pdo, $memberId);
+    $skillsFetchedUtc = $platformSources['skills']['last_success_at_utc'] ?? null;
+    $lastPullUtc = tracker_dtmax([$lastPolledUtc, $latestSnapUtc, $latestActivityUtc, $questsCacheUtc, $hiscoresCacheUtc, $skillsFetchedUtc]);
     $lastPullLocal = tracker_to_local($lastPullUtc, (string)$week['timezone']);
 
 
@@ -1199,7 +1201,7 @@ try {
     tracker_json([
         'ok' => true,
         'deferred_refresh' => !$allowExternalRefresh,
-        'platform_sources' => rp_fetch_states($pdo, $memberId),
+        'platform_sources' => $platformSources,
         'member' => [
             'id' => $memberId,
             'rsn' => $member['rsn'],
@@ -1275,6 +1277,7 @@ try {
             'sources' => [
                 'last_poll_at_utc' => $lastPolledUtc ?: null,
                 'last_xp_snapshot_utc' => $latestSnapUtc ?: null,
+                'last_skills_fetch_utc' => $skillsFetchedUtc,
                 'last_activity_utc' => $latestActivityUtc ?: null,
                 'last_rm_quests_utc' => $questsCacheUtc ?: null,
                 'last_hiscores_lite_utc' => $hiscoresCacheUtc ?: null,

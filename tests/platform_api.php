@@ -40,6 +40,28 @@ $partial=$hiscores;
 foreach($partial['activities'] as &$a) if($a['name']==='Clue Scrolls (easy)') $a['score']=-1; unset($a);
 check(rp_hiscores($partial)['summary']['clues_total_from_tiers']===null,'Incomplete clue totals remain unknown');
 check($normal['misc']['conquest']['score']===1000 && !$normal['misc']['conquest']['ranked'],'Unranked nonzero scores remain available');
+$playerData = fixture('New_Player_Skills.json');
+rp_validate_payload('skills', $playerData, 'lodo');
+check(rp_url('skills', 'Some Name') === 'https://secure.runescape.com/m=adventurers-log/api/v1/playerData/Some_Name?includeSkills=true', 'Request only skills on the XP path');
+$playerSnapshot = rp_player_skills_snapshot($playerData);
+$playerSkills = json_decode($playerSnapshot['skills_json'], true, 512, JSON_THROW_ON_ERROR);
+check($playerSkills['Attack'] === ['level' => 108, 'xp' => 32916037], 'Convert real fine_xp to whole XP');
+check($playerSkills['Constitution']['xp'] === 99378285 && $playerSkills['Runecrafting']['xp'] === 41578666, 'Preserve skill names in historical charts');
+check($playerSkills['total'] === ['level' => 3174, 'xp' => 1877293371], 'Sum whole skill XP and levels');
+$cutoverSkills = ['name' => 'Lodo', 'skills' => []];
+foreach ($hiscores['skills'] as $row) {
+    if ($row['name'] === 'Overall') continue;
+    $cutoverSkills['skills'][strtolower($row['name'])] = ['fine_xp' => $row['xp'] * 10 + 9, 'level' => $row['level']];
+}
+$cutoverSkills['skills'] = array_reverse($cutoverSkills['skills'], true);
+check(rp_player_skills_snapshot($cutoverSkills) === $snapshot, 'Same XP from Hiscores and Player Data yields identical total, JSON and hash');
+$badSkills = $playerData;
+unset($badSkills['skills']['attack']);
+rejects(fn() => rp_validate_payload('skills', $badSkills, 'Lodo'), 'Missing skill must not be counted as zero');
+$badSkills = $playerData;
+$badSkills['skills']['defence']['fine_xp'] = -1;
+rejects(fn() => rp_validate_payload('skills', $badSkills, 'Lodo'), 'Negative XP cannot replace a good snapshot');
+rejects(fn() => rp_validate_payload('skills', $playerData, 'Other'), 'Check Player Data identity');
 $q=rp_quests($quests);
 check($q['totals']===['total'=>366,'completed'=>361,'started'=>1,'not_started'=>4,'quest_points_completed'=>476,'quest_points_max'=>476],'Authoritative QP and status counts');
 $oldByTitle=array_column($oldQuests['quests'],null,'title');
@@ -62,7 +84,7 @@ foreach([['status'=>404,'body'=>'{"error":"PLAYER_NOT_FOUND"}'],['status'=>403,'
 $limit=rp_request('events','Lodo',fn()=>['status'=>429,'body'=>'{}','retry_after'=>1200]);
 check(!$limit['ok'] && $limit['retry_after']===1200,'Retry-After preserved');
 foreach([false,true] as $cap) check(rp_poll_schedule(['ok'=>true,'cap_detected'=>$cap],1000)['next_poll']===1300,'Capping keeps normal five-minute interval');
-check(rp_poll_schedule(['ok'=>false,'sources'=>['events'=>['processed_ok'=>true],'hiscores'=>['http_code'=>429]]],1000)['next_poll']===1300,'One failed source does not delay successful source');
+check(rp_poll_schedule(['ok'=>false,'sources'=>['events'=>['processed_ok'=>true],'skills'=>['http_code'=>429]]],1000)['next_poll']===1300,'One failed source does not delay successful source');
 check(rp_poll_schedule(['ok'=>false,'sources'=>['events'=>['http_code'=>429,'retry_at_utc'=>'1970-01-01 01:00:00']]],1000)['next_poll']===3600,'Rate-limit schedule respects Retry-After');
 echo "Platform fixture/adapter/scheduling checks passed.\n";
 
@@ -110,38 +132,60 @@ try {
     check((int)$pdo->query('SELECT COUNT(*) FROM member_citadel_visits')->fetchColumn()===1,'Typed visit detected');
     check(rp_poll_schedule(['ok'=>true,'cap_detected'=>$cap],1000)['next_poll']===1300,'Detected cap keeps normal interval');
 
-    $calls=[];
-    $transport=function(string $url)use(&$calls,$events,$hiscores){$calls[]=$url;return ['status'=>200,'body'=>json_encode(str_contains($url,'playerEvents')?$events:$hiscores)];};
-    $result=rp_sync_data($pdo,$member,$transport);
-    check($result['ok'] && $result['xp_snapshot_inserted'],'Both sources sync');
-    $result=rp_sync_data($pdo,$member,$transport);
-    check($result['ok'] && !$result['xp_snapshot_inserted'] && count($calls)===2,'Unchanged XP uses shared fetch cache without duplicate snapshots');
-    check(!rp_sync_due(rp_fetch_states($pdo,1)),'Fetch freshness does not depend on new XP');
-    rm_db_insert_xp_snapshot($pdo,1,$legacy['total_xp'],$legacy['skills_json'],$legacy['snapshot_hash']);
-    // Give the historical fixture deterministic ordering after the earlier snapshot.
-    $pdo->exec("UPDATE member_xp_snapshots SET captured_at_utc=DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 1 SECOND) WHERE total_xp=1859874781");
-    $result=rp_sync_data($pdo,$member,$transport);
-    check(!$result['ok'] && str_contains($result['error'],'HISCORES_BEHIND') && !empty($result['sources']['events']['processed_ok']),'Stale Hiscores cannot roll back current XP; events continue');
-    check(str_contains(rp_fetch_states($pdo,1)['hiscores']['processing_error'],'HISCORES_BEHIND'),'Processing failure visible separately from fetch freshness');
+    // A deployment may start with both a fresh Hiscores cache and a Hiscores XP snapshot.
+    rp_cached_fetch($pdo,1,'hiscores','Lodo',300,fn() => ['status'=>200,'body'=>json_encode($hiscores)]);
+    rm_db_insert_xp_snapshot($pdo,1,$snapshot['total_xp'],$snapshot['skills_json'],$snapshot['snapshot_hash']);
+    $payload = $cutoverSkills;
+    $calls = [];
+    $transport = function (string $url) use (&$calls, &$payload, $events): array {
+        $calls[] = $url;
+        $data = match ($url) {
+            rp_url('events', 'Lodo') => $events,
+            rp_url('skills', 'Lodo') => $payload,
+            default => throw new RuntimeException('Unexpected scheduled request: ' . $url),
+        };
+        return ['status' => 200, 'body' => json_encode($data)];
+    };
+    $expireSkills = static fn() => $pdo->exec("UPDATE member_platform_fetches SET fetched_at_utc='2000-01-01' WHERE source='skills'");
+    $latestXp = static fn() => (int)$pdo->query('SELECT total_xp FROM member_xp_snapshots WHERE member_id=1 ORDER BY captured_at_utc DESC,id DESC LIMIT 1')->fetchColumn();
+    $result = rp_sync_data($pdo,$member,$transport);
+    check($result['ok'] && !$result['xp_snapshot_inserted'] && $calls === [rp_url('events','Lodo'), rp_url('skills','Lodo')], 'Cutover makes two requests and reuses the equivalent historical snapshot');
+    $expireSkills();
+    $payload = $playerData;
+    $result = rp_sync_data($pdo,$member,$transport);
+    check($result['xp_snapshot_inserted'] && $latestXp() === $playerSnapshot['total_xp'], 'Player Data advances XP while Hiscores remains cached');
+    $result = rp_sync_data($pdo,$member,$transport);
+    check($result['ok'] && !$result['xp_snapshot_inserted'] && count($calls) === 3, 'Repeated polling reuses the shared skills cache');
+    check(!rp_sync_due(rp_fetch_states($pdo,1)), 'Successful skills fetch determines freshness');
+    $expireSkills();
+    check(rp_sync_due(rp_fetch_states($pdo,1)), 'Fresh Hiscores never masks a due Player Data fetch');
+    $payload = $cutoverSkills;
+    $result = rp_sync_data($pdo,$member,$transport);
+    check(!$result['ok'] && !empty($result['sources']['events']['processed_ok']) && $latestXp() === $playerSnapshot['total_xp'], 'Stale skills preserve the most recent snapshot while events continue');
+    check(str_contains(rp_fetch_states($pdo,1)['skills']['processing_error'],'PLAYER_DATA_BEHIND'), 'Lag is reported on the skills source');
+    $expireSkills();
+    unset($payload['skills']['attack']);
+    $result = rp_sync_data($pdo,$member,$transport);
+    check(!$result['ok'] && str_contains($result['error'],'INCOMPLETE_PLAYER_DATA') && $latestXp() === $playerSnapshot['total_xp'], 'Incomplete skills preserve historical XP');
     $pdo->exec('DELETE FROM member_xp_snapshots'); $pdo->exec('DELETE FROM member_platform_fetches');
-    $transport=function(string $url)use($hiscores){return str_contains($url,'playerEvents')?['status'=>500,'body'=>'{"error":"INTERNAL_ERROR"}']:['status'=>200,'body'=>json_encode($hiscores)];};
+    $transport=function(string $url)use($playerData){return str_contains($url,'playerEvents')?['status'=>500,'body'=>'{"error":"INTERNAL_ERROR"}']:['status'=>200,'body'=>json_encode($playerData)];};
     $result=rp_sync_data($pdo,$member,$transport);
     check(!$result['ok'] && $result['xp_snapshot_inserted'],'Events failure does not block XP');
     $pdo->exec('DELETE FROM member_platform_fetches');
     $transport=function(string $url)use($events){return str_contains($url,'playerEvents')?['status'=>200,'body'=>json_encode($events)]:['status'=>429,'body'=>'{}','retry_after'=>900];};
     $result=rp_sync_data($pdo,$member,$transport);
-    check(!$result['ok'] && !empty($result['sources']['events']['processed_ok']),'Hiscores failure does not block events');
+    check(!$result['ok'] && !empty($result['sources']['events']['processed_ok']),'Player Data failure does not block events');
     $callCount=0;
-    $limited=rp_cached_fetch($pdo,1,'hiscores','Lodo',300,function()use(&$callCount){$callCount++;throw new RuntimeException('Should use negative cache');});
+    $limited=rp_cached_fetch($pdo,1,'skills','Lodo',300,function()use(&$callCount){$callCount++;throw new RuntimeException('Should use negative cache');});
     check(!$limited['ok'] && $callCount===0 && $limited['http_code']===429,'Respect provider backoff across callers');
     $pdo->exec('DELETE FROM member_platform_fetches');
-    $transport=function(string $url)use($hiscores){return str_contains($url,'playerEvents')?['status'=>403,'body'=>'{"error":"PLAYER_NOT_MEMBER"}']:['status'=>200,'body'=>json_encode($hiscores)];};
+    $transport=function(string $url)use($playerData){return str_contains($url,'playerEvents')?['status'=>403,'body'=>'{"error":"PLAYER_NOT_MEMBER"}']:['status'=>200,'body'=>json_encode($playerData)];};
     $result=rp_sync_data($pdo,$member,$transport);
     check($result['ok'] && $result['status']==='source_unavailable' && (int)$pdo->query('SELECT is_private FROM members WHERE id=1')->fetchColumn()===0,'Non-membership does not become legacy private status');
-    $pdo->exec("UPDATE member_platform_fetches SET fetched_at_utc='2000-01-01' WHERE source='hiscores'");
-    $failed=rp_cached_fetch($pdo,1,'hiscores','Lodo',300,fn()=>['status'=>500,'body'=>'{}']);
-    check(!$failed['ok'] && $failed['data']['skills'][0]['xp']===1859856013,'Failed refresh retains last good raw payload');
-    $renamed=rp_cached_fetch($pdo,1,'hiscores','Other',300,fn()=>['status'=>404,'body'=>'{"error":"PLAYER_NOT_FOUND"}']);
+    $pdo->exec("UPDATE member_platform_fetches SET fetched_at_utc='2000-01-01' WHERE source='skills'");
+    $failed=rp_cached_fetch($pdo,1,'skills','Lodo',300,fn()=>['status'=>500,'body'=>'{}']);
+    check(!$failed['ok'] && $failed['data'] === $playerData,'Failed refresh retains last good raw payload');
+    $renamed=rp_cached_fetch($pdo,1,'skills','Other',300,fn()=>['status'=>404,'body'=>'{"error":"PLAYER_NOT_FOUND"}']);
     check($renamed['data']===null,'Renames cannot reuse another identity cache');
     if ($tracker) {
         require_once __DIR__ . '/../api/functions/player_platform_cache.php';

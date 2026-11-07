@@ -1,0 +1,121 @@
+{
+    "skills": {
+        "magic": {
+            "level": 110,
+            "fine_xp": 390732081
+        },
+        "divination": {
+            "level": 99,
+            "fine_xp": 235888770
+        },
+        "strength": {
+            "level": 108,
+            "fine_xp": 329536203
+        },
+        "defence": {
+            "level": 99,
+            "fine_xp": 1024924605
+        },
+        "herblore": {
+            "level": 120,
+            "fine_xp": 1140402656
+        },
+        "hitpoints": {
+            "level": 99,
+            "fine_xp": 993782855
+        },
+        "smithing": {
+            "level": 110,
+            "fine_xp": 421916265
+        },
+        "dungeoneering": {
+            "level": 120,
+            "fine_xp": 1054082749
+        },
+        "ranged": {
+            "level": 111,
+            "fine_xp": 444768158
+        },
+        "attack": {
+            "level": 108,
+            "fine_xp": 329160374
+        },
+        "farming": {
+            "level": 120,
+            "fine_xp": 1147222892
+        },
+        "firemaking": {
+            "level": 110,
+            "fine_xp": 465862174
+        },
+        "archaeology": {
+            "level": 120,
+            "fine_xp": 1057580663
+        },
+        "construction": {
+            "level": 105,
+            "fine_xp": 238157368
+        },
+        "cooking": {
+            "level": 99,
+            "fine_xp": 157790502
+        },
+        "hunter": {
+            "level": 110,
+            "fine_xp": 411376257
+        },
+        "summoning": {
+            "level": 99,
+            "fine_xp": 181059210
+        },
+        "slayer": {
+            "level": 120,
+            "fine_xp": 1329197237
+        },
+        "fletching": {
+            "level": 110,
+            "fine_xp": 396885761
+        },
+        "fishing": {
+            "level": 99,
+            "fine_xp": 207098465
+        },
+        "necromancy": {
+            "level": 120,
+            "fine_xp": 1416265452
+        },
+        "mining": {
+            "level": 110,
+            "fine_xp": 454468967
+        },
+        "woodcutting": {
+            "level": 110,
+            "fine_xp": 1044485941
+        },
+        "prayer": {
+            "level": 99,
+            "fine_xp": 211374808
+        },
+        "runecraft": {
+            "level": 110,
+            "fine_xp": 415786669
+        },
+        "crafting": {
+            "level": 110,
+            "fine_xp": 407611446
+        },
+        "agility": {
+            "level": 99,
+            "fine_xp": 238856567
+        },
+        "invention": {
+            "level": 120,
+            "fine_xp": 1558899218
+        },
+        "thieving": {
+            "level": 120,
+            "fine_xp": 1067759531
+        }
+    },
+    "name": "Lodo"
+}

@@ -5,12 +5,12 @@ declare(strict_types=1);
  * /functions/runemetrics.php
  *
  * Responsibilities:
- * 1) Fetch Platform API events and Hiscores independently
+ * 1) Fetch Player Events and Player Data skills independently
  * 2) Insert activities into member_activities
  *    - Match activity_announcement_rules at insert time (first match wins)
  *    - If purpose is cap_detection or visit_detection, upsert into member_caps / member_citadel_visits
  * 3) Insert XP snapshot into member_xp_snapshots
- *    - Preserve whole XP from Hiscores
+ *    - Convert Player Data fine XP to whole XP per skill
  *    - Store as JSON (SkillName => {level, xp})
  *
  * Notes:

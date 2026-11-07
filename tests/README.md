@@ -59,7 +59,12 @@ announcement state and XP snapshots are preserved. Successful polling now uses a
 five-minute interval even after a cap. Actual timing depends on cron capacity.
 API failures retain source-specific retries and the last good data.
 
-Both refresh paths use Player Events and Hiscores JSON. Quests use Player Quests.
+Both XP refresh paths fetch Player Events and `playerData/{name}?includeSkills=true`.
+Player Data syncs periodically during play and on logout or world hop, with up to
+ten minutes of upstream cache delay. Both applications store skill responses
+under the shared `skills` cache key. The poller converts each skill to whole XP
+before summing total XP. Hiscores provides rankings and activity scores on demand.
+Deploy both applications together. This source switch uses the existing tables.
 The player response retains existing field names; normalised cache version 2
 rebuilds the old CSV/quest mappings on access. `platform_sources` exposes separate
 fetch/processing status and successful-fetch times. An unchanged XP snapshot no
@@ -69,8 +74,8 @@ minutes; the quest TTL remains six hours. Existing TTL environment overrides app
 Legacy events match by member/clan, UTC minute and exact text/details; unique
 overlaps preserve their original record and announcement state while storing
 precise Platform metadata. Ambiguous repeats are reported as
-`AMBIGUOUS_LEGACY_EVENT` for review. Lower/incomplete Hiscores are reported as
-`HISCORES_BEHIND`/`INCOMPLETE_HISCORES` without replacing current XP. Review persistent
+`AMBIGUOUS_LEGACY_EVENT` for review. Lower/incomplete Player Data skills are reported as
+`PLAYER_DATA_BEHIND`/`INCOMPLETE_PLAYER_DATA` without replacing current XP. Review persistent
 errors before changing a baseline or event record manually. Ordinary source failures do not
 block the other source; upstream 429s activate the shared cooldown described above. No new API key is required.
 

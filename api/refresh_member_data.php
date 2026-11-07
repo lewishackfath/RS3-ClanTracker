@@ -73,7 +73,7 @@ try {
   }
 
   // -------------------------------------------------------------------
-  // Refresh Platform events and Hiscores independently
+  // Refresh Player Events and Player Data skills independently
   // -------------------------------------------------------------------
   $sync = runemetrics_sync_member($pdo, $memberId, 20);
 

@@ -3470,8 +3470,8 @@ function renderPlayer() {
     const sources = playerData.platform_sources || {};
     const messages = [];
     if (sources.events && !sources.events.ok) messages.push("Recent activities are currently unavailable.");
-    if (sources.hiscores && (!sources.hiscores.ok || sources.hiscores.processing_error)) {
-      messages.push("XP is awaiting a successful Hiscores update.");
+    if (sources.skills && (!sources.skills.ok || sources.skills.processing_error)) {
+      messages.push("Waiting for updated XP from Player Data.");
     }
     metaEl.textContent = messages.join(" ");
     metaEl.classList.toggle("hidden", messages.length === 0);
@@ -3571,7 +3571,7 @@ function cacheNeedsRefresh(cache) {
 }
 
 function playerXpNeedsRefresh(data) {
-  return ["events", "hiscores"].some(source => {
+  return ["events", "skills"].some(source => {
     const state = data?.platform_sources?.[source];
     if (state?.retry_at_utc && utcAgeSeconds(state.retry_at_utc) < 0) return false;
     const age = utcAgeSeconds(state?.last_success_at_utc);

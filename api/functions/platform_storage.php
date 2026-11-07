@@ -119,7 +119,7 @@ function rp_fetch_states(PDO $pdo, int $memberId): array
 
 function rp_sync_due(array $states, int $interval = 300): bool
 {
-    foreach (['events','hiscores'] as $source) {
+    foreach (['events','skills'] as $source) {
         $state = $states[$source] ?? [];
         if (!empty($state['retry_at_utc']) && strtotime($state['retry_at_utc'] . ' UTC') > time()) continue;
         $last = $state['last_success_at_utc'] ?? null;
@@ -174,19 +174,18 @@ function rp_record_event(PDO $pdo, int $memberId, string $storedHash, string $pl
     $st->execute([$platformHash,$event['type'],rp_event_date($event['date'])->format('Y-m-d H:i:s.v'),$memberId,$storedHash]);
 }
 
-function rp_check_snapshot(PDO $pdo, int $memberId, ?array $snapshot): void
+function rp_check_snapshot(PDO $pdo, int $memberId, array $snapshot): void
 {
-    if ($snapshot === null) throw new RuntimeException('INCOMPLETE_HISCORES: retaining the last complete XP snapshot');
     $st = $pdo->prepare('SELECT total_xp, skills_json FROM member_xp_snapshots WHERE member_id=? ORDER BY captured_at_utc DESC,id DESC LIMIT 1');
     $st->execute([$memberId]);
     $last = $st->fetch(PDO::FETCH_ASSOC);
     if (!$last) return;
     $before = json_decode($last['skills_json'],true) ?: [];
     $after = json_decode($snapshot['skills_json'],true);
-    if ($snapshot['total_xp'] < (int)$last['total_xp']) throw new RuntimeException('HISCORES_BEHIND: retaining the newer XP snapshot');
+    if ($snapshot['total_xp'] < (int)$last['total_xp']) throw new RuntimeException('PLAYER_DATA_BEHIND: retaining the newer XP snapshot');
     foreach (rp_skill_names() as $name) {
         if (isset($before[$name]['xp']) && $after[$name]['xp'] < (int)$before[$name]['xp']) {
-            throw new RuntimeException('HISCORES_BEHIND: retaining the newer ' . $name . ' snapshot');
+            throw new RuntimeException('PLAYER_DATA_BEHIND: retaining the newer ' . $name . ' snapshot');
         }
     }
 }
@@ -217,7 +216,7 @@ function rp_sync_data(PDO $pdo, array $member, ?callable $transport = null): arr
     $lock = rp_lock($pdo, $id . ':sync');
     try {
         rm_db_clear_member_private($pdo,$id);
-        foreach (['events','hiscores'] as $source) {
+        foreach (['events','skills'] as $source) {
             try {
                 $fetch = rp_cached_fetch($pdo,$id,$source,(string)$member['rsn'],300,$transport);
                 $status = $fetch; unset($status['data']);
@@ -232,7 +231,7 @@ function rp_sync_data(PDO $pdo, array $member, ?callable $transport = null): arr
                     $result['inserted_activities'] = rm_db_insert_activities_with_processing($pdo,$id,$clan,$events,
                         $result['cap_detected'],$result['cap_week_start_utc']);
                 } else {
-                    $snapshot = rp_hiscores($fetch['data'])['snapshot'];
+                    $snapshot = rp_player_skills_snapshot($fetch['data']);
                     rp_check_snapshot($pdo,$id,$snapshot);
                     $result['xp_snapshot_inserted'] = rm_db_insert_xp_snapshot($pdo,$id,$snapshot['total_xp'],$snapshot['skills_json'],$snapshot['snapshot_hash']);
                 }
@@ -247,7 +246,7 @@ function rp_sync_data(PDO $pdo, array $member, ?callable $transport = null): arr
             }
         }
         if (!$result['ok']) $result['status'] = 'partial_failure';
-        elseif (empty($result['sources']['events']['ok']) || empty($result['sources']['hiscores']['ok'])) $result['status'] = 'source_unavailable';
+        elseif (empty($result['sources']['events']['ok']) || empty($result['sources']['skills']['ok'])) $result['status'] = 'source_unavailable';
         return $result;
     } finally { rp_unlock($pdo,$lock); }
 }

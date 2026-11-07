@@ -24,7 +24,7 @@ include __DIR__ . '/includes/menu.php';
     <section class="card" id="landingCard">
       <h1 class="h1">Welcome</h1>
       <p class="muted">
-        Recent activities come from the Adventurer’s Log, while skill levels and XP come from Hiscores.
+        Recent activities, skill levels and XP come from the Adventurer’s Log. Hiscores supplies rankings and activity scores.
         The old RuneMetrics profile privacy setting no longer controls these API responses.
         Activity recording requires active membership and the relevant in-game event settings.
         Only the latest 20 events are available from RuneScape; the tracker keeps events it has already collected.
@@ -32,7 +32,8 @@ include __DIR__ . '/includes/menu.php';
       <div class="grid">
         <div class="panel">
           <h2 class="h2">When your data updates</h2>
-          <p>Events can take up to ten minutes to appear. Skills and XP update after logging out or changing worlds.
+          <p>RuneScape syncs skills and XP periodically during play, when you log out and when you change worlds.
+             Events and skill updates can take up to ten more minutes to reach the API. The tracker picks them up on its next poll or player refresh.
              Changing event settings affects future events only.</p>
         </div>
         <div class="panel">
